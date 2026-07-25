@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+desktop
+dist
+dist-desktop
+supabase/.temp
+*.log
+*.zip
+*.exe

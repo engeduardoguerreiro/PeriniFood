@@ -1,4 +1,4 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export function BrandLogo({
@@ -6,9 +6,9 @@ export function BrandLogo({
   priority,
   showTagline,
 }: {
-  className?: string;
-  priority?: boolean;
-  showTagline?: boolean;
+  className: string;
+  priority: boolean;
+  showTagline: boolean;
 }) {
   return <BrandNavLogo className={className} priority={priority} showTagline={showTagline} />;
 }
@@ -18,26 +18,28 @@ export function BrandNavLogo({
   priority,
   showTagline = true,
 }: {
-  className?: string;
-  priority?: boolean;
-  showTagline?: boolean;
+  className: string;
+  priority: boolean;
+  showTagline: boolean;
 }) {
   return (
     <span className={cn("inline-flex items-center gap-3", className)}>
-      <Image
-        src="/brand/gastroflow-mark-source.png"
-        alt=""
-        width={1254}
-        height={1254}
-        priority={priority}
-        className="h-12 w-14 rounded-xl border border-white/12 object-contain shadow-lg shadow-black/20"
-      />
+      <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl border border-white/15 bg-white shadow-[0_16px_40px_rgba(0,0,0,0.24)]">
+        <Image
+          src="/brand/perinifood-logo.png"
+          alt=""
+          width={1254}
+          height={1254}
+          priority={priority}
+          className="h-full w-full object-contain"
+        />
+      </span>
       <span className="leading-none">
-        <span className="block text-[1.35rem] font-black tracking-tight text-[#FFF6E9]">
-          Gastro<span className="text-[#F5B342]">Flow</span>
+        <span className="block text-[1.35rem] font-black tracking-tight text-[#F8FBFF]">
+          Perini<span className="text-[#E50914]">Food</span>
         </span>
         {showTagline && (
-          <span className="font-secondary mt-1 hidden text-[0.58rem] font-bold uppercase tracking-[0.22em] text-[#E26A2C] sm:block">
+          <span className="font-secondary mt-1 hidden text-[0.58rem] font-bold uppercase tracking-[0.22em] text-white/62 sm:block">
             Gestão para restaurantes
           </span>
         )}
@@ -46,18 +48,10 @@ export function BrandNavLogo({
   );
 }
 
-export function GastroMark({ className }: { className?: string }) {
+export function GastroMark({ className }: { className: string }) {
   return (
-    <span className={cn("relative grid place-items-center rounded-full border-2 border-[#F5B342] text-[#F5B342]", className)}>
-      <span className="absolute left-[-0.45rem] top-[34%] h-0.5 w-5 bg-[#E26A2C]" />
-      <span className="absolute left-[-0.7rem] top-[50%] h-0.5 w-7 bg-[#E26A2C]" />
-      <span className="absolute left-[-0.45rem] top-[66%] h-0.5 w-5 bg-[#E26A2C]" />
-      <span className="font-secondary text-xl font-black">G</span>
-      <span className="absolute bottom-2 right-2 flex gap-0.5">
-        <span className="h-1 w-1 rounded-full bg-[#E26A2C]" />
-        <span className="h-1 w-1 rounded-full bg-[#F5B342]" />
-        <span className="h-1 w-1 rounded-full bg-[#F5B342]" />
-      </span>
+    <span className={cn("relative grid place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200", className)}>
+      <Image src="/brand/perinifood-logo.png" alt="" width={1254} height={1254} className="h-full w-full object-contain" />
     </span>
   );
 }

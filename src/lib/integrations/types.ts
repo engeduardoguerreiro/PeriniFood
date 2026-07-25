@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@/lib/types";
+﻿import type { OrderStatus } from "@/lib/types";
 
 export type ProviderName = "ifood" | "99food" | "keeta" | "rappi" | "webhook";
 
@@ -8,7 +8,7 @@ export type ExternalOrder = {
   customerPhone?: string;
   deliveryAddress?: string;
   total: number;
-  items: Array<{ externalId?: string; name: string; quantity: number; unitPrice: number; notes?: string }>;
+  items: Array<{ externalId: string; name: string; quantity: number; unitPrice: number; notes?: string }>;
   raw: unknown;
 };
 
@@ -17,7 +17,7 @@ export type IntegrationProvider = {
   testConnection(): Promise<{ ok: boolean; message: string }>;
   fetchOrders(): Promise<ExternalOrder[]>;
   acceptOrder(externalOrderId: string): Promise<{ ok: boolean; externalOrderId: string }>;
-  rejectOrder(externalOrderId: string, reason?: string): Promise<{ ok: boolean; externalOrderId: string; reason?: string }>;
+  rejectOrder(externalOrderId: string, reason: string): Promise<{ ok: boolean; externalOrderId: string; reason: string }>;
   updateOrderStatus(externalOrderId: string, status: OrderStatus): Promise<{ ok: boolean; externalOrderId: string; status: OrderStatus }>;
   syncMenu(): Promise<{ ok: boolean; message: string }>;
   parseExternalOrder(payload: unknown): ExternalOrder;

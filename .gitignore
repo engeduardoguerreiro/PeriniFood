@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -17,8 +18,11 @@
 /.next/
 /out/
 
-# production
+# production / build output
 /build
+/dist
+/dist-desktop
+/desktop/runtime
 
 # misc
 .DS_Store
@@ -42,3 +46,10 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+.env*.local
+
+# prisma generated client (regenerado via `prisma generate`)
+/src/generated
+
+# claude code (mantém launch.json compartilhado, ignora config local)
+.claude/settings.local.json

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { requireRestaurant } from "@/lib/auth";
 import { money } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
@@ -16,10 +16,10 @@ export default async function MenuPage() {
           <h2 className="text-xl font-black">{category.name}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {((products ?? []) as Product[]).filter((p) => p.category_id === category.id).map((product) => (
-              <Link key={product.id} href={`/dashboard/products/${product.id}/edit`} className="rounded-xl border border-slate-100 p-4 hover:border-[#E26A2C]">
+              <Link key={product.id} href={`/dashboard/products/${product.id}/edit`} className="rounded-xl border border-slate-100 p-4 hover:border-[#E50914]">
                 <p className="font-black">{product.name}</p>
                 <p className="mt-1 text-sm text-slate-500">{product.description}</p>
-                <p className="mt-3 font-black text-[#E26A2C]">{money(product.price)}</p>
+                <p className="mt-3 font-black text-[#E50914]">{money(product.price)}</p>
               </Link>
             ))}
           </div>

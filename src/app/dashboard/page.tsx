@@ -1,27 +1,96 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   ArrowRightFromLine,
   BarChart3,
   Building2,
-  Cake,
   Car,
+  ChefHat,
+  ClipboardList,
   FileText,
   Layers3,
-  PackageCheck,
-  Paperclip,
-  PieChart,
   ReceiptText,
+  Store,
   Trophy,
-  Wrench,
 } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
-import { money } from "@/lib/utils";
-import type { Order } from "@/lib/types";
+import { money, orderCode, statusLabel } from "@/lib/utils";
+import type { Order, OrderItem } from "@/lib/types";
+
+const dashboardTimeZone = "America/Sao_Paulo";
+
+function zonedDateParts(date: Date, timeZone = dashboardTimeZone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const pick = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return {
+    year: pick("year"),
+    month: pick("month"),
+    day: pick("day"),
+    hour: pick("hour"),
+    minute: pick("minute"),
+    second: pick("second"),
+  };
+}
+
+function addDaysToDateParts(parts: { year: number; month: number; day: number }, days: number) {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, 12, 0, 0));
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+function zonedLocalTimeToUtc(parts: { year: number; month: number; day: number; hour?: number; minute?: number; second?: number }, timeZone = dashboardTimeZone) {
+  const utcGuess = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0);
+  const rendered = zonedDateParts(new Date(utcGuess), timeZone);
+  const renderedAsUtc = Date.UTC(rendered.year, rendered.month - 1, rendered.day, rendered.hour, rendered.minute, rendered.second);
+  return new Date(utcGuess - (renderedAsUtc - utcGuess));
+}
+
+function dashboardRanges(now = new Date()) {
+  const todayParts = zonedDateParts(now);
+  const tomorrowParts = addDaysToDateParts(todayParts, 1);
+  const weekDay = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day, 12, 0, 0)).getUTCDay();
+  const weekStartParts = addDaysToDateParts(todayParts, -weekDay);
+
+  return {
+    todayStart: zonedLocalTimeToUtc({ year: todayParts.year, month: todayParts.month, day: todayParts.day }).toISOString(),
+    tomorrowStart: zonedLocalTimeToUtc(tomorrowParts).toISOString(),
+    weekStart: zonedLocalTimeToUtc(weekStartParts).toISOString(),
+  };
+}
+
+function sourceName(order: Order) {
+  const labels: Record<string, string> = {
+    pdv: "PDV",
+    mesa: "Mesa",
+    delivery: "Delivery",
+    site: "Cardápio próprio",
+    manual: "Manual",
+    ifood: "iFood",
+    "99food": "99Food",
+    keeta: "Keeta",
+    rappi: "Rappi",
+    whatsapp: "WhatsApp",
+    webhook: "API",
+  };
+  const value = order.external_platform ?? order.source;
+  return labels[value] ?? value.toUpperCase();
+}
 
 function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof BarChart3; action?: string; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between bg-[#537482] px-4 py-3 text-white">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between bg-[#232A31] px-4 py-3 text-white">
         <h2 className="flex items-center gap-2 text-base font-bold">
           <Icon className="h-5 w-5" />
           {title}
@@ -33,192 +102,207 @@ function Panel({ title, icon: Icon, action, children }: { title: string; icon: t
   );
 }
 
-function FinanceCard({ title, total, tone }: { title: string; total: string; tone: "green" | "red" }) {
-  const green = tone === "green";
-  return (
-    <div className={green ? "border-[#22C55E] bg-white" : "border-[#ff4d57] bg-white"}>
-      <div className={`relative overflow-hidden rounded border p-4 ${green ? "border-[#22C55E]" : "border-[#ff4d57]"}`}>
-        <ArrowRightFromLine className={`absolute right-3 top-3 h-14 w-14 opacity-15 ${green ? "text-[#22C55E]" : "text-[#ff4d57]"}`} />
-        <div className="flex items-start gap-3">
-          <strong className={`text-3xl ${green ? "text-[#22C55E]" : "text-[#ff4d57]"}`}>0</strong>
-          <div className="font-secondary text-sm leading-5 text-slate-600">
-            <p>{title}</p>
-            <p>Total <span className={green ? "text-[#22C55E]" : "text-[#ff4d57]"}>{total}</span></p>
-          </div>
-        </div>
+function MetricCard({ title, value, href = "/dashboard" }: { title: string; value: string; href?: string }) {
+  const content = (
+    <>
+      <div className="relative overflow-hidden rounded-xl border border-[#E50914]/30 bg-white p-4">
+        <ArrowRightFromLine className="absolute right-3 top-3 h-14 w-14 text-[#E50914] opacity-15" />
+        <p className="font-secondary text-sm leading-5 text-slate-600">{title}</p>
+        <strong className="mt-3 block text-2xl text-[#232A31]">{value}</strong>
       </div>
-      <Link href="/dashboard/reports" className={`block rounded-b px-3 py-1 text-center text-xs font-black text-white ${green ? "bg-[#4fc27d]" : "bg-[#f65b62]"}`}>
-        Mais detalhes »
-      </Link>
-    </div>
+      {href && <span className="block rounded-b-xl bg-[#E50914] px-3 py-1 text-center text-xs font-black text-white">Mais detalhes</span>}
+    </>
   );
+
+  return href ? <Link href={href}>{content}</Link> : <div>{content}</div>;
+}
+
+function EmptyBox({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">{children}</p>;
 }
 
 export default async function DashboardPage() {
   const { supabase, restaurant } = await requireRestaurant();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const { todayStart, tomorrowStart, weekStart } = dashboardRanges();
 
-  const [{ data: orders }, { count: productCount }, { count: customerCount }] = await Promise.all([
-    supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).gte("created_at", today.toISOString()).order("created_at", { ascending: false }).limit(12),
+  const [{ data: todayOrders }, { data: weekOrders }, { count: productCount }, { count: customerCount }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .gte("created_at", todayStart)
+      .lt("created_at", tomorrowStart)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .gte("created_at", weekStart)
+      .order("created_at", { ascending: false }),
     supabase.from("products").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id).eq("active", true),
     supabase.from("customers").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id),
   ]);
 
-  const rows = (orders ?? []) as Order[];
-  const revenue = rows.filter((o) => o.status === "completed" || o.payment_status === "paid").reduce((sum, o) => sum + Number(o.total), 0);
-  const pending = rows.filter((o) => o.status === "pending").length;
-  const preparing = rows.filter((o) => o.status === "preparing").length;
-  const averageTicket = rows.length ? revenue / rows.length : 0;
+  const orders = (todayOrders ?? []) as Order[];
+  const weekRows = (weekOrders ?? []) as Order[];
+  const usefulOrders = orders.filter((order) => order.status !== "canceled");
+  const orderIds = usefulOrders.map((order) => order.id);
+  const { data: orderItems } = orderIds.length ?
+     await supabase.from("order_items").select("*").eq("restaurant_id", restaurant.id).in("order_id", orderIds)
+    : { data: [] as OrderItem[] };
+  const items = (orderItems ?? []) as OrderItem[];
+
+  const paidOrCompleted = (order: Order) => order.status === "completed" || order.payment_status === "paid";
+  const revenue = orders.filter(paidOrCompleted).reduce((sum, order) => sum + Number(order.total), 0);
+  const weekRevenue = weekRows.filter(paidOrCompleted).reduce((sum, order) => sum + Number(order.total), 0);
+  const pending = orders.filter((order) => order.status === "pending").length;
+  const preparing = orders.filter((order) => order.status === "preparing").length;
+  const completed = orders.filter((order) => order.status === "completed").length;
+  const averageTicket = orders.length ? revenue / orders.length : 0;
+
+  const topProducts = Object.values(items.reduce<Record<string, { name: string; quantity: number; revenue: number }>>((acc, item) => {
+    const current = acc[item.product_name] ?? { name: item.product_name, quantity: 0, revenue: 0 };
+    current.quantity += Number(item.quantity);
+    current.revenue += Number(item.total_price);
+    acc[item.product_name] = current;
+    return acc;
+  }, {})).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+  const bySource = Object.entries(usefulOrders.reduce<Record<string, number>>((acc, order) => {
+    const source = sourceName(order);
+    acc[source] = (acc[source] ?? 0) + 1;
+    return acc;
+  }, {})).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-8">
+      <section>
+        <h1 className="text-2xl font-black text-slate-800">Olá, {restaurant.name}</h1>
+        <div className="mt-7 grid gap-5 xl:grid-cols-3">
+          <Link href="/pedidos" className="flex min-h-28 items-center justify-between overflow-hidden rounded-xl bg-[#12161B] p-5 text-white">
+            <div>
+              <strong className="block text-lg">Pedidos em tempo real</strong>
+              <span className="mt-1 block max-w-xs text-sm text-white/75">Acompanhe novos pedidos, preparo e entrega no painel operacional.</span>
+            </div>
+            <ClipboardList className="h-12 w-12 text-white/70" />
+          </Link>
+          <Link href={`/cardapio/${restaurant.slug}`} target="_blank" rel="noreferrer" className="flex min-h-28 items-center justify-between overflow-hidden rounded-xl bg-[#E50914] p-5 text-white">
+            <div>
+              <strong className="block text-lg">Cardápio digital ativo</strong>
+              <span className="mt-1 block max-w-xs text-sm text-white/80">Compartilhe o link e receba pedidos direto no PeriniFood.</span>
+            </div>
+            <ChefHat className="h-12 w-12 text-white/80" />
+          </Link>
+          <Link href="/configuracoes" className="flex min-h-28 items-center justify-between overflow-hidden rounded-xl bg-[#232A31] p-5 text-white">
+            <div>
+              <strong className="block text-lg">{restaurant.is_open ? "Loja aberta" : "Loja fechada"}</strong>
+              <span className="mt-1 block max-w-xs text-sm text-white/80">Configure taxas, pedido mínimo, WhatsApp e status da loja.</span>
+            </div>
+            <Store className="h-12 w-12 text-white/80" />
+          </Link>
+        </div>
+      </section>
+
       <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-4">
-        <FinanceCard title="Contas a receber hoje" total={money(revenue)} tone="green" />
-        <FinanceCard title="Contas a pagar hoje" total={money(0)} tone="red" />
-        <FinanceCard title="A receber na semana" total={money(revenue)} tone="green" />
-        <FinanceCard title="A pagar na semana" total={money(0)} tone="red" />
+        <MetricCard title="Faturamento hoje" value={money(revenue)} href="/dashboard/reports" />
+        <MetricCard title="Faturamento na semana" value={money(weekRevenue)} href="/dashboard/reports" />
+        <MetricCard title="Pedidos hoje" value={String(orders.length)} href="/pedidos" />
+        <MetricCard title="Ticket médio hoje" value={money(averageTicket)} />
       </div>
 
       <div className="grid gap-8 xl:grid-cols-[1.4fr_1fr]">
         <div className="space-y-8">
-          <Panel title="Utilização do Sistema" icon={PackageCheck}>
-            <div className="grid gap-5 bg-[#eaffdf] p-6 md:grid-cols-[130px_1fr] md:items-center">
-              <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center text-sm font-black text-[#537482] shadow-inner">
-                GastroFlow
-              </div>
-              <p className="font-secondary text-slate-600">
-                Você está usando o painel principal da <strong>GastroFlow</strong>. Acompanhe pedidos, estoque, caixa e integrações sem sair da operação.
-              </p>
+          <Panel title="Operação de hoje" icon={ClipboardList}>
+            <div className="grid gap-4 p-5 md:grid-cols-4">
+              {[
+                ["Pendentes", pending],
+                ["Em preparo", preparing],
+                ["Finalizados", completed],
+                ["Produtos ativos", productCount ?? 0],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded bg-slate-50 p-4">
+                  <p className="font-secondary text-xs font-bold uppercase text-slate-500">{label}</p>
+                  <p className="mt-2 text-2xl font-black text-[#232A31]">{value}</p>
+                </div>
+              ))}
             </div>
           </Panel>
 
           <Panel title="Quadro de avisos" icon={FileText}>
             <div className="space-y-3 p-5 font-secondary text-sm text-slate-600">
-              <p className="flex items-center gap-2"><Layers3 className="h-5 w-5 text-[#6dc7c8]" /> Há {productCount ?? 0} produtos ativos no cardápio.</p>
-              <p className="flex items-center gap-2"><Building2 className="h-5 w-5 text-[#70a7d9]" /> Há {customerCount ?? 0} clientes cadastrados.</p>
+              <p className="flex items-center gap-2"><Layers3 className="h-5 w-5 text-[#E50914]" /> Há {productCount ?? 0} produtos ativos no cardápio.</p>
+              <p className="flex items-center gap-2"><Building2 className="h-5 w-5 text-[#E50914]" /> Há {customerCount ?? 0} clientes cadastrados.</p>
               <p className="flex items-center gap-2"><ArrowRightFromLine className="h-5 w-5 text-[#22C55E]" /> Há {pending} pedidos aguardando aceite.</p>
-              <p className="flex items-center gap-2"><Car className="h-5 w-5 text-[#70a7d9]" /> Há {preparing} pedidos em preparo.</p>
-              <p className="flex items-center gap-2"><Cake className="h-5 w-5 text-[#70a7d9]" /> Configure aniversários e preferências no cadastro de clientes.</p>
+              <p className="flex items-center gap-2"><Car className="h-5 w-5 text-[#E50914]" /> Há {preparing} pedidos em preparo.</p>
             </div>
           </Panel>
 
-          <Panel title="Vendas por mês" icon={BarChart3}>
-            <div className="p-6">
-              <div className="mb-6 flex justify-center gap-5 text-sm text-slate-500">
-                <span className="flex items-center gap-2"><i className="h-3 w-10 rounded bg-[#7ccfd0]" /> Faturamento</span>
-                <span className="flex items-center gap-2"><i className="h-3 w-10 rounded bg-[#69b6e9]" /> Quantidade</span>
-              </div>
-              <div className="flex h-72 items-end gap-4 border-l border-b border-slate-200 px-5">
-                {[36, 48, 75, 52, 66, 86, 96].map((height, index) => (
-                  <div key={index} className="flex flex-1 flex-col items-center gap-2">
-                    <span className="w-full rounded-t bg-[#69b6e9]" style={{ height: `${height * 2}px` }} />
-                    <small className="font-secondary text-xs text-slate-400">{String(index + 10).padStart(2, "0")}/26</small>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Panel>
-
-          <Panel title="Top produtos faturamento" icon={Trophy} action="Maio 2026">
+          <Panel title="Últimos pedidos de hoje" icon={ReceiptText}>
             <div className="p-5">
-              <table className="w-full text-left text-sm">
-                <thead className="font-secondary text-slate-500">
-                  <tr><th className="p-3">Cód</th><th>Produto</th><th className="text-right">Faturamento</th></tr>
-                </thead>
-                <tbody className="font-secondary">
-                  {[
-                    ["51", "Pizza pepperoni", money(3598.1)],
-                    ["78", "Combo smash", money(1521.8)],
-                    ["985", "Marguerita grande", money(987.88)],
-                    ["28", "Limonada artesanal", money(577.98)],
-                    ["102", "Caesar salad", money(498.3)],
-                  ].map(([code, product, amount], index) => (
-                    <tr key={code} className={index % 2 ? "bg-white" : "bg-slate-50"}>
-                      <td className="p-3">{code}</td>
-                      <td>{product}</td>
-                      <td className="text-right">{amount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <Link href="/dashboard/reports" className="mt-5 block text-right font-semibold text-blue-600">Ver relatório completo</Link>
+              {orders.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[680px] text-left text-sm">
+                    <thead className="font-secondary text-slate-500">
+                      <tr><th className="p-3">Pedido</th><th>Cliente</th><th>Status</th><th>Origem</th><th className="text-right">Total</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {orders.slice(0, 6).map((order) => (
+                        <tr key={order.id}>
+                          <td className="p-3 font-black">#{orderCode(order)}</td>
+                          <td>{order.customer_name ?? "Cliente balcão"}</td>
+                          <td>{statusLabel[order.status]}</td>
+                          <td>{sourceName(order)}</td>
+                          <td className="text-right font-black">{money(order.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyBox>Nenhum pedido hoje.</EmptyBox>
+              )}
             </div>
           </Panel>
         </div>
 
         <div className="space-y-8">
-          <Panel title="Vendas por categoria" icon={PieChart} action="Maio 2026">
-            <div className="p-6">
-              <div className="mb-4 flex justify-center gap-4 text-sm text-slate-500">
-                <span className="flex items-center gap-2"><i className="h-3 w-10 rounded bg-[#69b6e9]" /> Pizzas</span>
-                <span className="flex items-center gap-2"><i className="h-3 w-10 rounded bg-[#7ccfd0]" /> Bebidas</span>
-                <span className="flex items-center gap-2"><i className="h-3 w-10 rounded bg-[#ffbf7a]" /> Combos</span>
-              </div>
-              <div className="mx-auto h-52 w-52 rounded-full" style={{ background: "conic-gradient(#69b6e9 0 58%, #7ccfd0 58% 84%, #ffbf7a 84% 100%)" }} />
-            </div>
-          </Panel>
-
-          <Panel title="Resultado consolidado" icon={ReceiptText} action="Maio 2026">
-            <div className="space-y-3 p-5 font-secondary text-sm">
-              {[
-                ["+ Receita bruta", money(revenue || 8621.15), false],
-                ["- Impostos", money(458.62), false],
-                ["= Receita líquida", money((revenue || 8621.15) - 458.62), true],
-                ["- Custo dos produtos (CMV)", money(2151.33), false],
-                ["- Despesas operacionais", money(3543.46), false],
-                ["= Lucro operacional", money(2146.76), true],
-                ["+ Receitas/despesas diversas", money(151.78), false],
-                ["= Lucro/prejuízo", money(2298.54), true],
-              ].map(([label, value, positive]) => (
-                <div key={label as string} className="flex justify-between gap-4">
-                  <span className={positive ? "font-bold" : ""}>{label}</span>
-                  <strong className={positive ? "text-[#4fc27d]" : "text-slate-600"}>{value}</strong>
+          <Panel title="Top produtos vendidos hoje" icon={Trophy}>
+            <div className="space-y-3 p-5">
+              {topProducts.length ? topProducts.map((product, index) => (
+                <div key={product.name} className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-black">{index + 1}. {product.name}</p>
+                    <p className="text-sm text-slate-500">{product.quantity} unidade(s)</p>
+                  </div>
+                  <strong>{money(product.revenue)}</strong>
                 </div>
-              ))}
+              )) : (
+                <EmptyBox>Sem vendas de produtos hoje.</EmptyBox>
+              )}
             </div>
           </Panel>
 
-          <Panel title="Últimos arquivos anexados" icon={Paperclip}>
-            <div className="p-5 text-center font-secondary text-slate-500">
-              <div className="grid grid-cols-2 border-b border-slate-200 pb-3 text-left font-bold text-slate-600">
-                <span>Arquivo</span><span>Módulo</span>
-              </div>
-              <p className="mt-6 italic">Nenhum arquivo anexado.</p>
-              <p className="mt-1 italic">É possível anexar arquivos nos cadastros.</p>
-            </div>
-          </Panel>
-
-          <Panel title="Últimas Atividades" icon={Wrench}>
-            <div className="space-y-4 p-5 font-secondary text-sm text-slate-600">
-              {[
-                ["Primeiro acesso", "agora"],
-                ["Novo usuário", "agora"],
-                ["Cadastro da empresa", "agora"],
-              ].map(([title, time]) => (
-                <div key={title} className="grid grid-cols-[24px_1fr_auto] items-center gap-3">
-                  <span className="h-3 w-3 rounded-full bg-[#E26A2C]" />
-                  <span>{title}</span>
-                  <strong className="text-right text-slate-500">{restaurant.name}<br /><span className="font-normal text-slate-400">{time}</span></strong>
+          <Panel title="Origem dos pedidos" icon={BarChart3}>
+            <div className="space-y-3 p-5">
+              {bySource.length ? bySource.map(([source, count]) => (
+                <div key={source} className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                  <span className="font-bold">{source}</span>
+                  <strong>{count}</strong>
                 </div>
-              ))}
+              )) : (
+                <EmptyBox>Sem pedidos hoje.</EmptyBox>
+              )}
+            </div>
+          </Panel>
+
+          <Panel title="Ações rápidas" icon={ChefHat}>
+            <div className="grid gap-3 p-5">
+              <Link href="/pedidos/novo" className="btn-primary">Novo pedido</Link>
+              <Link href="/cardapio/produtos/novo" className="btn-muted">Cadastrar produto</Link>
+              <Link href={`/cardapio/${restaurant.slug}`} target="_blank" rel="noreferrer" className="btn-muted">Abrir cardápio público</Link>
             </div>
           </Panel>
         </div>
-      </div>
-
-      <div className="grid gap-4 rounded border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-4">
-        {[
-          ["Pedidos hoje", rows.length],
-          ["Ticket médio", money(averageTicket)],
-          ["Pendentes", pending],
-          ["Em preparo", preparing],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded bg-slate-50 p-4">
-            <p className="font-secondary text-xs font-bold uppercase text-slate-500">{label}</p>
-            <p className="mt-2 text-2xl font-black text-[#537482]">{value}</p>
-          </div>
-        ))}
       </div>
     </div>
   );

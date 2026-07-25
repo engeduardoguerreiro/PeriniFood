@@ -18,7 +18,7 @@ export async function getSessionContext() {
   return {
     supabase,
     user,
-    restaurant: (membership?.restaurants ?? null) as Restaurant | null,
+    restaurant: (membership?.restaurants ?? null) as unknown as Restaurant | null,
     role: (membership?.role ?? null) as Role | null,
   };
 }

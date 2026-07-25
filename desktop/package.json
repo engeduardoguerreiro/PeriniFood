@@ -1,0 +1,62 @@
+{
+  "name": "perinifood-desktop",
+  "version": "0.4.1",
+  "private": true,
+  "description": "Aplicativo Windows do PeriniFood",
+  "main": "main.cjs",
+  "scripts": {
+    "postinstall": "node scripts/patch-electron-builder.cjs",
+    "start": "electron .",
+    "build": "electron-builder --win nsis"
+  },
+  "author": "PeriniFood",
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.perinifood.desktop",
+    "productName": "PeriniFood",
+    "artifactName": "PeriniFood-Setup-${version}.${ext}",
+    "directories": {
+      "output": "../dist-desktop"
+    },
+    "files": [
+      "main.cjs",
+      "assets/perinifood.ico",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../scripts/perinifood-print-bridge.js",
+        "to": "print-agent/perinifood-print-bridge.js"
+      },
+      {
+        "from": "runtime/node.exe",
+        "to": "print-agent/node.exe"
+      },
+      {
+        "from": "installer/install-print-agent.ps1",
+        "to": "print-agent/install-print-agent.ps1"
+      },
+      {
+        "from": "installer/uninstall-print-agent.ps1",
+        "to": "print-agent/uninstall-print-agent.ps1"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/perinifood.ico"
+    },
+    "nsis": {
+      "include": "installer/installer.nsh",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PeriniFood",
+      "installerIcon": "assets/perinifood.ico",
+      "uninstallerIcon": "assets/perinifood.ico"
+    }
+  }
+}

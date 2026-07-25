@@ -8,10 +8,12 @@ MVP SaaS para restaurantes, bares, pizzarias, hamburguerias e deliveries, criado
 - Login e cadastro com criação do primeiro restaurante.
 - Multiempresa por `restaurant_id`.
 - Dashboard com métricas, últimos pedidos e status da loja.
-- CRUD funcional de categorias e produtos.
-- PDV com carrinho e criação de `orders` + `order_items`.
-- Cardápio público por slug em `/r/[slug]` com envio de pedido para o painel.
-- Kanban/lista de pedidos com alteração de status.
+- CRUD funcional de categorias, tipos, opções de pizza, adicionais e produtos.
+- Cadastro de produto com tamanhos de pizza, massas, bordas e adicionais por produto.
+- PDV com carrinho, adicionais, bordas, massas, taxa de entrega e impressão.
+- Cardápio público por slug com envio de pedido para o painel.
+- Lista operacional de pedidos com alteração de status.
+- Clientes, configurações, upload de logo/banner e taxas de entrega por raio.
 - Tela de integrações para iFood, 99Food, Keeta, Rappi, WhatsApp e webhook.
 - Providers mockados em `src/lib/integrations/providers/*`.
 - Endpoint `POST /api/integrations/webhook/[provider]`.
@@ -30,7 +32,7 @@ Abra `http://localhost:3000`.
 ## Configurar Supabase
 
 1. Crie um projeto no Supabase.
-2. No SQL Editor, aplique o arquivo `supabase/schema.sql`.
+2. No SQL Editor, aplique as migrations em `supabase/migrations`.
 3. Em Project Settings > API, copie:
    - `Project URL` para `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` para `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -45,6 +47,7 @@ As políticas RLS garantem que usuários autenticados só acessem dados dos rest
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+DATABASE_URL=
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` fica apenas no servidor e é usada no webhook interno para registrar pedidos externos e logs.
@@ -93,7 +96,7 @@ Envie `x-restaurant-id` no header ou `restaurant_id` no payload. O endpoint regi
 npm run build
 ```
 
-3. Faça o deploy pelo painel da Vercel ou pelo conector/CLI.
+3. Faça o deploy pelo painel da Vercel ou pelo CLI.
 
 ## Observações de MVP
 

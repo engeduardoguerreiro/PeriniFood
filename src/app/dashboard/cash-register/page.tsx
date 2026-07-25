@@ -8,8 +8,8 @@ export default async function CashRegisterPage() {
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-black">Caixa</h2>
-        <p className="mt-3 text-slate-500">Status atual: <strong>{data?.status ?? "sem caixa aberto"}</strong></p>
-        <p className="mt-2">Abertura: <strong>{money(data?.opening_amount ?? 0)}</strong></p>
+        <p className="mt-3 text-slate-500">Status atual: <strong>{data.status ?? "sem caixa aberto"}</strong></p>
+        <p className="mt-2">Abertura: <strong>{money(data.opening_amount ?? 0)}</strong></p>
         <div className="mt-5 grid gap-2 sm:grid-cols-2"><button className="btn-primary">Abrir caixa</button><button className="btn-muted">Fechar caixa</button></div>
       </section>
       <section className="rounded-2xl bg-white p-5 shadow-sm">

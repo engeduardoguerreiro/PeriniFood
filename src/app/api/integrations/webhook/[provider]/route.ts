@@ -48,9 +48,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     payload,
   });
 
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ ok: false, error: error?.message }, { status: 500 });
 
-  if (external.items.length) {
+  if (external.items.length && order) {
     await supabase.from("order_items").insert(external.items.map((item) => ({
       restaurant_id: restaurantId,
       order_id: order.id,

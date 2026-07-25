@@ -1,19 +1,34 @@
 {
-  "name": "gastroflow",
+  "name": "perinifood",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "print-bridge": "node scripts/perinifood-print-bridge.js",
+    "print-agent:build-exe": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-print-agent-exe.ps1",
+    "print-agent:build-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-print-agent-installer.ps1",
+    "print-agent:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-print-agent.ps1",
+    "print-agent:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-print-agent.ps1",
+    "desktop:dev": "npm --prefix desktop start",
+    "desktop:install": "npm --prefix desktop install",
+    "desktop:build": "npm --prefix desktop run build",
+    "desktop:dist": "npm run desktop:build",
+    "lint": "eslint",
+    "prisma:validate": "prisma validate",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "node prisma/seed.mjs",
+    "db:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
+    "@prisma/client": "^7.8.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "prisma": "^7.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -26,5 +41,9 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   }
 }
+
