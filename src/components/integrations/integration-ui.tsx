@@ -11,32 +11,32 @@ export function IntegrationOverview({ integrations }: { integrations: Integratio
   return (
     <div className="space-y-6">
       <header className="rounded-2xl bg-white p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase text-slate-500">Canais externos</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-900">Integrações</h1>
-        <p className="mt-2 max-w-3xl text-slate-500">Configure marketplaces, WhatsApp e webhooks por restaurante. As chamadas reais às APIs externas ficam preparadas para plugar depois.</p>
+        <p className="text-xs font-bold uppercase text-[#9c988f]">Canais externos</p>
+        <h1 className="mt-1 text-3xl font-black text-[#1b1a17]">Integrações</h1>
+        <p className="mt-2 max-w-3xl text-[#9c988f]">Configure marketplaces, WhatsApp e webhooks por restaurante. As chamadas reais às APIs externas ficam preparadas para plugar depois.</p>
       </header>
       <div className="grid gap-4 xl:grid-cols-2">
         {integrationProviders.map((item) => {
           const saved = integrations.find((integration) => integration.provider === item.provider);
           const Icon = item.icon;
           return (
-            <Link key={item.provider} href={item.provider === "webhook" ? "/integracoes/webhooks" : `/integracoes/${item.provider}`} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md">
+            <Link key={item.provider} href={item.provider === "webhook" ? "/integracoes/webhooks" : `/integracoes/${item.provider}`} className="group rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#eeccc7] hover:shadow-md">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-red-50 text-red-600"><Icon className="h-6 w-6" /></span>
+                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#f6ece9] text-[#c5362e]"><Icon className="h-6 w-6" /></span>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-black">{item.name}</h2>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black uppercase text-slate-500">{item.badge}</span>
+                      <span className="rounded-full bg-[#f1efea] px-2.5 py-1 text-xs font-black uppercase text-[#9c988f]">{item.badge}</span>
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">{item.description}</p>
+                    <p className="mt-2 text-sm text-[#9c988f]">{item.description}</p>
                   </div>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass(saved?.status, saved?.is_enabled ?? saved?.enabled)}`}>
                   {statusLabel(saved?.status, saved?.is_enabled ?? saved?.enabled)}
                 </span>
               </div>
-              <span className="mt-5 inline-flex rounded-xl border border-red-200 px-4 py-2 text-sm font-black text-red-700 group-hover:bg-red-50">Configurar</span>
+              <span className="mt-5 inline-flex rounded-xl border border-[#eeccc7] px-4 py-2 text-sm font-black text-[#c5362e] group-hover:bg-[#f6ece9]">Configurar</span>
             </Link>
           );
         })}
@@ -86,9 +86,9 @@ export function MarketplaceIntegrationSettings({
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase text-slate-500">Marketplace</p>
+            <p className="text-xs font-bold uppercase text-[#9c988f]">Marketplace</p>
             <h1 className="text-3xl font-black">{info.name}</h1>
-            <p className="mt-2 max-w-3xl text-slate-500">{info.description}</p>
+            <p className="mt-2 max-w-3xl text-[#9c988f]">{info.description}</p>
           </div>
           <span className={`rounded-full px-4 py-2 text-sm font-black ${statusClass(integration?.status, enabled)}`}>
             {statusLabel(integration?.status, enabled)}
@@ -115,7 +115,7 @@ export function MarketplaceIntegrationSettings({
 
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="text-xl font-black">Autenticação</h2>
-          <p className="mt-1 text-sm text-slate-500">Os segredos salvos aparecem mascarados. TODO: adicionar criptografia em repouso.</p>
+          <p className="mt-1 text-sm text-[#9c988f]">Os segredos salvos aparecem mascarados. TODO: adicionar criptografia em repouso.</p>
           <div className="mt-4 grid gap-3">
             <select className="field-light" name="auth_type" defaultValue={valueFromIntegration(integration, "authType", "manual")} disabled={!canEdit}>
               <option value="manual">Manual</option>
@@ -144,11 +144,11 @@ export function MarketplaceIntegrationSettings({
               ["sync_prices", "Sincronizar preços"],
               ["auto_accept_orders", "Aceitar pedidos automaticamente"],
             ].map(([name, label]) => (
-              <label key={name} className="rounded-xl border border-slate-200 p-3 font-bold"><input className="mr-2" name={name} type="checkbox" defaultChecked={Boolean(valueFromIntegration(integration, name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()), name === "receive_orders"))} disabled={!canEdit} />{label}</label>
+              <label key={name} className="rounded-xl border border-[#e7e4dd] p-3 font-bold"><input className="mr-2" name={name} type="checkbox" defaultChecked={Boolean(valueFromIntegration(integration, name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()), name === "receive_orders"))} disabled={!canEdit} />{label}</label>
             ))}
           </div>
-          <div className="mt-5 rounded-xl bg-slate-50 p-4">
-            <p className="text-sm font-bold text-slate-500">Webhook gerado</p>
+          <div className="mt-5 rounded-xl bg-[#faf9f6] p-4">
+            <p className="text-sm font-bold text-[#9c988f]">Webhook gerado</p>
             <code className="mt-2 block overflow-x-auto rounded-lg bg-white p-3 text-sm">{webhookUrl}</code>
           </div>
           {canEdit && (
@@ -174,9 +174,9 @@ export function MappingTables({ integration, products, variants, productMaps, pa
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-black">Produtos</h2>
         <div className="mt-4 space-y-3">
-          {productMaps.map((map) => <div key={map.id} className="rounded-xl border border-slate-200 p-3 text-sm"><strong>{map.external_product_id}</strong><p>{map.external_product_name ?? "Produto externo"}</p></div>)}
+          {productMaps.map((map) => <div key={map.id} className="rounded-xl border border-[#e7e4dd] p-3 text-sm"><strong>{map.external_product_id}</strong><p>{map.external_product_name ?? "Produto externo"}</p></div>)}
           {canEdit && (
-            <form action={saveProductMap} className="grid gap-2 border-t border-slate-100 pt-4">
+            <form action={saveProductMap} className="grid gap-2 border-t border-[#efece6] pt-4">
               <input type="hidden" name="integration_id" value={integration.id} />
               <input type="hidden" name="return_to" value={returnTo} />
               <input className="field-light" name="external_product_id" placeholder="ID externo do produto" required />
@@ -193,9 +193,9 @@ export function MappingTables({ integration, products, variants, productMaps, pa
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-black">Pagamentos</h2>
         <div className="mt-4 space-y-3">
-          {paymentMaps.map((map) => <div key={map.id} className="rounded-xl border border-slate-200 p-3 text-sm"><strong>{map.external_payment_code}</strong><p>{map.external_payment_name ?? "Pagamento externo"} → {map.internal_payment_method}</p></div>)}
+          {paymentMaps.map((map) => <div key={map.id} className="rounded-xl border border-[#e7e4dd] p-3 text-sm"><strong>{map.external_payment_code}</strong><p>{map.external_payment_name ?? "Pagamento externo"} → {map.internal_payment_method}</p></div>)}
           {canEdit && (
-            <form action={savePaymentMap} className="grid gap-2 border-t border-slate-100 pt-4">
+            <form action={savePaymentMap} className="grid gap-2 border-t border-[#efece6] pt-4">
               <input type="hidden" name="integration_id" value={integration.id} />
               <input type="hidden" name="return_to" value={returnTo} />
               <input className="field-light" name="external_payment_code" placeholder="Código externo" required />
@@ -224,12 +224,12 @@ export function LogPreview({ logs }: { logs: IntegrationRecord[] }) {
     <section className="rounded-2xl bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black">Logs recentes</h2>
-        <Link href="/integracoes/logs" className="text-sm font-black text-red-600">Ver todos</Link>
+        <Link href="/integracoes/logs" className="text-sm font-black text-[#c5362e]">Ver todos</Link>
       </div>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Data</th><th>Evento</th><th>Status</th><th>Erro</th></tr></thead>
-          <tbody>{logs.map((log) => <tr key={log.id} className="border-t border-slate-100"><td className="p-3">{new Date(log.created_at).toLocaleString("pt-BR")}</td><td>{log.event_type}</td><td>{log.status}</td><td>{log.error_message ?? log.message ?? "-"}</td></tr>)}</tbody>
+          <thead className="bg-[#faf9f6] text-xs uppercase text-[#9c988f]"><tr><th className="p-3">Data</th><th>Evento</th><th>Status</th><th>Erro</th></tr></thead>
+          <tbody>{logs.map((log) => <tr key={log.id} className="border-t border-[#efece6]"><td className="p-3">{new Date(log.created_at).toLocaleString("pt-BR")}</td><td>{log.event_type}</td><td>{log.status}</td><td>{log.error_message ?? log.message ?? "-"}</td></tr>)}</tbody>
         </table>
       </div>
     </section>

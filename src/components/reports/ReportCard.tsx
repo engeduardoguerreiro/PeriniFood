@@ -1,37 +1,28 @@
 import type { LucideIcon } from "lucide-react";
-import { cn, money } from "@/lib/utils";
+import { money } from "@/lib/utils";
 
 export function ReportCard({
   title,
   value,
   helper,
   icon: Icon,
-  tone = "default",
 }: {
   title: string;
   value: string | number;
   helper?: string;
   icon?: LucideIcon;
+  // aceito mas não usado: mantém compatibilidade com chamadas existentes
   tone?: "default" | "blue" | "green" | "red" | "amber";
 }) {
   const valueText = typeof value === "number" ? money(value) : value;
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div
-        className={cn(
-          "absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-2xl",
-          tone === "blue" && "bg-sky-50 text-sky-700",
-          tone === "green" && "bg-emerald-50 text-emerald-700",
-          tone === "red" && "bg-red-50 text-red-700",
-          tone === "amber" && "bg-amber-50 text-amber-700",
-          tone === "default" && "bg-slate-100 text-slate-600",
-        )}
-      >
-        {Icon ? <Icon className="h-5 w-5" /> : null}
+    <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[0.7rem] font-medium uppercase tracking-[0.09em] text-[#9c988f]">{title}</p>
+        {Icon ? <Icon className="h-4 w-4 shrink-0 text-[#c4bdb0]" /> : null}
       </div>
-      <p className="pr-14 text-sm font-semibold text-slate-500">{title}</p>
-      <strong className="mt-3 block text-2xl font-black tracking-tight text-slate-950">{valueText}</strong>
-      {helper ? <span className="mt-2 block text-xs font-semibold text-slate-500">{helper}</span> : null}
+      <strong className="mt-2 block text-[1.6rem] font-semibold leading-none tracking-tight text-[#1b1a17] [font-variant-numeric:tabular-nums]">{valueText}</strong>
+      {helper ? <span className="mt-1.5 block text-xs text-[#9c988f]">{helper}</span> : null}
     </div>
   );
 }

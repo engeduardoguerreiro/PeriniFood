@@ -1,8 +1,10 @@
-﻿import Link from "next/link";
-import { Bike, Check, Clock3, Flame, PackageCheck, Printer, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Bike, Check, Clock3, Flame, PackageCheck, Pencil, Printer, Trash2, X } from "lucide-react";
 import { deleteOrder, updateOrderStatus } from "@/app/actions";
 import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode, statusLabel } from "@/lib/utils";
+import { Suspense } from "react";
+import { PrintToast } from "@/components/print-toast";
 import type { Order, OrderStatus } from "@/lib/types";
 
 type OperationColumn = {
@@ -10,41 +12,15 @@ type OperationColumn = {
   statuses: OrderStatus[];
   tone: string;
   icon: typeof Clock3;
-  emptyIcon: typeof Clock3;
 };
 
 const operationColumns: OperationColumn[] = [
-  {
-    title: "Pendentes",
-    statuses: ["pending", "accepted"],
-    tone: "bg-rose-100 text-rose-700",
-    icon: Clock3,
-    emptyIcon: Clock3,
-  },
-  {
-    title: "Em produção",
-    statuses: ["preparing"],
-    tone: "bg-amber-100 text-amber-700",
-    icon: Flame,
-    emptyIcon: Flame,
-  },
-  {
-    title: "Pronto",
-    statuses: ["ready"],
-    tone: "bg-red-100 text-red-700",
-    icon: Check,
-    emptyIcon: Check,
-  },
-  {
-    title: "Saiu p/ entrega",
-    statuses: ["out_for_delivery"],
-    tone: "bg-indigo-100 text-indigo-700",
-    icon: Bike,
-    emptyIcon: Bike,
-  },
+  { title: "Pendentes", statuses: ["pending", "accepted"], tone: "bg-rose-100 text-rose-700", icon: Clock3 },
+  { title: "Em produção", statuses: ["preparing"], tone: "bg-amber-100 text-amber-700", icon: Flame },
+  { title: "Pronto", statuses: ["ready"], tone: "bg-emerald-100 text-emerald-700", icon: Check },
+  { title: "Saiu p/ entrega", statuses: ["out_for_delivery"], tone: "bg-indigo-100 text-indigo-700", icon: Bike },
 ];
 
-const nextStatuses: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delivery", "completed", "canceled"];
 const historyStatuses: OrderStatus[] = ["completed", "canceled"];
 
 const sourceLabel: Record<string, string> = {
@@ -56,6 +32,12 @@ const sourceLabel: Record<string, string> = {
   site: "Cardápio próprio",
   pdv: "PDV",
   manual: "Manual",
+};
+
+const typeLabel: Record<Order["type"], string> = {
+  dine_in: "Mesa",
+  delivery: "Entrega",
+  pickup: "Retirada",
 };
 
 function todayRange() {
@@ -74,75 +56,88 @@ function orderTime(order: Order) {
   return new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Próxima etapa lógica do pedido — vira o botão primário de cada card.
+function nextStep(order: Order): { status: OrderStatus; label: string } | null {
+  switch (order.status) {
+    case "pending":
+    case "accepted":
+      return { status: "preparing", label: "Preparar" };
+    case "preparing":
+      return { status: "ready", label: "Pronto" };
+    case "ready":
+      return order.type === "delivery"
+        ? { status: "out_for_delivery", label: "Saiu" }
+        : { status: "completed", label: "Concluir" };
+    case "out_for_delivery":
+      return { status: "completed", label: "Concluir" };
+    default:
+      return null;
+  }
+}
+
+const iconBtn =
+  "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#e7e4dd] bg-white text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]";
+
 function OrderCard({ order }: { order: Order }) {
+  const step = nextStep(order);
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <Link href={`/pedidos/${order.id}`} className="text-base font-black text-slate-950 hover:text-[#E50914]">
+    <article className="rounded-xl border border-[#e7e4dd] bg-white p-3 transition hover:border-[#dcd8cf] hover:shadow-[0_1px_2px_rgba(27,26,23,0.05)]">
+      <div className="flex items-center justify-between gap-2">
+        <Link href={`/pedidos/${order.id}`} className="text-sm font-semibold text-[#1b1a17] transition hover:text-[#c5362e]">
           #{orderCode(order)}
         </Link>
-        <strong className="whitespace-nowrap text-sm text-slate-950">{money(order.total)}</strong>
+        <strong className="text-sm font-semibold text-[#1b1a17] [font-variant-numeric:tabular-nums]">{money(order.total)}</strong>
       </div>
 
-      <p className="mt-1 truncate text-sm font-bold text-slate-800">{order.customer_name || "Cliente balcão"}</p>
-      <p className="mt-0.5 text-xs font-semibold text-slate-500">
-        {orderSource(order)} • {order.type} • {orderTime(order)}
+      <p className="mt-1 truncate text-sm text-[#2b2925]">{order.customer_name || "Cliente balcão"}</p>
+      <p className="mt-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-[#b0aaa0]">
+        {orderSource(order)} • {typeLabel[order.type]} • {orderTime(order)}
       </p>
-      {order.external_order_id && (
-        <span className="mt-2 inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-black text-red-700">
-          Origem externa
-        </span>
-      )}
 
-      <form action={updateOrderStatus} className="mt-3 grid grid-cols-[1fr_44px] gap-2">
-        <input type="hidden" name="id" value={order.id} />
-        <select
-          name="status"
-          className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 outline-none transition focus:border-[#E50914] focus:ring-2 focus:ring-[#E50914]/15"
-          defaultValue={order.status}
-        >
-          {nextStatuses.map((item) => (
-            <option key={item} value={item}>{statusLabel[item]}</option>
-          ))}
-        </select>
-        <button className="h-10 rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-800 transition hover:border-[#E50914] hover:bg-red-50">
-          OK
-        </button>
-      </form>
-      <Link
-        href={`/pedidos/${order.id}/print`}
-        target="_blank"
-        className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-xs font-black text-slate-800 transition hover:border-[#E50914] hover:bg-red-50"
-      >
-        <Printer size={14} />
-        Imprimir
-      </Link>
-      <Link
-        href={`/pedidos/${order.id}/editar`}
-        className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-black text-slate-800 transition hover:border-[#E50914] hover:bg-red-50"
-      >
-        Editar
-      </Link>
+      <div className="mt-3 flex items-center gap-1.5">
+        {step && (
+          <form action={updateOrderStatus} className="flex-1">
+            <input type="hidden" name="id" value={order.id} />
+            <input type="hidden" name="status" value={step.status} />
+            <button className="flex h-9 w-full items-center justify-center rounded-lg bg-[#211d19] px-2 text-xs font-medium text-white transition hover:bg-[#37312a]">
+              {step.label}
+            </button>
+          </form>
+        )}
+        <Link href={`/pedidos/${order.id}/print`} target="_blank" aria-label="Imprimir" className={iconBtn}>
+          <Printer size={15} />
+        </Link>
+        <Link href={`/pedidos/${order.id}/editar`} aria-label="Editar" className={iconBtn}>
+          <Pencil size={15} />
+        </Link>
+        <form action={updateOrderStatus}>
+          <input type="hidden" name="id" value={order.id} />
+          <input type="hidden" name="status" value="canceled" />
+          <button aria-label="Cancelar" className={iconBtn}>
+            <X size={15} />
+          </button>
+        </form>
+      </div>
     </article>
   );
 }
 
 function HistoryRow({ order }: { order: Order }) {
   return (
-    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 text-sm md:grid-cols-[120px_minmax(220px,1fr)_140px_120px_110px] md:items-center">
-      <Link href={`/pedidos/${order.id}`} className="font-black text-slate-950">#{orderCode(order)}</Link>
-      <div>
-        <p className="font-bold text-slate-800">{order.customer_name || "Cliente balcão"}</p>
-        <p className="text-xs font-semibold text-slate-500">{orderSource(order)} • {order.type} • {orderTime(order)}</p>
+    <div className="grid gap-3 border-t border-[#efece6] px-4 py-3 text-sm md:grid-cols-[100px_minmax(200px,1fr)_130px_110px_100px] md:items-center">
+      <Link href={`/pedidos/${order.id}`} className="font-semibold text-[#1b1a17] transition hover:text-[#c5362e]">#{orderCode(order)}</Link>
+      <div className="min-w-0">
+        <p className="truncate font-medium text-[#2b2925]">{order.customer_name || "Cliente balcão"}</p>
+        <p className="text-[0.7rem] font-medium uppercase tracking-wide text-[#b0aaa0]">{orderSource(order)} • {typeLabel[order.type]} • {orderTime(order)}</p>
       </div>
-      <span className={order.status === "completed" ? "rounded-full bg-emerald-50 px-3 py-1 text-center text-xs font-black text-emerald-700" : "rounded-full bg-red-50 px-3 py-1 text-center text-xs font-black text-red-700"}>
+      <span className={order.status === "completed" ? "justify-self-start rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700" : "justify-self-start rounded-full bg-[#f6ece9] px-2.5 py-0.5 text-xs font-medium text-[#c5362e]"}>
         {statusLabel[order.status]}
       </span>
-      <strong>{money(order.total)}</strong>
+      <strong className="font-semibold text-[#1b1a17] [font-variant-numeric:tabular-nums]">{money(order.total)}</strong>
       <form action={deleteOrder} className="md:justify-self-end">
         <input type="hidden" name="id" value={order.id} />
-        <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-bold text-red-600 transition hover:bg-red-50">
-          <Trash2 size={14} />
+        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#eeccc7] px-2.5 text-xs font-medium text-[#c5362e] transition hover:bg-[#f6ece9]">
+          <Trash2 size={13} />
           Excluir
         </button>
       </form>
@@ -166,39 +161,39 @@ export default async function OrdersPage() {
   const todayHistory = orders.filter((order) => historyStatuses.includes(order.status) && order.created_at >= start && order.created_at < end);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="space-y-6">
+      <Suspense fallback={null}><PrintToast /></Suspense>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black tracking-tight text-slate-950">Painel operacional</h2>
-          <p className="text-sm text-slate-500">Pedidos ativos por etapa. Entregues ficam apenas no histórico do dia.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Pedidos</h1>
+          <p className="text-sm text-[#9c988f]">Acompanhe cada pedido por etapa. Entregues e cancelados ficam no histórico do dia.</p>
         </div>
-        <Link href="/pedidos/novo" className="rounded-xl bg-gradient-to-r from-[#232A31] to-[#E50914] px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-500/15 transition hover:-translate-y-0.5">
+        <Link href="/pedidos/novo" className="rounded-xl bg-[#211d19] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#37312a]">
           Novo pedido
         </Link>
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {operationColumns.map((column) => {
           const Icon = column.icon;
-          const EmptyIcon = column.emptyIcon;
           const columnOrders = activeOrders.filter((order) => column.statuses.includes(order.status));
 
           return (
-            <div key={column.title} className="min-h-[420px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${column.tone}`}>
+            <div key={column.title} className="rounded-2xl border border-[#e7e4dd] bg-[#faf9f6] p-2.5">
+              <div className="mb-2.5 flex items-center justify-between px-1.5 pt-1">
                 <div className="flex items-center gap-2">
-                  <Icon size={18} />
-                  <h3 className="text-sm font-black uppercase tracking-wide">{column.title}</h3>
+                  <span className={`grid h-6 w-6 place-items-center rounded-full ${column.tone}`}><Icon size={13} /></span>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{column.title}</h2>
                 </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">{columnOrders.length}</span>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.7rem] font-semibold text-[#6d6a63] [font-variant-numeric:tabular-nums]">{columnOrders.length}</span>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="space-y-2.5">
                 {columnOrders.map((order) => <OrderCard key={order.id} order={order} />)}
                 {!columnOrders.length && (
-                  <div className="flex min-h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 text-slate-400">
-                    <EmptyIcon size={42} className="opacity-70" />
-                    <p className="mt-3 text-sm font-semibold">Vazio</p>
+                  <div className="grid min-h-[110px] place-items-center rounded-xl border border-dashed border-[#e2ddd3] text-center">
+                    <p className="text-xs text-[#b0aaa0]">Sem pedidos</p>
                   </div>
                 )}
               </div>
@@ -207,20 +202,17 @@ export default async function OrdersPage() {
         })}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-3">
-          <div>
-            <h3 className="font-black text-slate-950">Histórico do dia</h3>
-            <p className="text-xs font-semibold text-slate-500">Pedidos entregues ou cancelados hoje.</p>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600">
-            <PackageCheck size={14} />
+      <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+        <div className="flex items-center justify-between gap-3 border-b border-[#efece6] px-4 py-3">
+          <h2 className="text-[0.95rem] font-semibold text-[#1b1a17]">Histórico do dia</h2>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#faf9f6] px-2.5 py-1 text-xs font-medium text-[#6d6a63]">
+            <PackageCheck size={13} />
             {todayHistory.length}
           </span>
         </div>
         <div>
           {todayHistory.map((order) => <HistoryRow key={order.id} order={order} />)}
-          {!todayHistory.length && <p className="border-t border-slate-100 p-8 text-center text-sm font-semibold text-slate-500">Nenhum pedido no histórico de hoje.</p>}
+          {!todayHistory.length && <p className="p-8 text-center text-sm text-[#9c988f]">Nenhum pedido no histórico de hoje.</p>}
         </div>
       </section>
     </div>

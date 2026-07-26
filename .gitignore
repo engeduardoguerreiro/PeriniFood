@@ -48,6 +48,11 @@ next-env.d.ts
 .vercel
 .env*.local
 
+# artefatos temporários de migração (contêm dados reais — nunca versionar)
+/schema-dump.sql
+/data-auth.sql
+/data-public.sql
+
 # prisma generated client (regenerado via `prisma generate`)
 /src/generated
 

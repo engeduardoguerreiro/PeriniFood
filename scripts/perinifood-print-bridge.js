@@ -26,7 +26,6 @@ const defaultAllowedOrigins = [
   "http://127.0.0.1:3000",
   "https://perinifood.vercel.app",
   "https://perinifood-seven.vercel.app",
-  "https://gastroflow-seven.vercel.app",
 ];
 
 const allowedOrigins = new Set([
@@ -328,6 +327,53 @@ async function printText({ printerName, content, copies }) {
   }
 }
 
+async function printImage({ printerName, image, copies }) {
+  const base64 = String(image || "").replace(/^data:image\/\w+;base64,/, "").trim();
+  if (!base64) throw new Error("Imagem de impressão vazia.");
+
+  const printer = String(printerName || "").trim();
+  if (printer) await assertPrinterReady(printer);
+
+  const copyCount = Math.min(5, Math.max(1, Number(copies || 1)));
+  const tempFile = path.join(os.tmpdir(), `perinifood-print-${Date.now()}.png`);
+  await fs.writeFile(tempFile, Buffer.from(base64, "base64"));
+
+  const command = [
+    "$ErrorActionPreference='Stop';",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$img = [System.Drawing.Image]::FromFile($env:PF_IMG_FILE);",
+    "$copies = [int]$env:PF_PRINT_COPIES;",
+    "1..$copies | ForEach-Object {",
+    "  $pd = New-Object System.Drawing.Printing.PrintDocument;",
+    "  if ($env:PF_PRINTER_NAME) { $pd.PrinterSettings.PrinterName = $env:PF_PRINTER_NAME };",
+    "  $pd.PrintController = New-Object System.Drawing.Printing.StandardPrintController;",
+    "  $pd.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0);",
+    "  $pd.add_PrintPage({ param($s,$e)",
+    "    $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor;",
+    "    $e.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half;",
+    "    $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None;",
+    "    $w = $e.PageBounds.Width;",
+    "    $scale = $w / $img.Width;",
+    "    $h = [int]($img.Height * $scale);",
+    "    $e.Graphics.DrawImage($img, 0, 0, [int]$w, $h);",
+    "    $e.HasMorePages = $false;",
+    "  });",
+    "  $pd.Print();",
+    "};",
+    "$img.Dispose();",
+  ].join(" ");
+
+  try {
+    await powershell(command, {
+      PF_IMG_FILE: tempFile,
+      PF_PRINT_COPIES: String(copyCount),
+      PF_PRINTER_NAME: printer,
+    });
+  } finally {
+    fs.unlink(tempFile).catch(() => {});
+  }
+}
+
 async function getStatus() {
   const [config, printers] = await Promise.all([readConfig(), listWindowsPrinters()]);
   const defaultPrinter = config.defaultPrinter || printers.find((printer) => printer.isDefault)?.name || null;
@@ -359,7 +405,20 @@ async function handlePrint(req, res) {
   const printerName = String(payload.printerName || config.defaultPrinter || "").trim();
   const printPayload = { ...payload, printerName };
 
-  await log("print_requested", { printerName, copies: payload.copies || 1 });
+  await log("print_requested", { printerName, copies: payload.copies || 1, mode: payload.image ? "image" : "text" });
+
+  if (payload.image) {
+    try {
+      await printImage(printPayload);
+      await log("print_success", { printerName, mode: "image" });
+      sendJson(req, res, 200, { ok: true, printerName, mode: "image" });
+    } catch (imageError) {
+      await log("image_print_failed", { printerName, error: imageError instanceof Error ? imageError.message : String(imageError) });
+      sendJson(req, res, 500, { ok: false, error: imageError instanceof Error ? imageError.message : "Falha ao imprimir imagem." });
+    }
+    return;
+  }
+
   try {
     await sendRawToPrinter(printPayload);
     await log("print_success", { printerName, mode: "raw" });

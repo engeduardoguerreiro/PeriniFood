@@ -21,8 +21,8 @@ function setFormValue(form: HTMLFormElement | null, name: string, value: string)
 
 export function SettingsCepLookup({
   defaultValue,
-  inputClassName = "field-light h-9 rounded-none py-1 text-sm",
-  buttonClassName = "inline-flex h-9 items-center gap-2 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-red-300 hover:text-red-600",
+  inputClassName = "h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12",
+  buttonClassName = "inline-flex h-9 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e]",
   buttonLabel = "Buscar",
 }: {
   defaultValue: string | null;
@@ -81,7 +81,7 @@ export function SettingsCepLookup({
           {buttonLabel}
         </button>
       </div>
-      {status && <p className="text-xs font-bold text-slate-600">{status}</p>}
+      {status && <p className="text-xs font-medium text-[#6d6a63]">{status}</p>}
     </div>
   );
 }

@@ -50,21 +50,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-black">Pedido #{orderCode(current)}</h2>
-            <p className="text-slate-500">{sourceLabel[current.external_platform ?? current.source] ?? current.source.toUpperCase()}  {current.type}</p>
-            {current.external_order_id && <p className="mt-1 text-sm font-bold text-red-700">Pedido externo: {current.external_order_id}</p>}
+            <p className="text-[#9c988f]">{sourceLabel[current.external_platform ?? current.source] ?? current.source.toUpperCase()}  {current.type}</p>
+            {current.external_order_id && <p className="mt-1 text-sm font-bold text-[#c5362e]">Pedido externo: {current.external_order_id}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <a className="rounded-xl bg-gradient-to-r from-[#232A31] to-[#E50914] px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-500/15 transition hover:-translate-y-0.5" href={`/pedidos/${current.id}/editar`}>
+            <a className="rounded-xl bg-[#211d19] px-4 py-2 text-sm font-black text-white shadow-[0_1px_2px_rgba(27,26,23,0.08)] transition hover:-translate-y-0.5" href={`/pedidos/${current.id}/editar`}>
               Editar pedido
             </a>
             <StatusBadge status={current.status} />
           </div>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Cliente</strong><p>{current.customer_name}</p><p>{current.customer_phone}</p></div>
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Entrega</strong><p>{current.delivery_address || "Retirada/balcão/mesa"}</p></div>
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Pagamento</strong><p>{current.payment_method}  {current.payment_status}</p></div>
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Observações</strong><p>{current.notes || "Sem observações"}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Cliente</strong><p>{current.customer_name}</p><p>{current.customer_phone}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Entrega</strong><p>{current.delivery_address || "Retirada/balcão/mesa"}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Pagamento</strong><p>{current.payment_method}  {current.payment_status}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Observações</strong><p>{current.notes || "Sem observações"}</p></div>
         </div>
         <h3 className="mt-6 font-black">Itens</h3>
         <div className="mt-3 space-y-3">
@@ -77,13 +77,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               ...(selected.addons ?? []).map((addon) => optionLine("Adicional", addon)),
             ].filter(Boolean) as string[];
             return (
-              <div key={item.id} className="rounded-xl border border-slate-100 p-4">
+              <div key={item.id} className="rounded-xl border border-[#efece6] p-4">
                 <div className="flex justify-between gap-3">
                   <span>{item.quantity}x {item.product_name}</span>
                   <strong>{money(item.total_price)}</strong>
                 </div>
                 {!!lines.length && (
-                  <div className="mt-2 space-y-1 text-sm font-semibold text-slate-500">
+                  <div className="mt-2 space-y-1 text-sm font-semibold text-[#9c988f]">
                     {lines.map((line) => <p key={line}>- {line}</p>)}
                   </div>
                 )}
@@ -106,7 +106,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </form>
           ))}
         </div>
-        <div className="mt-6 rounded-xl bg-slate-50 p-4">
+        <div className="mt-6 rounded-xl bg-[#faf9f6] p-4">
           <div className="flex justify-between"><span>Subtotal</span><strong>{money(current.subtotal)}</strong></div>
           <div className="flex justify-between"><span>Entrega</span><strong>{money(current.delivery_fee)}</strong></div>
           <div className="flex justify-between"><span>Desconto</span><strong>{money(current.discount)}</strong></div>

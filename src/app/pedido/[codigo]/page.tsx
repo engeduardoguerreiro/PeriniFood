@@ -25,19 +25,19 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-black">Pedido #{orderCode(current)}</h1>
-            <p className="text-slate-500">Acompanhe o status do seu pedido.</p>
+            <p className="text-[#9c988f]">Acompanhe o status do seu pedido.</p>
           </div>
           <StatusBadge status={current.status} />
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Tipo</strong><p>{current.type}</p></div>
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Total</strong><p>{money(current.total)}</p></div>
-          <div className="rounded-xl bg-slate-50 p-4"><strong>Previsao</strong><p>50 min</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Tipo</strong><p>{current.type}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Total</strong><p>{money(current.total)}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Previsao</strong><p>50 min</p></div>
         </div>
         <h2 className="mt-6 font-black">Itens</h2>
         <div className="mt-3 space-y-2">
           {((items ?? []) as OrderItem[]).map((item) => (
-            <div key={item.id} className="flex justify-between rounded-xl border border-slate-100 p-3">
+            <div key={item.id} className="flex justify-between rounded-xl border border-[#efece6] p-3">
               <span>{item.quantity}x {item.product_name}</span>
               <strong>{money(item.total_price)}</strong>
             </div>

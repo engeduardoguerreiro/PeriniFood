@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Manrope } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { NumberInputWheelGuard } from "@/components/number-input-wheel-guard";
 
-const geist = Geist({
-  variable: "--font-geist",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-brand",
   subsets: ["latin"],
   display: "swap",
 });
@@ -27,9 +22,12 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${geist.variable} ${manrope.variable} h-full antialiased`}
+      className={`${jakarta.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <NumberInputWheelGuard />
+        {children}
+      </body>
     </html>
   );
 }

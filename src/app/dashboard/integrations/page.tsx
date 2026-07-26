@@ -16,7 +16,7 @@ export default async function IntegrationsPage() {
             <input type="hidden" name="provider" value={provider} />
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-black">{provider.toUpperCase()}</h2>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold">{saved.status ?? "disconnected"}</span>
+              <span className="rounded-full bg-[#f1efea] px-3 py-1 text-xs font-bold">{saved.status ?? "disconnected"}</span>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <input className="field-light" name="client_id" placeholder="Client ID" defaultValue={saved.credentials.clientId ?? ""} />

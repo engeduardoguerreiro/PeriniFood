@@ -242,6 +242,7 @@ export function ManualOrderBuilder({
 }) {
   const [cart, setCart] = useState<CartItem[]>(initialData.cart ?? []);
   const [draft, setDraft] = useState<CartItem | null>(null);
+  const [flavorSearch, setFlavorSearch] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [search, setSearch] = useState("");
   const [orderType, setOrderType] = useState(initialData.type === "dine_in" ? "pickup" : initialData.type ?? "pickup");
@@ -336,7 +337,7 @@ export function ManualOrderBuilder({
     setCustomerLookupStatus(status);
     setAddress((current) => ({
       cep: customer.zip_code || current.cep,
-      street: customer.address || current.street,
+      street: (customer.address || "").split(" - ")[0] || current.street,
       neighborhood: customer.neighborhood || current.neighborhood,
       city: customer.city || current.city,
       state: customer.state || current.state,
@@ -347,6 +348,7 @@ export function ManualOrderBuilder({
   }
 
   useEffect(() => {
+    if (customerId) return;
     const nameTerm = customerName.trim();
     const phoneTerm = onlyDigits(customerPhone);
     const queryTerm = phoneTerm.length >= 3 ? phoneTerm : nameTerm;
@@ -364,19 +366,9 @@ export function ManualOrderBuilder({
         const response = await fetch(`/api/customers?q=${encodeURIComponent(queryTerm)}`, { signal: controller.signal });
         const payload = await response.json() as { ok: boolean; data: CustomerMatch[] };
         const matches = payload.ok ? payload.data ?? [] : [];
-        const normalizedName = normalizeLabel(nameTerm);
-        const exact = matches.find((customer) => {
-          const samePhone = phoneTerm.length >= 7 && [customer.phone, customer.whatsapp].some((value) => onlyDigits(value) === phoneTerm);
-          const sameName = normalizedName.length >= 3 && normalizeLabel(customer.name) === normalizedName;
-          return samePhone || sameName;
-        });
-        if (exact || matches.length === 1 || (phoneTerm.length >= 7 && matches[0])) {
-          applyCustomer(exact ?? matches[0]);
-          return;
-        }
         setCustomerMatches(matches.slice(0, 5));
         setShowCustomerMatches(matches.length > 0);
-        setCustomerLookupStatus(matches.length ? "Selecione o cliente encontrado." : "Nenhum cliente encontrado. O cadastro será criado ao finalizar.");
+        setCustomerLookupStatus(matches.length ? "Selecione um cliente para preencher automaticamente." : "Nenhum cliente encontrado. O cadastro será criado ao finalizar.");
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setCustomerLookupStatus("Não foi possível buscar o cliente agora.");
@@ -388,7 +380,7 @@ export function ManualOrderBuilder({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [customerName, customerPhone]);
+  }, [customerName, customerPhone, customerId]);
 
   useEffect(() => {
     if (!customerLookupStatus) return;
@@ -415,6 +407,7 @@ export function ManualOrderBuilder({
     const productVariants = variants.filter((variant) => variant.product_id === product.id && variant.active);
     const defaultVariant = productVariants[0];
     const dough = isPizza ? groupOptions(options, product.id, "Tipos de Massas", pizzaOptions) : [];
+    setFlavorSearch("");
     setDraft({
       id: product.id,
       name: product.name,
@@ -520,29 +513,54 @@ export function ManualOrderBuilder({
     void lookup();
   }
 
+  // Enter pula para o próximo campo (agilidade no balcão), sem enviar o pedido.
+  function handleFieldEnter(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Enter" || event.defaultPrevented) return;
+    const target = event.target as HTMLElement;
+    const tag = target.tagName;
+    if (tag === "TEXTAREA" || tag === "BUTTON") return;
+    if (tag !== "INPUT" && tag !== "SELECT") return;
+    event.preventDefault();
+    const fields = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        "input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])",
+      ),
+    ).filter((el) => el.offsetParent !== null);
+    const index = fields.indexOf(target);
+    if (index > -1 && index < fields.length - 1) fields[index + 1].focus();
+  }
+
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onKeyDown={handleFieldEnter} className="space-y-5">
       {initialData.orderId && <input type="hidden" name="order_id" value={initialData.orderId} />}
       <input type="hidden" name="cart" value={JSON.stringify(cart)} />
       <input type="hidden" name="customer_id" value={customerId} />
       <input type="hidden" name="delivery_fee" value={deliveryFee} />
       <input type="hidden" name="delivery_rule_id" value={deliveryRuleId} />
       <input type="hidden" name="delivery_address" value={fullAddress(address)} />
+      <input type="hidden" name="street" value={address.street} />
+      <input type="hidden" name="address_number" value={address.number} />
+      <input type="hidden" name="neighborhood" value={address.neighborhood} />
+      <input type="hidden" name="city" value={address.city} />
+      <input type="hidden" name="state" value={address.state} />
+      <input type="hidden" name="zip_code" value={address.cep} />
+      <input type="hidden" name="complement" value={address.complement} />
+      <input type="hidden" name="reference" value={address.reference} />
       <input type="hidden" name="discount" value={discount} />
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-black">{mode === "edit" ? "Editar pedido" : "Novo pedido manual"}</h2>
-            <p className="text-sm text-slate-500">{mode === "edit" ? "Ajuste cliente, entrega, pagamento e itens do pedido." : "Use para balcão, retirada e delivery manual."}</p>
+            <p className="text-sm text-[#9c988f]">{mode === "edit" ? "Ajuste cliente, entrega, pagamento e itens do pedido." : "Use para balcão, retirada e delivery manual."}</p>
           </div>
-          <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">Taxa atual: {money(defaultDeliveryFee)}</span>
+          <span className="rounded-full bg-[#f6ece9] px-3 py-1 text-xs font-bold text-[#c5362e]">Taxa atual: {money(defaultDeliveryFee)}</span>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="relative grid gap-3 md:col-span-2 md:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-xs font-bold uppercase text-slate-500">Cliente</span>
+              <span className="text-xs font-bold uppercase text-[#9c988f]">Cliente</span>
               <input
                 className="field-light"
                 name="customer_name"
@@ -558,7 +576,7 @@ export function ManualOrderBuilder({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-bold uppercase text-slate-500">Telefone/WhatsApp</span>
+              <span className="text-xs font-bold uppercase text-[#9c988f]">Telefone/WhatsApp</span>
               <input
                 className="field-light"
                 name="customer_phone"
@@ -574,7 +592,7 @@ export function ManualOrderBuilder({
               />
             </label>
             {(customerLookupStatus || (showCustomerMatches && customerMatches.length > 0)) && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-[#e7e4dd] bg-white p-2 shadow-xl">
                 {customerMatches.length > 0 && showCustomerMatches ? (
                   <div className="space-y-1">
                     {customerMatches.map((customer) => (
@@ -582,30 +600,30 @@ export function ManualOrderBuilder({
                         key={customer.id}
                         type="button"
                         onClick={() => applyCustomer(customer, "Cliente selecionado.")}
-                        className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-red-50"
+                        className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-[#f6ece9]"
                       >
                         <span>
-                          <strong className="block text-slate-900">{customer.name}</strong>
-                          <span className="text-xs text-slate-500">{customer.whatsapp || customer.phone || "Sem telefone"}</span>
+                          <strong className="block text-[#1b1a17]">{customer.name}</strong>
+                          <span className="text-xs text-[#9c988f]">{customer.whatsapp || customer.phone || "Sem telefone"}</span>
                         </span>
-                        <span className="text-xs font-black text-[#E50914]">Usar</span>
+                        <span className="text-xs font-black text-[#c5362e]">Usar</span>
                       </button>
                     ))}
                   </div>
                 ) : null}
-                {customerLookupStatus && <p className="px-3 py-2 text-xs font-bold text-slate-500">{customerLookupStatus}</p>}
+                {customerLookupStatus && <p className="px-3 py-2 text-xs font-bold text-[#9c988f]">{customerLookupStatus}</p>}
               </div>
             )}
           </div>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-slate-500">Tipo do pedido</span>
+            <span className="text-xs font-bold uppercase text-[#9c988f]">Tipo do pedido</span>
             <select className="field-light" name="type" value={orderType} onChange={(event) => setOrderType(event.target.value)}>
               <option value="pickup">Retirada</option>
               <option value="delivery">Delivery</option>
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-slate-500">Pagamento</span>
+            <span className="text-xs font-bold uppercase text-[#9c988f]">Pagamento</span>
             <select className="field-light" name="payment_method" defaultValue={initialData.paymentMethod ?? "pix"}>
               <option value="cash">Dinheiro</option>
               <option value="credit_card">Crédito</option>
@@ -615,12 +633,12 @@ export function ManualOrderBuilder({
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-slate-500">Desconto</span>
+            <span className="text-xs font-bold uppercase text-[#9c988f]">Desconto</span>
             <input className="field-light" type="number" step="0.01" min="0" value={discount || ""} onChange={(event) => setDiscount(Number(event.target.value || 0))} placeholder="0,00" />
           </label>
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs font-bold uppercase text-slate-500">Frete automático</span>
-            <div className="field-light flex min-h-14 items-center text-sm font-bold text-slate-700">
+            <span className="text-xs font-bold uppercase text-[#9c988f]">Frete automático</span>
+            <div className="field-light flex min-h-14 items-center text-sm font-bold text-[#403d38]">
               {orderType !== "delivery"
                 ? "Sem entrega para retirada ou balcão"
                 : deliveryCalculating
@@ -633,18 +651,18 @@ export function ManualOrderBuilder({
             </div>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-slate-500">Troco para</span>
+            <span className="text-xs font-bold uppercase text-[#9c988f]">Troco para</span>
             <input className="field-light" name="change_for" type="number" step="0.01" defaultValue={initialData.changeFor ?? ""} placeholder="Opcional" />
           </label>
-          <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-slate-500">Observação do cliente</span>
-            <input className="field-light" name="customer_notes" placeholder="Ex.: sem cebola" />
+          <label className="space-y-1 md:col-span-2">
+            <span className="text-xs font-bold uppercase text-[#9c988f]">Observação do cliente</span>
+            <textarea className="field-light min-h-[60px]" name="customer_notes" defaultValue={initialData.notes ?? ""} placeholder="Ex.: sem cebola, entregar sem contato, tocar a campainha…" />
           </label>
         </div>
 
         {orderType === "delivery" && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex items-center gap-2 font-black"><MapPin className="h-5 w-5 text-red-600" /> Endereço de entrega</div>
+          <div className="mt-4 rounded-xl border border-[#e7e4dd] bg-[#faf9f6] p-4">
+            <div className="mb-3 flex items-center gap-2 font-black"><MapPin className="h-5 w-5 text-[#c5362e]" /> Endereço de entrega</div>
             <div className="grid gap-3 md:grid-cols-6">
               <input className="field-light md:col-span-2" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} onKeyDown={(event) => handleAddressEnter(event, lookupCep)} placeholder="CEP" />
               <input className="field-light md:col-span-4" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} onKeyDown={(event) => handleAddressEnter(event, lookupTypedAddress)} placeholder="Endereço" />
@@ -653,99 +671,79 @@ export function ManualOrderBuilder({
               <input className="field-light md:col-span-2" value={address.complement} onChange={(event) => setAddress({ ...address, complement: event.target.value })} placeholder="Complemento" />
               <input className="field-light md:col-span-2" value={address.reference} onChange={(event) => setAddress({ ...address, reference: event.target.value })} placeholder="Ponto de referencia" />
             </div>
-            {addressStatus && <p className="mt-2 text-sm font-semibold text-slate-600">{addressStatus}</p>}
-            {fullAddress(address) && <p className="mt-3 rounded bg-white p-3 text-sm text-slate-600">Endereço: {fullAddress(address)}. Frete calculado: {money(deliveryFee)}</p>}
+            {addressStatus && <p className="mt-2 text-sm font-semibold text-[#6d6a63]">{addressStatus}</p>}
+            {fullAddress(address) && <p className="mt-3 rounded bg-white p-3 text-sm text-[#6d6a63]">Endereço: {fullAddress(address)}. Frete calculado: {money(deliveryFee)}</p>}
           </div>
         )}
 
-        <textarea className="field-light mt-4" name="notes" defaultValue={initialData.notes ?? ""} placeholder="Observações do pedido" />
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="flex max-h-[calc(100vh-140px)] min-h-[620px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="grid items-center gap-4 border-b border-slate-100 bg-white px-5 py-4 md:grid-cols-[1fr_minmax(280px,460px)]">
-            <div>
-              <h3 className="text-lg font-black">Itens do pedido</h3>
-              <p className="text-sm text-slate-500">Busque, filtre e clique no item para personalizar ou adicionar.</p>
+      <div className="space-y-5">
+        <section className="flex max-h-[600px] flex-col overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-sm">
+          <div className="shrink-0 space-y-3 border-b border-[#efece6] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-base font-semibold text-[#1b1a17]">Itens do pedido</h3>
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b0aaa0]" />
+                <input
+                  className="h-10 w-full rounded-lg border border-[#e7e4dd] bg-white pl-10 pr-3 text-sm outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/15"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar item"
+                />
+              </div>
             </div>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input
-                className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none focus:border-red-300"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Busque por um item"
-              />
+            <div className="flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => setSelectedType("all")} className={selectedType === "all" ? "rounded-full bg-[#211d19] px-3 py-1.5 text-xs font-medium text-white" : "rounded-full border border-[#e7e4dd] bg-white px-3 py-1.5 text-xs font-medium text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]"}>Todos</button>
+              {visibleCategories.map((category) => (
+                <button key={category.id} type="button" onClick={() => setSelectedType(category.id)} className={selectedType === category.id ? "rounded-full bg-[#211d19] px-3 py-1.5 text-xs font-medium text-white" : "rounded-full border border-[#e7e4dd] bg-white px-3 py-1.5 text-xs font-medium text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]"}>{category.name}</button>
+              ))}
             </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto border-b border-slate-100 bg-slate-50/70 px-5 py-3">
-            <button type="button" onClick={() => setSelectedType("all")} className={selectedType === "all" ? "shrink-0 rounded-full bg-[#E50914] px-4 py-2 text-sm font-black text-white shadow-sm" : "shrink-0 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:text-[#E50914]"}>Todos</button>
-            {visibleCategories.map((category) => (
-              <button key={category.id} type="button" onClick={() => setSelectedType(category.id)} className={selectedType === category.id ? "shrink-0 rounded-full bg-[#E50914] px-4 py-2 text-sm font-black text-white shadow-sm" : "shrink-0 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:text-[#E50914]"}>{category.name}</button>
-            ))}
-          </div>
-          <div className="grid grid-cols-[1fr_120px_120px_112px] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[11px] font-black uppercase text-slate-500 max-lg:hidden">
-            <span>Produto</span>
-            <span>Categoria</span>
-            <span className="text-right">Preço</span>
-            <span className="text-right">Ação</span>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {filteredProducts.map((product) => {
-              const activeVariants = variants.filter((variant) => variant.product_id === product.id && variant.active);
-              const isPizza = isPizzaProduct(product);
-              const hasOptions = Boolean((isPizza && groupOptions(options, product.id, "Bordas", pizzaOptions).length) || (isPizza && groupOptions(options, product.id, "Tipos de Massas", pizzaOptions).length) || groupOptions(options, product.id, "Adicionais", pizzaOptions).length || activeVariants.length);
-              const productCategory = visibleCategories.find((category) => category.id === product.category_id)?.name ?? types.find((type) => type.id === product.product_type_id)?.name ?? "Produto";
-              return (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => openProduct(product)}
-                className="group grid w-full grid-cols-[64px_minmax(0,1fr)] gap-4 border-b border-slate-100 px-5 py-3 text-left transition duration-150 hover:bg-red-50/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-red-300 lg:grid-cols-[64px_minmax(0,1fr)_120px_120px_112px] lg:items-center"
-              >
-                <div className="h-14 w-14 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-100">
-                  {product.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={product.image_url} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-110" />
-                  ) : (
-                    <div className="grid h-full place-items-center text-[10px] font-bold text-slate-400 transition group-hover:text-[#E50914]">Sem foto</div>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-[15px] font-black text-slate-950 group-hover:text-[#E50914]">{product.name}</p>
-                    {hasOptions && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-[#E50914]">Personalizar</span>}
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-sm leading-5 text-slate-500">{product.description || "Produto pronto para venda."}</p>
-                  <p className="mt-2 text-sm text-slate-700 lg:hidden">
-                    {activeVariants.length ? "A partir de " : ""}<strong>{money(productBasePrice(product, variants))}</strong>
-                  </p>
-                </div>
-                <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-center text-xs font-bold text-slate-600 lg:block">{productCategory}</span>
-                <span className="hidden text-right text-sm text-slate-700 lg:block">
-                  {activeVariants.length ? <span className="mr-1 text-xs text-slate-400">A partir de</span> : null}
-                  <strong>{money(productBasePrice(product, variants))}</strong>
-                </span>
-                <span className="hidden items-center justify-end gap-2 text-right lg:flex">
-                  <span className="inline-flex h-9 items-center justify-center rounded-lg bg-[#E50914] px-3 text-xs font-black text-white shadow-sm transition group-hover:bg-red-700">
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Adicionar
-                  </span>
-                </span>
-              </button>
-              );
-            })}
-            {!filteredProducts.length && <p className="m-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum produto encontrado nesse filtro.</p>}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredProducts.map((product) => {
+                const activeVariants = variants.filter((variant) => variant.product_id === product.id && variant.active);
+                const isPizza = isPizzaProduct(product);
+                const hasOptions = Boolean((isPizza && groupOptions(options, product.id, "Bordas", pizzaOptions).length) || (isPizza && groupOptions(options, product.id, "Tipos de Massas", pizzaOptions).length) || groupOptions(options, product.id, "Adicionais", pizzaOptions).length || activeVariants.length);
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => openProduct(product)}
+                    className="group flex items-center gap-3 rounded-xl border border-[#e7e4dd] bg-white p-2.5 text-left transition hover:border-[#c5362e] hover:bg-[#f6ece9]/40 focus:outline-none focus:ring-2 focus:ring-[#c5362e]/30"
+                  >
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#f1efea]">
+                      {product.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full place-items-center text-[9px] font-medium text-[#b0aaa0]">Sem foto</div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#1b1a17] group-hover:text-[#c5362e]">{product.name}</p>
+                      <p className="mt-0.5 text-xs text-[#9c988f]">
+                        {activeVariants.length ? "A partir de " : ""}<strong className="font-semibold text-[#403d38]">{money(productBasePrice(product, variants))}</strong>
+                      </p>
+                    </div>
+                    {hasOptions && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c5362e]">Person.</span>}
+                    <Plus className="h-4 w-4 shrink-0 text-[#b0aaa0] transition group-hover:text-[#c5362e]" />
+                  </button>
+                );
+              })}
+              {!filteredProducts.length && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-[#9c988f] sm:col-span-2 xl:col-span-3">Nenhum produto encontrado nesse filtro.</p>}
+            </div>
           </div>
         </section>
 
-        <aside className="h-fit rounded-2xl border border-[#0F1720]/10 bg-white p-4 text-[#0F1720] shadow-sm lg:sticky lg:top-24">
+        <aside className="rounded-2xl border border-[#e7e4dd] bg-white p-5 text-[#1b1a17] shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-lg font-black"><ShoppingCart className="h-5 w-5 text-[#E50914]" /> Carrinho</span>
-            <span className="rounded-lg bg-red-50 px-3 py-1 text-xs font-black text-[#E50914]">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
+            <span className="flex items-center gap-2 text-lg font-black"><ShoppingCart className="h-5 w-5 text-[#c5362e]" /> Carrinho — finalização</span>
+            <span className="rounded-lg bg-[#f6ece9] px-3 py-1 text-xs font-black text-[#c5362e]">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
           </div>
-          <div className="space-y-3">
-            {cart.length === 0 && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Adicione produtos para finalizar.</p>}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {cart.length === 0 && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-[#9c988f] sm:col-span-2 xl:col-span-3">Adicione produtos para finalizar.</p>}
             {cart.map((item, index) => {
               const product = products.find((row) => row.id === item.id);
               const productVariants = variants.filter((variant) => variant.product_id === item.id && variant.active);
@@ -757,13 +755,13 @@ export function ManualOrderBuilder({
               const flavorOptions = isPizza ? flavorChoices(product, products) : [];
               const flavorSelectionInvalid = isPizza && Number(item.flavorCount ?? 1) > 1 && (item.flavors.length ?? 0) !== Number(item.flavorCount ?? 1);
               return (
-              <div key={`${item.id}-${index}`} className="rounded-xl border border-slate-100 p-3">
+              <div key={`${item.id}-${index}`} className="rounded-xl border border-[#efece6] p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold">{item.name}{item.variantName ? ` - ${item.variantName}` : ""}</p>
-                    <p className="text-sm text-slate-500">{money(itemTotal(item))}</p>
+                    <p className="text-sm text-[#9c988f]">{money(itemTotal(item))}</p>
                   </div>
-                  <button type="button" onClick={() => update(index, { quantity: 0 })} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => update(index, { quantity: 0 })} className="text-[#b0aaa0] hover:text-[#c5362e]"><Trash2 className="h-4 w-4" /></button>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button type="button" onClick={() => update(index, { quantity: item.quantity - 1 })} className="rounded-lg border p-2"><Minus className="h-3 w-3" /></button>
@@ -790,7 +788,7 @@ export function ManualOrderBuilder({
                 ) : (
                   <>
                 {isPizza && maxFlavors > 1 && (
-                  <div className="mt-3 rounded-xl border border-slate-100 p-3 text-sm">
+                  <div className="mt-3 rounded-xl border border-[#efece6] p-3 text-sm">
                     <span className="mb-2 block font-bold">Sabores da pizza</span>
                     <select
                       className="field-light h-10 py-1 text-sm"
@@ -814,7 +812,7 @@ export function ManualOrderBuilder({
                         const selected = item.flavors.includes(flavor.name) ?? false;
                         const limit = Number(item.flavorCount ?? 1);
                         return (
-                          <label key={flavor.id} className="flex items-center justify-between rounded bg-slate-50 px-2 py-1">
+                          <label key={flavor.id} className="flex items-center justify-between rounded bg-[#faf9f6] px-2 py-1">
                             <span>{flavor.name}</span>
                             <input
                               type="checkbox"
@@ -834,7 +832,7 @@ export function ManualOrderBuilder({
                         );
                       })}
                     </div>
-                    <p className="mt-2 text-xs font-semibold text-slate-500">Selecionados: {(item.flavors ?? []).join(" / ")}</p>
+                    <p className="mt-2 text-xs font-semibold text-[#9c988f]">Selecionados: {(item.flavors ?? []).join(" / ")}</p>
                   </div>
                 )}
 
@@ -884,7 +882,7 @@ export function ManualOrderBuilder({
                   <div className="mt-3 grid gap-2 text-sm">
                     <span className="font-bold">Adicionais</span>
                     {additions.map((addition) => (
-                      <label key={addition.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1">
+                      <label key={addition.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#faf9f6] px-2 py-1">
                         <span><input type="checkbox" checked={item.additions.some((selected) => selected.name === addition.name)} onChange={(event) => {
                           const current = item.additions.filter((selected) => selected.name !== addition.name);
                           update(index, { additions: event.target.checked ? [...current, { name: addition.name, price: Number(addition.additional_price) }] : current });
@@ -908,235 +906,253 @@ export function ManualOrderBuilder({
               );
             })}
           </div>
-          <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-            <div className="flex justify-between"><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
-            <div className="flex justify-between"><span>Entrega</span><strong>{money(deliveryFee)}</strong></div>
-            <div className="flex justify-between"><span>Desconto</span><strong>{money(discount)}</strong></div>
-            <div className="flex justify-between text-lg font-black"><span>Total</span><span>{money(total)}</span></div>
+          <div className="mt-5 flex flex-col gap-4 border-t border-[#efece6] pt-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-1 lg:min-w-[240px]">
+              <div className="flex justify-between gap-8"><span className="text-[#6d6a63]">Subtotal</span><strong>{money(subtotal)}</strong></div>
+              <div className="flex justify-between gap-8"><span className="text-[#6d6a63]">Entrega</span><strong>{money(deliveryFee)}</strong></div>
+              <div className="flex justify-between gap-8"><span className="text-[#6d6a63]">Desconto</span><strong>{money(discount)}</strong></div>
+              <div className="flex justify-between gap-8 text-lg font-black"><span>Total</span><span>{money(total)}</span></div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[440px]">
+              <button name="intent" value="finish" className="flex-1 rounded-xl border border-[#e7e4dd] bg-white px-4 py-3 text-sm font-black text-[#1b1a17] transition hover:border-[#c5362e] hover:bg-[#f6ece9] disabled:cursor-not-allowed disabled:bg-[#f1efea] disabled:text-[#b0aaa0]" disabled={!cart.length || hasOpenItems}>
+                {mode === "edit" ? "Salvar alterações" : "Finalizar"}
+              </button>
+              <button name="intent" value="print" className="btn-primary flex-1" disabled={!cart.length || hasOpenItems}>
+                <Printer className="h-4 w-4" />
+                {mode === "edit" ? "Salvar e imprimir" : "Finalizar e imprimir"}
+              </button>
+            </div>
           </div>
           {hasOpenItems && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs font-bold text-amber-800">Confirme os itens em aberto antes de finalizar.</p>}
-          <div className="mt-4 grid gap-2">
-            <button name="intent" value="finish" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:border-[#E50914] hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400" disabled={!cart.length || hasOpenItems}>
-              {mode === "edit" ? "Salvar alterações" : "Finalizar"}
-            </button>
-            <button name="intent" value="print" className="btn-primary w-full" disabled={!cart.length || hasOpenItems}>
-              <Printer className="h-4 w-4" />
-              {mode === "edit" ? "Salvar e imprimir" : "Finalizar e imprimir"}
-            </button>
-          </div>
         </aside>
       </div>
 
       {draft && draftProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4 py-8">
-          <button type="button" onClick={() => setDraft(null)} className="absolute right-6 top-4 text-white">
-            <X className="h-10 w-10" />
-          </button>
-          <div className="grid max-h-[88vh] w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-2xl md:grid-cols-[310px_1fr]">
-            <div className="space-y-5 p-5">
-              <div className="aspect-square overflow-hidden rounded-lg bg-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start gap-3 border-b border-[#efece6] p-4">
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#f1efea]">
                 {draftProduct.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={draftProduct.image_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>
+                  <div className="grid h-full place-items-center text-[10px] font-medium text-[#b0aaa0]">Sem foto</div>
                 )}
               </div>
-              <div>
-                <h2 className="text-3xl font-black text-[#E50914]">{draftProduct.name}</h2>
-                <p className="mt-3 text-sm leading-5 text-slate-600">{draftProduct.description || "Produto disponível para pedido."}</p>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-base font-semibold text-[#1b1a17]">{draftProduct.name}</h2>
+                <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-[#9c988f]">{draftProduct.description || "Produto disponível para pedido."}</p>
               </div>
+              <button type="button" onClick={() => setDraft(null)} aria-label="Fechar" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#9c988f] transition hover:bg-[#f1efea] hover:text-[#1b1a17]">
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            <div className="flex max-h-[88vh] flex-col border-l border-slate-100">
-              <div className="flex-1 overflow-y-auto">
-                {(() => {
-                  const isPizza = isPizzaProduct(draftProduct);
-                  const productVariants = variants.filter((variant) => variant.product_id === draft.id && variant.active);
-                  const dough = isPizza ? groupOptions(options, draft.id, "Tipos de Massas", pizzaOptions) : [];
-                  const crusts = isPizza ? groupOptions(options, draft.id, "Bordas", pizzaOptions) : [];
-                  const additions = groupOptions(options, draft.id, "Adicionais", pizzaOptions);
-                  const maxFlavors = isPizza ? Math.min(4, Math.max(1, Number(maxPizzaFlavors ?? 1))) : 1;
-                  const flavors = isPizza ? flavorChoices(draftProduct, products) : [];
-                  return (
-                    <>
-                      {isPizza && maxFlavors > 1 && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Sabores</h3>
-                          <p className="text-sm text-slate-500">Escolha se esta pizza terá 1, 2, 3 ou {maxFlavors} sabores.</p>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {Array.from({ length: maxFlavors }, (_, flavorIndex) => flavorIndex + 1).map((count) => (
-                              <button
-                                key={count}
-                                type="button"
-                                onClick={() => {
-                                  const nextFlavors = [draftProduct.name];
-                                  setDraft({
-                                    ...draft,
-                                    flavorCount: count,
-                                    flavors: nextFlavors,
-                                    price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
-                                  });
-                                }}
-                                    className={Number(draft.flavorCount ?? 1) === count ? "rounded-full bg-[#E50914] px-4 py-2 text-sm font-black text-white" : "rounded-full border border-slate-200 px-4 py-2 text-sm font-bold"}
-                              >
-                                {count} sabor{count > 1 ? "es" : ""}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {flavors.map((flavor) => {
-                              const selected = draft.flavors.includes(flavor.name) ?? false;
-                              const limit = Number(draft.flavorCount ?? 1);
-                              return (
-                                <label key={flavor.id} className="flex cursor-pointer items-center justify-between gap-4 py-3">
-                                  <span>{flavor.name}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selected}
-                                    onChange={(event) => {
-                                      const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
-                                      const next = event.target.checked ? [...current, flavor.name].slice(0, limit) : current;
-                                      const pricedFlavors = next.length ? next : [draftProduct.name];
-                                      setDraft({
-                                        ...draft,
-                                        flavors: pricedFlavors,
-                                        price: highestFlavorPrice(pricedFlavors, draft.variantName, products, variants, draft.price),
-                                      });
-                                    }}
-                                    disabled={!selected && (draft.flavors.length ?? 0) >= limit}
-                                  />
-                                </label>
-                              );
-                            })}
-                          </div>
-                          <p className="mt-3 rounded bg-slate-50 p-3 text-xs font-semibold text-slate-500">
-                            Selecionados: {(draft.flavors ?? []).join(" / ")}
-                          </p>
-                        </section>
-                      )}
+            <div className="flex-1 overflow-y-auto">
+              {(() => {
+                const isPizza = isPizzaProduct(draftProduct);
+                const productVariants = variants.filter((variant) => variant.product_id === draft.id && variant.active);
+                const dough = isPizza ? groupOptions(options, draft.id, "Tipos de Massas", pizzaOptions) : [];
+                const crusts = isPizza ? groupOptions(options, draft.id, "Bordas", pizzaOptions) : [];
+                const additions = groupOptions(options, draft.id, "Adicionais", pizzaOptions);
+                const maxFlavors = isPizza ? Math.min(4, Math.max(1, Number(maxPizzaFlavors ?? 1))) : 1;
+                const flavors = isPizza ? flavorChoices(draftProduct, products) : [];
+                const term = flavorSearch.trim().toLowerCase();
+                const filteredFlavors = term ? flavors.filter((flavor) => flavor.name.toLowerCase().includes(term)) : flavors;
+                const limit = Number(draft.flavorCount ?? 1);
+                return (
+                  <>
+                    {isPizza && maxFlavors > 1 && (
+                      <section className="border-b border-[#efece6] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-sm font-semibold text-[#1b1a17]">Sabores</h3>
+                          <span className="text-xs text-[#9c988f]">{draft.flavors.length}/{limit} escolhido{limit > 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="mt-3 inline-flex rounded-lg border border-[#e7e4dd] bg-[#faf9f6] p-0.5">
+                          {Array.from({ length: maxFlavors }, (_, flavorIndex) => flavorIndex + 1).map((count) => (
+                            <button
+                              key={count}
+                              type="button"
+                              onClick={() => {
+                                const nextFlavors = [draftProduct.name];
+                                setDraft({
+                                  ...draft,
+                                  flavorCount: count,
+                                  flavors: nextFlavors,
+                                  price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
+                                });
+                              }}
+                              className={Number(draft.flavorCount ?? 1) === count ? "rounded-md bg-white px-3 py-1.5 text-xs font-medium text-[#1b1a17] shadow-[0_1px_2px_rgba(27,26,23,0.06)]" : "rounded-md px-3 py-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#403d38]"}
+                            >
+                              {count} sabor{count > 1 ? "es" : ""}
+                            </button>
+                          ))}
+                        </div>
 
-                      {!!productVariants.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Tamanho</h3>
-                          <p className="text-sm text-slate-500">Escolha uma opção.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {productVariants.map((variant) => (
-                              <label key={variant.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  <strong>{variant.name}</strong>
-                                  <span className="block text-sm text-slate-500">{money(variant.price)}</span>
-                                </span>
+                        <div className="relative mt-3">
+                          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#b0aaa0]" />
+                          <input
+                            value={flavorSearch}
+                            onChange={(event) => setFlavorSearch(event.target.value)}
+                            placeholder="Buscar sabor…"
+                            className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white pl-9 pr-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+                          />
+                        </div>
+
+                        <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-[#efece6]">
+                          {filteredFlavors.map((flavor) => {
+                            const selected = draft.flavors.includes(flavor.name) ?? false;
+                            const atLimit = !selected && draft.flavors.length >= limit;
+                            return (
+                              <label key={flavor.id} className={`flex cursor-pointer items-center gap-2.5 border-b border-[#f2efe9] px-3 py-2 text-sm last:border-0 transition hover:bg-[#faf9f6] ${atLimit ? "opacity-40" : ""}`}>
                                 <input
-                                  type="radio"
-                                  checked={draft.variantId === variant.id}
-                                  onChange={() => setDraft({
-                                    ...draft,
-                                    variantId: variant.id,
-                                    variantName: variant.name,
-                    price: isPizza ? highestFlavorPrice(draft.flavors, variant.name, products, variants, Number(variant.price)) : Number(variant.price),
-                                  })}
+                                  type="checkbox"
+                                  className="h-4 w-4 shrink-0 accent-[#c5362e]"
+                                  checked={selected}
+                                  onChange={(event) => {
+                                    const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
+                                    const next = event.target.checked ? [...current, flavor.name].slice(0, limit) : current;
+                                    const pricedFlavors = next.length ? next : [draftProduct.name];
+                                    setDraft({
+                                      ...draft,
+                                      flavors: pricedFlavors,
+                                      price: highestFlavorPrice(pricedFlavors, draft.variantName, products, variants, draft.price),
+                                    });
+                                  }}
+                                  disabled={atLimit}
                                 />
+                                <span className="text-[#2b2925]">{flavor.name}</span>
                               </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
+                            );
+                          })}
+                          {!filteredFlavors.length && <p className="px-3 py-4 text-center text-xs text-[#9c988f]">Nenhum sabor encontrado.</p>}
+                        </div>
 
-                      {!!dough.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Massas</h3>
-                          <p className="text-sm text-slate-500">Escolha uma opção.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {dough.map((option) => (
-                              <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  {option.name}
-                                  {Number(option.additional_price) ? <strong className="block">+ {money(option.additional_price)}</strong> : null}
-                                </span>
-                                <input type="radio" checked={draft.dough?.name === option.name} onChange={() => setDraft({ ...draft, dough: { name: option.name, price: Number(option.additional_price) } })} />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
+                        {draft.flavors.length > 0 && (
+                          <p className="mt-2 text-xs text-[#9c988f]">Selecionados: <span className="text-[#403d38]">{draft.flavors.join(" / ")}</span></p>
+                        )}
+                      </section>
+                    )}
 
-                      {!!crusts.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Bordas</h3>
-                          <p className="text-sm text-slate-500">Escolha uma opção, se desejar.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            <label className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                              <span>Sem borda</span>
-                              <input type="radio" checked={!draft.crust?.name} onChange={() => setDraft({ ...draft, crust: null })} />
+                    {!!productVariants.length && (
+                      <section className="border-b border-[#efece6] p-4">
+                        <h3 className="text-sm font-semibold text-[#1b1a17]">Tamanho</h3>
+                        <div className="mt-2 divide-y divide-[#f2efe9]">
+                          {productVariants.map((variant) => (
+                            <label key={variant.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
+                              <span className="flex items-baseline gap-2">
+                                <strong className="font-medium text-[#2b2925]">{variant.name}</strong>
+                                <span className="text-xs text-[#9c988f]">{money(variant.price)}</span>
+                              </span>
+                              <input
+                                type="radio"
+                                className="h-4 w-4 accent-[#c5362e]"
+                                checked={draft.variantId === variant.id}
+                                onChange={() => setDraft({
+                                  ...draft,
+                                  variantId: variant.id,
+                                  variantName: variant.name,
+                                  price: isPizza ? highestFlavorPrice(draft.flavors, variant.name, products, variants, Number(variant.price)) : Number(variant.price),
+                                })}
+                              />
                             </label>
-                            {crusts.map((option) => (
-                              <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  {option.name}
-                                  {Number(option.additional_price) ? <strong className="block">+ {money(option.additional_price)}</strong> : null}
-                                </span>
-                                <input type="radio" checked={draft.crust?.name === option.name} onChange={() => setDraft({ ...draft, crust: { name: option.name, price: Number(option.additional_price) } })} />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
+                          ))}
+                        </div>
+                      </section>
+                    )}
 
-                      {!!additions.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Adicionais</h3>
-                          <p className="text-sm text-slate-500">Selecione quantos quiser.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {additions.map((addition) => (
-                              <label key={addition.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  {addition.name}
-                                  {Number(addition.additional_price) ? <strong className="block">+ {money(addition.additional_price)}</strong> : null}
-                                </span>
-                                <input type="checkbox" checked={draft.additions.some((selected) => selected.name === addition.name)} onChange={(event) => {
-                                  const current = draft.additions.filter((selected) => selected.name !== addition.name);
-                                  setDraft({ ...draft, additions: event.target.checked ? [...current, { name: addition.name, price: Number(addition.additional_price) }] : current });
-                                }} />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
-                    </>
-                  );
-                })()}
+                    {!!dough.length && (
+                      <section className="border-b border-[#efece6] p-4">
+                        <h3 className="text-sm font-semibold text-[#1b1a17]">Massas</h3>
+                        <div className="mt-2 divide-y divide-[#f2efe9]">
+                          {dough.map((option) => (
+                            <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
+                              <span className="text-[#2b2925]">
+                                {option.name}
+                                {Number(option.additional_price) ? <span className="ml-2 text-xs text-[#9c988f]">+ {money(option.additional_price)}</span> : null}
+                              </span>
+                              <input type="radio" className="h-4 w-4 accent-[#c5362e]" checked={draft.dough?.name === option.name} onChange={() => setDraft({ ...draft, dough: { name: option.name, price: Number(option.additional_price) } })} />
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    )}
 
-                <section className="p-5">
-                  <label className="block text-sm font-black uppercase tracking-wide text-slate-500">Observações do item</label>
-                  <textarea
-                    className="mt-2 min-h-20 w-full resize-none border-b border-slate-200 bg-white py-2 outline-none focus:border-[#E50914]"
-                    maxLength={250}
-                    value={draft.notes ?? ""}
-                    onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
-                    placeholder="Ex.: sem cebola, caprichar no molho..."
-                  />
-                  <p className="text-right text-xs text-slate-400">{draft.notes.length ?? 0}/250</p>
-                </section>
-              </div>
+                    {!!crusts.length && (
+                      <section className="border-b border-[#efece6] p-4">
+                        <h3 className="text-sm font-semibold text-[#1b1a17]">Bordas</h3>
+                        <div className="mt-2 divide-y divide-[#f2efe9]">
+                          <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
+                            <span className="text-[#2b2925]">Sem borda</span>
+                            <input type="radio" className="h-4 w-4 accent-[#c5362e]" checked={!draft.crust?.name} onChange={() => setDraft({ ...draft, crust: null })} />
+                          </label>
+                          {crusts.map((option) => (
+                            <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
+                              <span className="text-[#2b2925]">
+                                {option.name}
+                                {Number(option.additional_price) ? <span className="ml-2 text-xs text-[#9c988f]">+ {money(option.additional_price)}</span> : null}
+                              </span>
+                              <input type="radio" className="h-4 w-4 accent-[#c5362e]" checked={draft.crust?.name === option.name} onChange={() => setDraft({ ...draft, crust: { name: option.name, price: Number(option.additional_price) } })} />
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    )}
 
-              <div className="flex items-center gap-4 border-t border-slate-100 bg-white p-4">
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
+                    {!!additions.length && (
+                      <section className="border-b border-[#efece6] p-4">
+                        <h3 className="text-sm font-semibold text-[#1b1a17]">Adicionais</h3>
+                        <div className="mt-2 divide-y divide-[#f2efe9]">
+                          {additions.map((addition) => (
+                            <label key={addition.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
+                              <span className="text-[#2b2925]">
+                                {addition.name}
+                                {Number(addition.additional_price) ? <span className="ml-2 text-xs text-[#9c988f]">+ {money(addition.additional_price)}</span> : null}
+                              </span>
+                              <input type="checkbox" className="h-4 w-4 accent-[#c5362e]" checked={draft.additions.some((selected) => selected.name === addition.name)} onChange={(event) => {
+                                const current = draft.additions.filter((selected) => selected.name !== addition.name);
+                                setDraft({ ...draft, additions: event.target.checked ? [...current, { name: addition.name, price: Number(addition.additional_price) }] : current });
+                              }} />
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                );
+              })()}
+
+              <section className="p-4">
+                <label className="block text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]">Observações do item</label>
+                <textarea
+                  className="mt-1.5 min-h-16 w-full resize-none rounded-lg border border-[#e7e4dd] bg-white p-2.5 text-sm outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+                  maxLength={250}
+                  value={draft.notes ?? ""}
+                  onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
+                  placeholder="Ex.: sem cebola, caprichar no molho..."
+                />
+                <p className="text-right text-xs text-[#b0aaa0]">{draft.notes.length ?? 0}/250</p>
+              </section>
+            </div>
+
+            <div className="flex items-center gap-3 border-t border-[#efece6] bg-white p-3">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e7e4dd] text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]">
                   <Minus className="h-4 w-4" />
                 </button>
-                <strong className="text-lg">{draft.quantity}</strong>
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} className="grid h-10 w-10 place-items-center rounded-full bg-[#E50914] text-white">
+                <strong className="w-6 text-center text-sm [font-variant-numeric:tabular-nums]">{draft.quantity}</strong>
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e7e4dd] text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]">
                   <Plus className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={confirmDraft}
-                  disabled={isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1)}
-                  className="ml-auto h-12 flex-1 rounded-lg bg-[#E50914] px-5 text-sm font-black uppercase text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  Adicionar - {money(itemTotal(draft))}
-                </button>
               </div>
+              <button
+                type="button"
+                onClick={confirmDraft}
+                disabled={isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1)}
+                className="ml-auto flex h-11 flex-1 items-center justify-center rounded-lg bg-[#211d19] px-5 text-sm font-medium text-white transition hover:bg-[#37312a] disabled:cursor-not-allowed disabled:bg-[#cfc9bd]"
+              >
+                Adicionar · {money(itemTotal(draft))}
+              </button>
             </div>
           </div>
         </div>

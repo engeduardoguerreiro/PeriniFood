@@ -22,7 +22,7 @@ O instalador é criado em `dist-desktop/PeriniFood-Setup-0.4.0.exe`.
 
 ## Usar outro endereço
 
-O endereço padrão é `https://gastroflow-seven.vercel.app`. Para testar outro ambiente:
+O endereço padrão é `https://perinifood.vercel.app`. Para testar outro ambiente:
 
 ```powershell
 $env:PERINIFOOD_APP_URL = "https://seu-dominio.com"

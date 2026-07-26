@@ -7,9 +7,9 @@ export default async function OnlineMenuPage() {
   return (
     <section className="rounded-2xl bg-white p-6 shadow-sm">
       <h2 className="text-2xl font-black">Site/Cardápio Online</h2>
-      <p className="mt-2 text-slate-500">Compartilhe este link com seus clientes para receber pedidos direto no painel.</p>
-      <div className="mt-6 rounded-2xl border border-dashed border-[#E50914] bg-[#E50914]/10 p-5">
-        <p className="font-secondary text-lg font-black text-[#E50914]">{url}</p>
+      <p className="mt-2 text-[#9c988f]">Compartilhe este link com seus clientes para receber pedidos direto no painel.</p>
+      <div className="mt-6 rounded-2xl border border-dashed border-[#c5362e] bg-[#211d19]/10 p-5">
+        <p className="font-secondary text-lg font-black text-[#c5362e]">{url}</p>
       </div>
       <Link href={url} className="btn-primary mt-6">Abrir cardápio</Link>
     </section>

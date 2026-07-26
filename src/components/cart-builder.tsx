@@ -41,35 +41,35 @@ export function CartBuilder({
               type="button"
               key={product.id}
               onClick={() => add(product)}
-              className="rounded-2xl border border-[#0F1720]/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#E50914]"
+              className="rounded-2xl border border-[#0F1720]/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#c5362e]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-bold text-[#0F1720]">{product.name}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-500">{product.description || "Produto pronto para venda."}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#9c988f]">{product.description || "Produto pronto para venda."}</p>
                 </div>
-                <Plus className="h-5 w-5 text-[#E50914]" />
+                <Plus className="h-5 w-5 text-[#c5362e]" />
               </div>
-              <p className="mt-4 text-lg font-black text-[#E50914]">{money(product.price)}</p>
+              <p className="mt-4 text-lg font-black text-[#c5362e]">{money(product.price)}</p>
             </button>
           ))}
         </div>
 
         <aside className="rounded-2xl border border-[#0F1720]/10 bg-white p-4 text-[#0F1720] shadow-sm">
           <div className="mb-4 flex items-center gap-2 font-black">
-            <ShoppingCart className="h-5 w-5 text-[#E50914]" />
+            <ShoppingCart className="h-5 w-5 text-[#c5362e]" />
             Carrinho
           </div>
           <div className="space-y-3">
-            {cart.length === 0 && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Adicione produtos para finalizar.</p>}
+            {cart.length === 0 && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-[#9c988f]">Adicione produtos para finalizar.</p>}
             {cart.map((item) => (
-              <div key={item.id} className="rounded-xl border border-slate-100 p-3">
+              <div key={item.id} className="rounded-xl border border-[#efece6] p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold">{item.name}</p>
-                    <p className="text-sm text-slate-500">{money(item.price * item.quantity)}</p>
+                    <p className="text-sm text-[#9c988f]">{money(item.price * item.quantity)}</p>
                   </div>
-                  <button type="button" onClick={() => change(item.id, 0)} className="text-slate-400 hover:text-red-600">
+                  <button type="button" onClick={() => change(item.id, 0)} className="text-[#b0aaa0] hover:text-[#c5362e]">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -85,7 +85,7 @@ export function CartBuilder({
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 font-black">
+          <div className="mt-4 flex items-center justify-between border-t border-[#efece6] pt-4 font-black">
             <span>Total</span>
             <span>{money(total)}</span>
           </div>

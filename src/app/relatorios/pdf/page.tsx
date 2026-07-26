@@ -25,12 +25,12 @@ export default async function ReportPdfPage({ searchParams }: { searchParams: Pr
   const headers = rows[0] ? Object.keys(rows[0]) : [];
 
   return (
-    <main className="min-h-screen bg-slate-200 p-6 text-slate-950 print:bg-white print:p-0">
+    <main className="min-h-screen bg-[#eae7df] p-6 text-slate-950 print:bg-white print:p-0">
       <section className="mx-auto max-w-5xl bg-white p-10 shadow-2xl print:max-w-none print:p-0 print:shadow-none">
         <div className="border-b-2 border-slate-950 pb-5">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">PeriniFood</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#9c988f]">PeriniFood</p>
           <h1 className="mt-2 text-3xl font-black">{reportTitles[type]}</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-[#6d6a63]">
             {restaurant.name} • {dataset.range.startInput} até {dataset.range.endInput}
           </p>
         </div>
@@ -41,7 +41,7 @@ export default async function ReportPdfPage({ searchParams }: { searchParams: Pr
               <thead>
                 <tr>
                   {headers.map((header) => (
-                    <th key={header} className="border-b border-slate-300 bg-slate-100 px-3 py-2 text-xs font-black uppercase text-slate-600">
+                    <th key={header} className="border-b border-[#dcd8cf] bg-[#f1efea] px-3 py-2 text-xs font-black uppercase text-[#6d6a63]">
                       {header}
                     </th>
                   ))}
@@ -51,7 +51,7 @@ export default async function ReportPdfPage({ searchParams }: { searchParams: Pr
                 {rows.map((row, index) => (
                   <tr key={index} className="break-inside-avoid">
                     {headers.map((header) => (
-                      <td key={header} className="border-b border-slate-200 px-3 py-2 font-medium">
+                      <td key={header} className="border-b border-[#e7e4dd] px-3 py-2 font-medium">
                         {row[header]}
                       </td>
                     ))}
@@ -60,13 +60,13 @@ export default async function ReportPdfPage({ searchParams }: { searchParams: Pr
               </tbody>
             </table>
           ) : (
-            <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-semibold text-slate-500">
+            <p className="rounded-xl border border-dashed border-[#dcd8cf] p-8 text-center text-sm font-semibold text-[#9c988f]">
               Nenhum dado encontrado para o período selecionado.
             </p>
           )}
         </div>
 
-        <footer className="mt-8 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        <footer className="mt-8 border-t border-[#e7e4dd] pt-4 text-xs text-[#9c988f]">
           Relatório gerado em {new Date().toLocaleString("pt-BR")}. Use a opção “Salvar como PDF” na janela de impressão.
         </footer>
       </section>

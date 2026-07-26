@@ -1,17 +1,5 @@
-﻿import Link from "next/link";
-import {
-  ArrowRightFromLine,
-  BarChart3,
-  Building2,
-  Car,
-  ChefHat,
-  ClipboardList,
-  FileText,
-  Layers3,
-  ReceiptText,
-  Store,
-  Trophy,
-} from "lucide-react";
+import Link from "next/link";
+import { BarChart3, ClipboardList, Radio, ReceiptText, Trophy, TrendingUp } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode, statusLabel } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
@@ -30,23 +18,12 @@ function zonedDateParts(date: Date, timeZone = dashboardTimeZone) {
     second: "2-digit",
   }).formatToParts(date);
   const pick = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
-  return {
-    year: pick("year"),
-    month: pick("month"),
-    day: pick("day"),
-    hour: pick("hour"),
-    minute: pick("minute"),
-    second: pick("second"),
-  };
+  return { year: pick("year"), month: pick("month"), day: pick("day"), hour: pick("hour"), minute: pick("minute"), second: pick("second") };
 }
 
 function addDaysToDateParts(parts: { year: number; month: number; day: number }, days: number) {
   const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, 12, 0, 0));
-  return {
-    year: date.getUTCFullYear(),
-    month: date.getUTCMonth() + 1,
-    day: date.getUTCDate(),
-  };
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
 }
 
 function zonedLocalTimeToUtc(parts: { year: number; month: number; day: number; hour?: number; minute?: number; second?: number }, timeZone = dashboardTimeZone) {
@@ -56,109 +33,138 @@ function zonedLocalTimeToUtc(parts: { year: number; month: number; day: number; 
   return new Date(utcGuess - (renderedAsUtc - utcGuess));
 }
 
-function dashboardRanges(now = new Date()) {
-  const todayParts = zonedDateParts(now);
-  const tomorrowParts = addDaysToDateParts(todayParts, 1);
-  const weekDay = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day, 12, 0, 0)).getUTCDay();
-  const weekStartParts = addDaysToDateParts(todayParts, -weekDay);
+function dayKey(iso: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: dashboardTimeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+}
 
-  return {
-    todayStart: zonedLocalTimeToUtc({ year: todayParts.year, month: todayParts.month, day: todayParts.day }).toISOString(),
-    tomorrowStart: zonedLocalTimeToUtc(tomorrowParts).toISOString(),
-    weekStart: zonedLocalTimeToUtc(weekStartParts).toISOString(),
-  };
+function keyFromParts(parts: { year: number; month: number; day: number }) {
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
 function sourceName(order: Order) {
   const labels: Record<string, string> = {
-    pdv: "PDV",
-    mesa: "Mesa",
-    delivery: "Delivery",
-    site: "Cardápio próprio",
-    manual: "Manual",
-    ifood: "iFood",
-    "99food": "99Food",
-    keeta: "Keeta",
-    rappi: "Rappi",
-    whatsapp: "WhatsApp",
-    webhook: "API",
+    pdv: "PDV", mesa: "Mesa", delivery: "Delivery", site: "Cardápio próprio", manual: "Manual",
+    ifood: "iFood", "99food": "99Food", keeta: "Keeta", rappi: "Rappi", whatsapp: "WhatsApp", webhook: "API",
   };
   const value = order.external_platform ?? order.source;
   return labels[value] ?? value.toUpperCase();
 }
 
-function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof BarChart3; action?: string; children: React.ReactNode }) {
+function StatCard({ title, value, delta }: { title: string; value: string; delta?: { text: string; up: boolean } | null }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between bg-[#232A31] px-4 py-3 text-white">
-        <h2 className="flex items-center gap-2 text-base font-bold">
-          <Icon className="h-5 w-5" />
-          {title}
-        </h2>
-        {action && <span className="font-secondary text-sm font-semibold">{action}</span>}
+    <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4">
+      <p className="text-[0.7rem] font-medium uppercase tracking-[0.09em] text-[#9c988f]">{title}</p>
+      <strong className="mt-2 block text-[1.7rem] font-semibold leading-none tracking-tight text-[#1b1a17] [font-variant-numeric:tabular-nums]">{value}</strong>
+      {delta && <p className={`mt-1.5 text-xs font-medium ${delta.up ? "text-[#1f8a54]" : "text-[#9c988f]"}`}>{delta.text}</p>}
+    </div>
+  );
+}
+
+function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof BarChart3; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+      <div className="flex items-center justify-between border-b border-[#efece6] px-5 py-3.5">
+        <h2 className="flex items-center gap-2 text-[0.95rem] font-semibold text-[#1b1a17]"><Icon className="h-4 w-4 text-[#9c988f]" />{title}</h2>
+        {action}
       </div>
-      {children}
+      <div className="p-5">{children}</div>
     </section>
   );
 }
 
-function MetricCard({ title, value, href = "/dashboard" }: { title: string; value: string; href?: string }) {
-  const content = (
-    <>
-      <div className="relative overflow-hidden rounded-xl border border-[#E50914]/30 bg-white p-4">
-        <ArrowRightFromLine className="absolute right-3 top-3 h-14 w-14 text-[#E50914] opacity-15" />
-        <p className="font-secondary text-sm leading-5 text-slate-600">{title}</p>
-        <strong className="mt-3 block text-2xl text-[#232A31]">{value}</strong>
-      </div>
-      {href && <span className="block rounded-b-xl bg-[#E50914] px-3 py-1 text-center text-xs font-black text-white">Mais detalhes</span>}
-    </>
+function TrendChart({ series }: { series: { revenue: number }[] }) {
+  const W = 640, H = 150, pad = 10;
+  const max = Math.max(1, ...series.map((s) => s.revenue));
+  const n = series.length;
+  const px = (i: number) => pad + (n <= 1 ? 0 : (i / (n - 1)) * (W - pad * 2));
+  const py = (v: number) => pad + (1 - v / max) * (H - pad * 2);
+  const line = series.map((s, i) => `${i ? "L" : "M"}${px(i).toFixed(1)} ${py(s.revenue).toFixed(1)}`).join(" ");
+  const last = n - 1;
+  const area = `${line} L${px(last).toFixed(1)} ${H - pad} L${px(0).toFixed(1)} ${H - pad} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="block h-40 w-full" role="img" aria-label="Faturamento por dia">
+      {[0.25, 0.5, 0.75].map((g) => (
+        <line key={g} x1={pad} x2={W - pad} y1={pad + g * (H - pad * 2)} y2={pad + g * (H - pad * 2)} stroke="#efece6" strokeWidth="1" />
+      ))}
+      <path d={area} fill="rgba(197,54,46,0.07)" />
+      <path d={line} fill="none" stroke="#c5362e" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={px(last)} cy={py(series[last]?.revenue ?? 0)} r="3.5" fill="#c5362e" />
+    </svg>
   );
-
-  return href ? <Link href={href}>{content}</Link> : <div>{content}</div>;
 }
 
-function EmptyBox({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">{children}</p>;
+function BarList({ rows, empty }: { rows: { label: string; value: number; hint: string }[]; empty: string }) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  if (!rows.length) return <p className="rounded-xl bg-[#faf9f6] p-4 text-center text-sm text-[#9c988f]">{empty}</p>;
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="truncate font-medium text-[#1b1a17]">{row.label}</span>
+            <span className="shrink-0 text-[#6d6a63] [font-variant-numeric:tabular-nums]">{row.hint}</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#f1efea]">
+            <div className="h-full rounded-full bg-[#c5362e]" style={{ width: `${Math.max(4, (row.value / max) * 100)}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default async function DashboardPage() {
   const { supabase, restaurant } = await requireRestaurant();
-  const { todayStart, tomorrowStart, weekStart } = dashboardRanges();
+  const now = new Date();
+  const todayParts = zonedDateParts(now);
+  const todayKey = keyFromParts(todayParts);
+  const yesterdayKey = keyFromParts(addDaysToDateParts(todayParts, -1));
+  const rangeStart = zonedLocalTimeToUtc(addDaysToDateParts(todayParts, -13)).toISOString();
+  const week = new Set(Array.from({ length: 7 }, (_, i) => keyFromParts(addDaysToDateParts(todayParts, -i))));
 
-  const [{ data: todayOrders }, { data: weekOrders }, { count: productCount }, { count: customerCount }] = await Promise.all([
-    supabase
-      .from("orders")
-      .select("*")
-      .eq("restaurant_id", restaurant.id)
-      .gte("created_at", todayStart)
-      .lt("created_at", tomorrowStart)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("orders")
-      .select("*")
-      .eq("restaurant_id", restaurant.id)
-      .gte("created_at", weekStart)
-      .order("created_at", { ascending: false }),
+  const [{ data: rangeOrdersData }, { count: productCount }, { count: customerCount }] = await Promise.all([
+    supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).gte("created_at", rangeStart).order("created_at", { ascending: false }),
     supabase.from("products").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id).eq("active", true),
     supabase.from("customers").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id),
   ]);
+  const rangeOrders = (rangeOrdersData ?? []) as Order[];
 
-  const orders = (todayOrders ?? []) as Order[];
-  const weekRows = (weekOrders ?? []) as Order[];
-  const usefulOrders = orders.filter((order) => order.status !== "canceled");
-  const orderIds = usefulOrders.map((order) => order.id);
-  const { data: orderItems } = orderIds.length ?
-     await supabase.from("order_items").select("*").eq("restaurant_id", restaurant.id).in("order_id", orderIds)
-    : { data: [] as OrderItem[] };
-  const items = (orderItems ?? []) as OrderItem[];
+  const paid = (order: Order) => order.status === "completed" || order.payment_status === "paid";
+  const notCanceled = (order: Order) => order.status !== "canceled";
+  const todayOrders = rangeOrders.filter((order) => dayKey(order.created_at) === todayKey);
+  const activeToday = todayOrders.filter(notCanceled);
 
-  const paidOrCompleted = (order: Order) => order.status === "completed" || order.payment_status === "paid";
-  const revenue = orders.filter(paidOrCompleted).reduce((sum, order) => sum + Number(order.total), 0);
-  const weekRevenue = weekRows.filter(paidOrCompleted).reduce((sum, order) => sum + Number(order.total), 0);
-  const pending = orders.filter((order) => order.status === "pending").length;
-  const preparing = orders.filter((order) => order.status === "preparing").length;
-  const completed = orders.filter((order) => order.status === "completed").length;
-  const averageTicket = orders.length ? revenue / orders.length : 0;
+  const usefulIds = rangeOrders.filter(notCanceled).map((order) => order.id);
+  const { data: itemsData } = usefulIds.length
+    ? await supabase.from("order_items").select("product_name, quantity, total_price").eq("restaurant_id", restaurant.id).in("order_id", usefulIds)
+    : { data: [] as Pick<OrderItem, "product_name" | "quantity" | "total_price">[] };
+  const items = itemsData ?? [];
+
+  const revenueToday = todayOrders.filter(paid).reduce((sum, order) => sum + Number(order.total), 0);
+  const revenueYesterday = rangeOrders.filter((order) => dayKey(order.created_at) === yesterdayKey && paid(order)).reduce((sum, order) => sum + Number(order.total), 0);
+  const revenueWeek = rangeOrders.filter((order) => week.has(dayKey(order.created_at)) && paid(order)).reduce((sum, order) => sum + Number(order.total), 0);
+  const averageTicket = activeToday.length ? revenueToday / activeToday.length : 0;
+  const deltaPct = revenueYesterday > 0 ? Math.round(((revenueToday - revenueYesterday) / revenueYesterday) * 100) : null;
+
+  const pending = activeToday.filter((order) => order.status === "pending").length;
+  const preparing = activeToday.filter((order) => order.status === "preparing").length;
+
+  const days = Array.from({ length: 14 }, (_, i) => keyFromParts(addDaysToDateParts(todayParts, -(13 - i))));
+  const revenueByDay = new Map<string, number>();
+  rangeOrders.filter(paid).forEach((order) => {
+    const key = dayKey(order.created_at);
+    revenueByDay.set(key, (revenueByDay.get(key) ?? 0) + Number(order.total));
+  });
+  const series = days.map((key) => ({ key, revenue: revenueByDay.get(key) ?? 0 }));
+  const axisLabels = [days[0], days[6], days[13]].map((key) => key.slice(8) + "/" + key.slice(5, 7));
+
+  const channels = Object.entries(rangeOrders.filter(notCanceled).reduce<Record<string, { count: number; revenue: number }>>((acc, order) => {
+    const name = sourceName(order);
+    acc[name] = acc[name] ?? { count: 0, revenue: 0 };
+    acc[name].count += 1;
+    acc[name].revenue += paid(order) ? Number(order.total) : 0;
+    return acc;
+  }, {})).map(([label, data]) => ({ label, value: data.count, hint: `${data.count} • ${money(data.revenue)}` })).sort((a, b) => b.value - a.value).slice(0, 6);
 
   const topProducts = Object.values(items.reduce<Record<string, { name: string; quantity: number; revenue: number }>>((acc, item) => {
     const current = acc[item.product_name] ?? { name: item.product_name, quantity: 0, revenue: 0 };
@@ -166,143 +172,72 @@ export default async function DashboardPage() {
     current.revenue += Number(item.total_price);
     acc[item.product_name] = current;
     return acc;
-  }, {})).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-
-  const bySource = Object.entries(usefulOrders.reduce<Record<string, number>>((acc, order) => {
-    const source = sourceName(order);
-    acc[source] = (acc[source] ?? 0) + 1;
-    return acc;
-  }, {})).sort((a, b) => b[1] - a[1]);
+  }, {})).sort((a, b) => b.revenue - a.revenue).slice(0, 6)
+    .map((product) => ({ label: product.name, value: product.revenue, hint: `${product.quantity} un • ${money(product.revenue)}` }));
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h1 className="text-2xl font-black text-slate-800">Olá, {restaurant.name}</h1>
-        <div className="mt-7 grid gap-5 xl:grid-cols-3">
-          <Link href="/pedidos" className="flex min-h-28 items-center justify-between overflow-hidden rounded-xl bg-[#12161B] p-5 text-white">
-            <div>
-              <strong className="block text-lg">Pedidos em tempo real</strong>
-              <span className="mt-1 block max-w-xs text-sm text-white/75">Acompanhe novos pedidos, preparo e entrega no painel operacional.</span>
-            </div>
-            <ClipboardList className="h-12 w-12 text-white/70" />
-          </Link>
-          <Link href={`/cardapio/${restaurant.slug}`} target="_blank" rel="noreferrer" className="flex min-h-28 items-center justify-between overflow-hidden rounded-xl bg-[#E50914] p-5 text-white">
-            <div>
-              <strong className="block text-lg">Cardápio digital ativo</strong>
-              <span className="mt-1 block max-w-xs text-sm text-white/80">Compartilhe o link e receba pedidos direto no PeriniFood.</span>
-            </div>
-            <ChefHat className="h-12 w-12 text-white/80" />
-          </Link>
-          <Link href="/configuracoes" className="flex min-h-28 items-center justify-between overflow-hidden rounded-xl bg-[#232A31] p-5 text-white">
-            <div>
-              <strong className="block text-lg">{restaurant.is_open ? "Loja aberta" : "Loja fechada"}</strong>
-              <span className="mt-1 block max-w-xs text-sm text-white/80">Configure taxas, pedido mínimo, WhatsApp e status da loja.</span>
-            </div>
-            <Store className="h-12 w-12 text-white/80" />
-          </Link>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Olá, {restaurant.name}</h1>
+          <p className="text-sm text-[#9c988f]">Resumo da operação e vendas dos últimos 14 dias.</p>
         </div>
-      </section>
-
-      <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Faturamento hoje" value={money(revenue)} href="/dashboard/reports" />
-        <MetricCard title="Faturamento na semana" value={money(weekRevenue)} href="/dashboard/reports" />
-        <MetricCard title="Pedidos hoje" value={String(orders.length)} href="/pedidos" />
-        <MetricCard title="Ticket médio hoje" value={money(averageTicket)} />
+        <Link href="/pedidos/novo" className="rounded-xl bg-[#211d19] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#37312a]">Novo pedido</Link>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-8">
-          <Panel title="Operação de hoje" icon={ClipboardList}>
-            <div className="grid gap-4 p-5 md:grid-cols-4">
-              {[
-                ["Pendentes", pending],
-                ["Em preparo", preparing],
-                ["Finalizados", completed],
-                ["Produtos ativos", productCount ?? 0],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded bg-slate-50 p-4">
-                  <p className="font-secondary text-xs font-bold uppercase text-slate-500">{label}</p>
-                  <p className="mt-2 text-2xl font-black text-[#232A31]">{value}</p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Faturamento hoje" value={money(revenueToday)} delta={deltaPct === null ? { text: "sem base de ontem", up: false } : { text: `${deltaPct >= 0 ? "+" : ""}${deltaPct}% vs. ontem`, up: deltaPct >= 0 }} />
+        <StatCard title="Pedidos hoje" value={String(activeToday.length)} delta={{ text: `${pending} aguardando • ${preparing} em preparo`, up: false }} />
+        <StatCard title="Ticket médio hoje" value={money(averageTicket)} />
+        <StatCard title="Faturamento 7 dias" value={money(revenueWeek)} />
+      </div>
+
+      <Panel title="Faturamento — últimos 14 dias" icon={TrendingUp} action={<span className="text-sm font-semibold text-[#1b1a17]">{money(series.reduce((s, d) => s + d.revenue, 0))}</span>}>
+        <TrendChart series={series} />
+        <div className="mt-2 flex justify-between text-[0.7rem] font-medium uppercase tracking-wide text-[#b0aaa0]">
+          {axisLabels.map((label, index) => <span key={index}>{label}</span>)}
+        </div>
+      </Panel>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Vendas por canal" icon={Radio}>
+          <BarList rows={channels} empty="Sem pedidos no período." />
+        </Panel>
+        <Panel title="Produtos mais vendidos (14 dias)" icon={Trophy}>
+          <BarList rows={topProducts} empty="Sem vendas no período." />
+        </Panel>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
+        <Panel title="Operação de hoje" icon={ClipboardList} action={<Link href="/pedidos" className="text-xs font-medium text-[#c5362e]">Ver painel</Link>}>
+          <div className="grid grid-cols-2 gap-3">
+            {[["Pendentes", pending], ["Em preparo", preparing], ["Pedidos hoje", activeToday.length], ["Produtos ativos", productCount ?? 0]].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-[#efece6] bg-[#faf9f6] p-4">
+                <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]">{label}</p>
+                <p className="mt-2 text-2xl font-semibold text-[#1b1a17] [font-variant-numeric:tabular-nums]">{value}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-[#9c988f]">{customerCount ?? 0} clientes cadastrados.</p>
+        </Panel>
+
+        <Panel title="Últimos pedidos de hoje" icon={ReceiptText}>
+          {todayOrders.length ? (
+            <div className="divide-y divide-[#efece6]">
+              {todayOrders.slice(0, 6).map((order) => (
+                <div key={order.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-[#1b1a17]">{order.customer_name ?? "Cliente balcão"}</p>
+                    <p className="text-xs text-[#9c988f]">#{orderCode(order)} • {sourceName(order)} • {statusLabel[order.status]}</p>
+                  </div>
+                  <strong className="shrink-0 font-medium text-[#1b1a17] [font-variant-numeric:tabular-nums]">{money(order.total)}</strong>
                 </div>
               ))}
             </div>
-          </Panel>
-
-          <Panel title="Quadro de avisos" icon={FileText}>
-            <div className="space-y-3 p-5 font-secondary text-sm text-slate-600">
-              <p className="flex items-center gap-2"><Layers3 className="h-5 w-5 text-[#E50914]" /> Há {productCount ?? 0} produtos ativos no cardápio.</p>
-              <p className="flex items-center gap-2"><Building2 className="h-5 w-5 text-[#E50914]" /> Há {customerCount ?? 0} clientes cadastrados.</p>
-              <p className="flex items-center gap-2"><ArrowRightFromLine className="h-5 w-5 text-[#22C55E]" /> Há {pending} pedidos aguardando aceite.</p>
-              <p className="flex items-center gap-2"><Car className="h-5 w-5 text-[#E50914]" /> Há {preparing} pedidos em preparo.</p>
-            </div>
-          </Panel>
-
-          <Panel title="Últimos pedidos de hoje" icon={ReceiptText}>
-            <div className="p-5">
-              {orders.length ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px] text-left text-sm">
-                    <thead className="font-secondary text-slate-500">
-                      <tr><th className="p-3">Pedido</th><th>Cliente</th><th>Status</th><th>Origem</th><th className="text-right">Total</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {orders.slice(0, 6).map((order) => (
-                        <tr key={order.id}>
-                          <td className="p-3 font-black">#{orderCode(order)}</td>
-                          <td>{order.customer_name ?? "Cliente balcão"}</td>
-                          <td>{statusLabel[order.status]}</td>
-                          <td>{sourceName(order)}</td>
-                          <td className="text-right font-black">{money(order.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyBox>Nenhum pedido hoje.</EmptyBox>
-              )}
-            </div>
-          </Panel>
-        </div>
-
-        <div className="space-y-8">
-          <Panel title="Top produtos vendidos hoje" icon={Trophy}>
-            <div className="space-y-3 p-5">
-              {topProducts.length ? topProducts.map((product, index) => (
-                <div key={product.name} className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                  <div>
-                    <p className="font-black">{index + 1}. {product.name}</p>
-                    <p className="text-sm text-slate-500">{product.quantity} unidade(s)</p>
-                  </div>
-                  <strong>{money(product.revenue)}</strong>
-                </div>
-              )) : (
-                <EmptyBox>Sem vendas de produtos hoje.</EmptyBox>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="Origem dos pedidos" icon={BarChart3}>
-            <div className="space-y-3 p-5">
-              {bySource.length ? bySource.map(([source, count]) => (
-                <div key={source} className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                  <span className="font-bold">{source}</span>
-                  <strong>{count}</strong>
-                </div>
-              )) : (
-                <EmptyBox>Sem pedidos hoje.</EmptyBox>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="Ações rápidas" icon={ChefHat}>
-            <div className="grid gap-3 p-5">
-              <Link href="/pedidos/novo" className="btn-primary">Novo pedido</Link>
-              <Link href="/cardapio/produtos/novo" className="btn-muted">Cadastrar produto</Link>
-              <Link href={`/cardapio/${restaurant.slug}`} target="_blank" rel="noreferrer" className="btn-muted">Abrir cardápio público</Link>
-            </div>
-          </Panel>
-        </div>
+          ) : (
+            <p className="rounded-xl bg-[#faf9f6] p-4 text-center text-sm text-[#9c988f]">Nenhum pedido hoje.</p>
+          )}
+        </Panel>
       </div>
     </div>
   );

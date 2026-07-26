@@ -263,7 +263,7 @@ async function ensureCustomerForOrder(formData: FormData, restaurantId: string) 
     email: text(formData, "customer_email") || null,
     cpf: text(formData, "customer_cpf") || null,
     birth_date: text(formData, "customer_birth_date") || null,
-    address: text(formData, "delivery_address") || null,
+    address: text(formData, "street") || null,
     address_number: text(formData, "address_number") || null,
     neighborhood: text(formData, "neighborhood") || null,
     complement: text(formData, "complement") || null,
@@ -1087,7 +1087,7 @@ async function createOrderFromCart(formData: FormData, source: "pdv" | "site" | 
     customer_name: text(formData, "customer_name") || "Cliente balcão",
     customer_phone: phone || null,
     delivery_address: text(formData, "delivery_address") || null,
-    notes: text(formData, "notes") || null,
+    notes: text(formData, "customer_notes") || text(formData, "notes") || null,
   };
 
   const { data: order, error } = await supabase.from("orders").insert(orderPayload).select("id").single();
@@ -1134,7 +1134,7 @@ export async function createPdvOrder(formData: FormData) {
   const id = await createOrderFromCart(formData, "pdv", restaurant.id, supabase);
   revalidatePath("/dashboard/orders");
   revalidatePath("/pedidos");
-  if (text(formData, "intent") === "print") redirect(`/pedidos/${id}/print`);
+  if (text(formData, "intent") === "print") redirect(`/pedidos/${id}/print?auto=1`);
   redirect("/pedidos");
 }
 
@@ -1189,7 +1189,7 @@ export async function updatePdvOrder(formData: FormData) {
       customer_name: text(formData, "customer_name") || "Cliente balcão",
       customer_phone: text(formData, "customer_phone") || null,
       delivery_address: text(formData, "delivery_address") || null,
-      notes: text(formData, "notes") || null,
+      notes: text(formData, "customer_notes") || text(formData, "notes") || null,
     })
     .eq("restaurant_id", restaurant.id)
     .eq("id", id);
@@ -1233,7 +1233,7 @@ export async function updatePdvOrder(formData: FormData) {
   revalidatePath("/pedidos");
   revalidatePath(`/dashboard/orders/${id}`);
   revalidatePath(`/pedidos/${id}`);
-  if (text(formData, "intent") === "print") redirect(`/pedidos/${id}/print`);
+  if (text(formData, "intent") === "print") redirect(`/pedidos/${id}/print?auto=1`);
   redirect(`/pedidos/${id}`);
 }
 

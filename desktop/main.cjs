@@ -4,7 +4,7 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const APP_URL = process.env.PERINIFOOD_APP_URL || "https://gastroflow-seven.vercel.app";
+const APP_URL = process.env.PERINIFOOD_APP_URL || "https://perinifood.vercel.app";
 const START_URL = new URL("/login", APP_URL).toString();
 const APP_ORIGIN = new URL(APP_URL).origin;
 const PRINT_AGENT_URL = "http://127.0.0.1:4127/health";

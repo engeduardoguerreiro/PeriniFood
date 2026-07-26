@@ -36,7 +36,7 @@ export function BrandNavLogo({
       </span>
       <span className="leading-none">
         <span className="block text-[1.35rem] font-black tracking-tight text-[#F8FBFF]">
-          Perini<span className="text-[#E50914]">Food</span>
+          Perini<span className="text-[#c5362e]">Food</span>
         </span>
         {showTagline && (
           <span className="font-secondary mt-1 hidden text-[0.58rem] font-bold uppercase tracking-[0.22em] text-white/62 sm:block">

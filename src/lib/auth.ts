@@ -1,8 +1,11 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Restaurant, Role } from "./types";
 
-export async function getSessionContext() {
+// Memoizado por requisição: layout e página compartilham a mesma validação de
+// auth + query de membership, em vez de refazer getUser()/consulta duas vezes.
+export const getSessionContext = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null, restaurant: null, role: null as Role | null };
@@ -21,7 +24,7 @@ export async function getSessionContext() {
     restaurant: (membership?.restaurants ?? null) as unknown as Restaurant | null,
     role: (membership?.role ?? null) as Role | null,
   };
-}
+});
 
 export async function requireRestaurant() {
   const context = await getSessionContext();
