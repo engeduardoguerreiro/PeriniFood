@@ -30,9 +30,18 @@ export function getOrderDetails(orderId: string, token: string) {
   return ifoodGet(`/order/v1.0/orders/${orderId}`, token);
 }
 
-// Transições de status (fase 2).
+// Transições de status.
 export const confirmOrder = (orderId: string, token: string) => ifoodPost(`/order/v1.0/orders/${orderId}/confirm`, token);
-export const dispatchOrder = (orderId: string, token: string) => ifoodPost(`/order/v1.0/orders/${orderId}/dispatch`, token);
+export const startPreparation = (orderId: string, token: string) => ifoodPost(`/order/v1.0/orders/${orderId}/startPreparation`, token);
 export const readyToPickupOrder = (orderId: string, token: string) => ifoodPost(`/order/v1.0/orders/${orderId}/readyToPickup`, token);
-export const requestCancellation = (orderId: string, token: string, reason: Record<string, unknown>) =>
-  ifoodPost(`/order/v1.0/orders/${orderId}/requestCancellation`, token, reason);
+export const dispatchOrder = (orderId: string, token: string) => ifoodPost(`/order/v1.0/orders/${orderId}/dispatch`, token);
+export const requestCancellation = (orderId: string, token: string, body: Record<string, unknown>) =>
+  ifoodPost(`/order/v1.0/orders/${orderId}/requestCancellation`, token, body);
+
+export async function getCancellationReasons(orderId: string, token: string): Promise<Array<{ cancelCodeId: string; description: string }>> {
+  try {
+    return await ifoodGet(`/order/v1.0/orders/${orderId}/cancellationReasons`, token);
+  } catch {
+    return [];
+  }
+}

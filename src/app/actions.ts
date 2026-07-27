@@ -11,6 +11,7 @@ import { requireRestaurant } from "@/lib/auth";
 import { mergeDeliveryRulesIntoOpeningHours } from "@/lib/delivery-fee-rules";
 import { hashCustomerPassword } from "@/lib/customer-auth";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
+import { syncOrderStatusToIFood } from "@/lib/integrations/ifood/status-sync";
 import { isRestaurantOpen, openingHourDays } from "@/lib/opening-hours";
 import { digits, slugify } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
@@ -877,7 +878,32 @@ export async function updateOrderStatus(formData: FormData) {
     .eq("restaurant_id", restaurant.id)
     .maybeSingle();
   await supabase.from("orders").update({ status }).eq("id", id).eq("restaurant_id", restaurant.id);
-  if (order?.external_order_id && order.external_platform) {
+  if (order?.external_order_id && order.external_platform === "ifood") {
+    try {
+      const result = await syncOrderStatusToIFood(order.external_order_id, status);
+      await logIntegrationEvent({
+        restaurantId: restaurant.id,
+        provider: "ifood",
+        direction: "OUTBOUND",
+        eventType: `status_${result.action}`,
+        externalId: order.external_order_id,
+        status: result.ok ? "ok" : "error",
+        requestPayload: { orderId: id, externalOrderId: order.external_order_id, status },
+        responsePayload: result as unknown as Record<string, unknown>,
+      });
+    } catch (error) {
+      await logIntegrationEvent({
+        restaurantId: restaurant.id,
+        provider: "ifood",
+        direction: "OUTBOUND",
+        eventType: "status_error",
+        externalId: order.external_order_id,
+        status: "error",
+        requestPayload: { orderId: id, externalOrderId: order.external_order_id, status },
+        responsePayload: { error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  } else if (order?.external_order_id && order.external_platform) {
     await logIntegrationEvent({
       restaurantId: restaurant.id,
       provider: order.external_platform,
