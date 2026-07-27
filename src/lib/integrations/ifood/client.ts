@@ -45,3 +45,24 @@ export async function getCancellationReasons(orderId: string, token: string): Pr
     return [];
   }
 }
+
+// Polling de eventos: puxa os eventos pendentes (204 = fila vazia).
+export async function pollEvents(token: string): Promise<Array<Record<string, unknown>>> {
+  const res = await fetch(`${IFOOD_BASE_URL}/events/v1.0/events:polling`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (res.status === 204) return [];
+  if (!res.ok) throw new Error(`iFood polling (${res.status}): ${await res.text()}`);
+  return res.json();
+}
+
+// Confirma o recebimento dos eventos para não recebê-los de novo.
+export async function acknowledgeEvents(token: string, eventIds: string[]): Promise<void> {
+  if (!eventIds.length) return;
+  await fetch(`${IFOOD_BASE_URL}/events/v1.0/events/acknowledgment`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(eventIds.map((id) => ({ id }))),
+  });
+}
