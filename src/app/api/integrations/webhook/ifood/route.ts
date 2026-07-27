@@ -50,6 +50,7 @@ async function handleOrderEvent(supabase: ServiceClient, event: IFoodEvent, code
     .insert({
       restaurant_id: integration.restaurant_id,
       source: "ifood",
+      code: Math.random().toString(36).slice(2, 8).toUpperCase(),
       type: mapped.type,
       status: "pending",
       payment_status: mapped.paid ? "paid" : "pending",
