@@ -1,4 +1,5 @@
 import type { createServiceClient } from "@/lib/supabase/service";
+import type { OrderStatus } from "@/lib/types";
 import { getIFoodAccessToken, getOrderDetails } from "./client";
 import { mapIFoodOrder } from "./order-mapper";
 
@@ -7,6 +8,20 @@ type IFoodEvent = { id?: string; code?: string; fullCode?: string; orderId?: str
 
 function isCancellation(code: string) {
   return /cancel/i.test(code) || code.toUpperCase() === "CAN";
+}
+
+// Status do iFood -> status interno (base igual à do PeriniFood).
+const STATUS_MAP: Record<string, OrderStatus> = {
+  PLACED: "pending",
+  CONFIRMED: "preparing",
+  READY_TO_PICKUP: "ready",
+  DISPATCHED: "out_for_delivery",
+  CONCLUDED: "completed",
+  DELIVERED: "completed",
+};
+
+function mappedStatus(code: string): OrderStatus | null {
+  return STATUS_MAP[code.toUpperCase()] ?? null;
 }
 
 const newCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -52,7 +67,23 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
     return;
   }
 
-  if (existing) return; // já criado; demais transições não mudam o pedido interno por ora
+  if (existing) {
+    // Pedido já existe: reflete a mudança de status vinda do iFood.
+    const target = mappedStatus(code);
+    if (target && existing.status !== target && existing.status !== "canceled") {
+      await supabase.from("orders").update({ status: target }).eq("id", existing.id);
+      await supabase.from("integration_logs").insert({
+        restaurant_id: integration.restaurant_id,
+        integration_id: integration.id,
+        provider: "ifood",
+        event_type: code,
+        status: "ok",
+        message: `Status iFood → ${target}: ${orderId}`,
+        payload: event as unknown as Record<string, unknown>,
+      });
+    }
+    return;
+  }
 
   const token = await getIFoodAccessToken();
   const details = await getOrderDetails(orderId, token);
