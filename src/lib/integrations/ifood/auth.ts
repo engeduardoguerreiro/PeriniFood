@@ -29,6 +29,17 @@ async function postForm<T>(path: string, body: Record<string, string>): Promise<
   return JSON.parse(text) as T;
 }
 
+// Fluxo CENTRALIZADO: um token acessa todas as suas lojas (client_credentials).
+// Sem userCode / autorização por loja. Renova só re-solicitando.
+export async function getClientCredentialsToken(): Promise<IFoodToken> {
+  assertIFoodConfigured();
+  return postForm<IFoodToken>("/token", {
+    grantType: "client_credentials",
+    clientId: IFOOD_CLIENT_ID,
+    clientSecret: IFOOD_CLIENT_SECRET,
+  });
+}
+
 // Passo 1 do fluxo distribuído: gera o código que o lojista digita no Portal do
 // Parceiro para autorizar o app. Guarde o authorizationCodeVerifier para o passo 2.
 export async function requestUserCode(): Promise<IFoodUserCode> {
