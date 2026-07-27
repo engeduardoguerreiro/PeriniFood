@@ -39,7 +39,7 @@ export async function ensureCategory(merchantId: string, catalogId: string, toke
 export async function uploadImage(merchantId: string, token: string, imageUrl: string): Promise<string | null> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
     const resp = await fetch(imageUrl, { signal: controller.signal }).finally(() => clearTimeout(timeout));
     if (!resp.ok) return null;
     const ct = resp.headers.get("content-type") || "image/jpeg";

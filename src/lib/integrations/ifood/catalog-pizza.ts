@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getClientCredentialsToken } from "./auth";
-import { getCatalogId, uploadImage, putFullItem } from "./catalog";
+import { IFOOD_BASE_URL } from "./config";
+import { uploadImage, putFullItem } from "./catalog";
 import { ifoodContext } from "./catalog-sync";
 
 // Fase B: envia PIZZAS para o iFood usando o template nativo (type PIZZA).
@@ -19,6 +19,20 @@ function norm(v: string | null | undefined) {
 
 function n(v: unknown) {
   return Number(v ?? 0);
+}
+
+// Executa fn sobre items com no máximo `limit` em paralelo (evita saturar o iFood).
+async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx], idx);
+    }
+  });
+  await Promise.all(workers);
+  return out;
 }
 
 // Preço de um sabor num tamanho (espelha flavorPrice do cardápio):
@@ -66,6 +80,7 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
   let pushed = 0;
   let failed = 0;
   const errors: string[] = [];
+  const images: string[] = [];
 
   for (const category of batch) {
     const cat = category as Row;
@@ -105,10 +120,18 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
     const edgeSrc = [{ name: "Sem borda", price: 0 }, ...bordas.map((b) => ({ name: b.name as string, price: n(b.price) }))];
     const edgeOpts = edgeSrc.map((e, i) => ({ optId: randomUUID(), prodId: randomUUID(), name: e.name, price: e.price, index: i }));
 
-    // Imagens dos sabores (best-effort, em paralelo pra caber no tempo).
-    const flavorImages = await Promise.all(
-      flavors.map((f) => (f.image_url ? uploadImage(merchantId, token, f.image_url as string).catch(() => null) : Promise.resolve(null))),
-    );
+    // Imagens dos sabores: concorrência limitada + 1 retry (best-effort, robusto).
+    const flavorImages = await mapPool(flavors, 5, async (f) => {
+      const url = f.image_url as string | null;
+      if (!url) return null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const path = await uploadImage(merchantId, token, url).catch(() => null);
+        if (path) return path;
+      }
+      return null;
+    });
+    const imagesOk = flavorImages.filter(Boolean).length;
+    const imagesTotal = flavors.filter((f) => f.image_url).length;
     const flavorOpts = flavors.map((f, i) => ({
       optId: randomUUID(),
       prodId: randomUUID(),
@@ -185,6 +208,7 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
     const res = await putFullItem(merchantId, token, body);
     if (res.ok) {
       pushed += 1;
+      images.push(`${cat.name}: ${imagesOk}/${imagesTotal} imgs`);
       // Sentinela da categoria + um mapa por sabor (para sync de preço futuro).
       const rows = [
         {
@@ -216,5 +240,51 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
     }
   }
 
-  return { ok: true, pushed, remaining: pending.length - batch.length, done: pending.length <= batch.length, failed, errors: errors.slice(0, 5) };
+  return { ok: true, pushed, remaining: pending.length - batch.length, done: pending.length <= batch.length, failed, errors: errors.slice(0, 5), images };
+}
+
+// Reenvio: apaga no iFood todas as categorias de pizza (template PIZZA) que já
+// enviamos e limpa nossos mapeamentos correspondentes, para que o próximo push
+// recrie tudo do zero (útil para reprocessar imagens). Não toca em produtos simples.
+export async function resetPizzas(restaurantId: string) {
+  const supabase = createServiceClient();
+  const ctx = await ifoodContext(supabase, restaurantId);
+  if ("error" in ctx) return { ok: false, error: ctx.error };
+  const { integration, merchantId, token, catalogId } = ctx;
+
+  // 1) IDs dos itens de pizza que enviamos (sentinelas pzcat:).
+  const { data: sentinels } = await supabase
+    .from("integration_product_maps")
+    .select("external_product_id")
+    .eq("restaurant_id", restaurantId)
+    .eq("integration_id", integration.id)
+    .like("external_variant_id", "pzcat:%");
+  const itemIds = [...new Set((sentinels ?? []).map((s) => (s as Row).external_product_id as string).filter(Boolean))];
+
+  // 2) Apaga no iFood as categorias com template PIZZA (remove os itens junto).
+  const authHeaders = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  const catBase = `${IFOOD_BASE_URL}/catalog/v2.0/merchants/${merchantId}`;
+  const r = await fetch(`${catBase}/catalogs/${catalogId}/categories?includeItems=false`, { headers: authHeaders })
+    .then((x) => x.json())
+    .catch(() => []);
+  const pizzaCats = (Array.isArray(r) ? r : []).filter((c: Row) => c.template === "PIZZA");
+  let deletedCats = 0;
+  for (const c of pizzaCats) {
+    const del = await fetch(`${catBase}/categories/${(c as Row).id}`, { method: "DELETE", headers: authHeaders });
+    if (del.ok) deletedCats += 1;
+  }
+
+  // 3) Limpa nossos mapeamentos dos itens de pizza (sentinelas + sabores).
+  let clearedMaps = 0;
+  if (itemIds.length) {
+    const { count } = await supabase
+      .from("integration_product_maps")
+      .delete({ count: "exact" })
+      .eq("restaurant_id", restaurantId)
+      .eq("integration_id", integration.id)
+      .in("external_product_id", itemIds);
+    clearedMaps = count ?? 0;
+  }
+
+  return { ok: true, deletedCategories: deletedCats, clearedMaps };
 }
