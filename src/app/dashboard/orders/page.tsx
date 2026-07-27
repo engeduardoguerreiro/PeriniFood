@@ -5,6 +5,7 @@ import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode, statusLabel } from "@/lib/utils";
 import { Suspense } from "react";
 import { PrintToast } from "@/components/print-toast";
+import { OrdersAutoRefresh } from "@/components/orders-auto-refresh";
 import type { Order, OrderStatus } from "@/lib/types";
 
 type OperationColumn = {
@@ -163,10 +164,17 @@ export default async function OrdersPage() {
   return (
     <div className="space-y-6">
       <Suspense fallback={null}><PrintToast /></Suspense>
+      <OrdersAutoRefresh />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Pedidos</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Pedidos</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+              <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" /></span>
+              Ao vivo
+            </span>
+          </div>
           <p className="text-sm text-[#9c988f]">Acompanhe cada pedido por etapa. Entregues e cancelados ficam no histórico do dia.</p>
         </div>
         <Link href="/pedidos/novo" className="rounded-xl bg-[#211d19] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#37312a]">
