@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bike, Check, Clock3, Flame, PackageCheck, Pencil, Printer, Trash2, X } from "lucide-react";
+import { Bike, Check, Clock3, Flame, PackageCheck, Pencil, Printer, Trash2, X, XCircle } from "lucide-react";
 import { deleteOrder, updateOrderStatus } from "@/app/actions";
 import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode, statusLabel } from "@/lib/utils";
@@ -156,6 +156,26 @@ function HistoryRow({ order }: { order: Order }) {
   );
 }
 
+function HistorySection({ title, icon: Icon, rows, emptyText }: { title: string; icon: typeof PackageCheck; rows: Order[]; emptyText: string }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+      <div className="flex items-center justify-between gap-3 border-b border-[#efece6] px-4 py-3">
+        <h2 className="flex items-center gap-2 text-[0.95rem] font-semibold text-[#1b1a17]">
+          <Icon className="h-4 w-4 text-[#9c988f]" />
+          {title}
+        </h2>
+        <span className="inline-flex items-center rounded-full bg-[#faf9f6] px-2.5 py-1 text-xs font-medium text-[#6d6a63] [font-variant-numeric:tabular-nums]">
+          {rows.length}
+        </span>
+      </div>
+      <div>
+        {rows.map((order) => <HistoryRow key={order.id} order={order} />)}
+        {!rows.length && <p className="p-8 text-center text-sm text-[#9c988f]">{emptyText}</p>}
+      </div>
+    </section>
+  );
+}
+
 export default async function OrdersPage() {
   const { supabase, restaurant } = await requireRestaurant();
   const { start, end } = todayRange();
@@ -169,7 +189,9 @@ export default async function OrdersPage() {
 
   const orders = (data ?? []) as Order[];
   const activeOrders = orders.filter((order) => !historyStatuses.includes(order.status));
-  const todayHistory = orders.filter((order) => historyStatuses.includes(order.status) && order.created_at >= start && order.created_at < end);
+  const isToday = (order: Order) => order.created_at >= start && order.created_at < end;
+  const todayDelivered = orders.filter((order) => order.status === "completed" && isToday(order));
+  const todayCanceled = orders.filter((order) => order.status === "canceled" && isToday(order));
 
   return (
     <div className="space-y-6">
@@ -220,21 +242,8 @@ export default async function OrdersPage() {
         })}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
-        <div className="flex items-center justify-between gap-3 border-b border-[#efece6] px-4 py-3">
-          <h2 className="flex items-center gap-2 text-[0.95rem] font-semibold text-[#1b1a17]">
-            <PackageCheck className="h-4 w-4 text-[#9c988f]" />
-            Pedidos entregues do dia
-          </h2>
-          <span className="inline-flex items-center rounded-full bg-[#faf9f6] px-2.5 py-1 text-xs font-medium text-[#6d6a63] [font-variant-numeric:tabular-nums]">
-            {todayHistory.length}
-          </span>
-        </div>
-        <div>
-          {todayHistory.map((order) => <HistoryRow key={order.id} order={order} />)}
-          {!todayHistory.length && <p className="p-8 text-center text-sm text-[#9c988f]">Nenhum pedido no histórico de hoje.</p>}
-        </div>
-      </section>
+      <HistorySection title="Pedidos entregues do dia" icon={PackageCheck} rows={todayDelivered} emptyText="Nenhum pedido entregue hoje." />
+      <HistorySection title="Pedidos cancelados do dia" icon={XCircle} rows={todayCanceled} emptyText="Nenhum pedido cancelado hoje." />
     </div>
   );
 }
