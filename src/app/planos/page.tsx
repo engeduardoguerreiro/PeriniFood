@@ -1,6 +1,7 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, CheckCircle2, ClipboardList, Globe2, MessageCircle, Plug, QrCode, Truck, XCircle, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ClipboardList, Globe, MessageCircle, Plug, QrCode, Truck, X, type LucideIcon } from "lucide-react";
+import { WhatsAppFloat } from "@/components/whatsapp-float";
 
 const plans: Array<{
   name: string;
@@ -16,26 +17,26 @@ const plans: Array<{
     name: "Básico",
     subtitle: "Operação manual",
     price: "R$ 49,90",
-    description: "Para restaurantes que querem vender pelo próprio cardápio e controlar pedidos manualmente.",
+    description: "Para quem quer vender pelo próprio cardápio e controlar os pedidos manualmente.",
     icon: ClipboardList,
     features: [
       "Cardápio digital público",
       "Produtos, categorias, tipos e opções de pizza",
-      "Checkout online sem pagamento integrado",
-      "Pedido manual no painel",
+      "Checkout online (sem pagamento integrado)",
+      "Pedido manual no painel (PDV)",
       "Clientes cadastrados automaticamente",
       "WhatsApp manual",
-      "Impressão de pedidos",
-      "Dashboard operacional",
+      "Impressão de comandas",
+      "Painel operacional e relatórios",
       "Taxa de entrega por raio",
     ],
-    notIncluded: ["Integração com marketplaces", "Robô oficial de WhatsApp", "Pagamento online"],
+    notIncluded: ["Integração com marketplaces", "Pagamento online"],
   },
   {
     name: "Completa",
     subtitle: "Integrações e escala",
     price: "R$ 89,90",
-    description: "Para operações que querem centralizar site próprio, balcão e marketplaces em uma fila única.",
+    description: "Para centralizar site próprio, balcão e marketplaces numa fila única.",
     highlight: true,
     icon: Plug,
     features: [
@@ -53,12 +54,12 @@ const plans: Array<{
   },
 ];
 
-const comparison = [
+const comparison: Array<[string, boolean, boolean]> = [
   ["Cardápio online", true, true],
-  ["Pedido manual", true, true],
+  ["Pedido manual (PDV)", true, true],
   ["Clientes e histórico", true, true],
   ["Impressão e WhatsApp manual", true, true],
-  ["Taxas de entrega por KM", true, true],
+  ["Taxa de entrega por km", true, true],
   ["iFood / 99Food / Keeta", false, true],
   ["Webhooks externos", false, true],
   ["Relatórios por canal", false, true],
@@ -66,11 +67,11 @@ const comparison = [
 
 function Brand() {
   return (
-    <span className="flex items-center gap-3">
-      <Image src="/brand/perinifood-logo.png" alt="" width={48} height={48} className="h-11 w-11 rounded-xl bg-white object-contain" />
+    <span className="flex items-center gap-2.5">
+      <Image src="/brand/perinifood-logo.png" alt="" width={48} height={48} className="h-10 w-10 rounded-xl object-contain" />
       <span className="leading-tight">
-        <span className="block text-xl font-black text-[#232A31]">Perini<span className="text-[#E50914]">Food</span></span>
-        <span className="hidden text-[0.62rem] font-black uppercase tracking-[0.22em] text-slate-500 sm:block">Planos para restaurantes</span>
+        <span className="block text-lg font-semibold tracking-tight text-[#211d19]">Perini<span className="text-[#c5362e]">Food</span></span>
+        <span className="hidden text-[0.6rem] font-medium uppercase tracking-[0.16em] text-[#9c988f] sm:block">Planos para restaurantes</span>
       </span>
     </span>
   );
@@ -78,95 +79,128 @@ function Brand() {
 
 export default function PlansPage() {
   return (
-    <main className="min-h-screen bg-[#f5f7fb] text-[#182b3a]">
-      <header className="border-b border-slate-200 bg-white">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+    <main className="min-h-screen bg-[#f7f4ee] text-[#211d19]">
+      <header className="border-b border-[#e7e4dd] bg-[#f7f4ee]/85 backdrop-blur-xl">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
           <Link href="/"><Brand /></Link>
           <div className="flex items-center gap-2">
-            <Link href="/" className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:border-[#E50914] hover:text-[#E50914] sm:inline-flex">
-              <ArrowLeft className="h-4 w-4" /> Voltar
+            <Link href="/" className="hidden h-10 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-4 text-sm font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e] sm:inline-flex">
+              <ArrowLeft className="h-4 w-4" /> Início
             </Link>
-            <Link href="/login" className="h-10 rounded-lg bg-[#232A31] px-4 py-2 text-sm font-black text-white transition hover:bg-[#E50914]">Entrar</Link>
+            <Link href="/login" className="h-10 rounded-lg bg-[#211d19] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#37312a]">Entrar</Link>
           </div>
         </nav>
       </header>
 
-      <section className="bg-[#12161B] text-white">
-        <div className="mx-auto max-w-7xl px-5 py-16 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-red-100">Planos PeriniFood</p>
-          <h1 className="mx-auto mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-6xl">Escolha entre operar manualmente ou integrar seus canais.</h1>
-          <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-white/78">
-            Planos competitivos para o mercado brasileiro: comece com o essencial para vender no site próprio ou avance para uma operação completa com marketplaces e automações preparadas.
+      <section className="border-b border-[#e7e4dd] bg-white">
+        <div className="mx-auto max-w-6xl px-5 py-14 text-center md:py-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c5362e]">Planos PeriniFood</p>
+          <h1 className="mx-auto mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">Opere manualmente ou integre todos os seus canais.</h1>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[#6d6a63]">
+            Comece com o essencial para vender no site próprio ou avance para uma operação completa com marketplaces e automações. <strong className="font-semibold text-[#211d19]">Sem comissão por venda.</strong>
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-12">
-        <div className="grid gap-6 lg:grid-cols-2">
+      <section className="mx-auto max-w-5xl px-5 pt-10">
+        <div className="flex flex-col items-start gap-4 rounded-2xl border border-[#e7c3bf] bg-[#f6ece9] p-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#c5362e] text-white"><Globe className="h-5 w-5" /></span>
+            <div>
+              <p className="text-sm font-semibold text-[#211d19]">Assine no plano anual pelo cartão e ganhe o domínio da sua pizzaria.</p>
+              <p className="mt-1 text-sm text-[#6d6a63]">Fechando qualquer plano no anual com cartão de crédito, a gente registra o domínio <strong className="font-semibold text-[#211d19]">.com.br</strong> do seu restaurante sem custo — caso você ainda não tenha um.</p>
+            </div>
+          </div>
+          <Link href="/register" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[#211d19] px-5 text-sm font-medium text-white transition hover:bg-[#37312a]">Assinar anual <ArrowRight className="h-4 w-4" /></Link>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-5 pb-12 pt-8">
+        <div className="grid gap-5 lg:grid-cols-2">
           {plans.map((plan) => {
             const Icon = plan.icon;
             return (
-              <article key={plan.name} className={plan.highlight ? "relative overflow-hidden rounded-2xl border-2 border-[#E50914] bg-white p-6 shadow-2xl shadow-red-950/10" : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"}>
-                {plan.highlight && <span className="absolute right-5 top-5 rounded-full bg-[#E50914] px-3 py-1 text-xs font-black uppercase tracking-wide text-white">Mais completo</span>}
-                <div className="flex items-start gap-4 pr-28">
-                  <span className={plan.highlight ? "grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#E50914] text-white" : "grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-[#E50914]"}>
-                    <Icon className="h-6 w-6" />
+              <article key={plan.name} className={plan.highlight ? "relative rounded-3xl border-2 border-[#c5362e] bg-white p-6 shadow-[0_16px_40px_rgba(197,54,46,0.10)]" : "rounded-3xl border border-[#e7e4dd] bg-white p-6"}>
+                {plan.highlight && <span className="absolute right-6 top-6 rounded-full bg-[#f6ece9] px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-wide text-[#c5362e]">Mais completo</span>}
+                <div className="flex items-start gap-3.5 pr-24">
+                  <span className={plan.highlight ? "grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#c5362e] text-white" : "grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#f6ece9] text-[#c5362e]"}>
+                    <Icon className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">{plan.subtitle}</p>
-                    <h2 className="mt-1 text-3xl font-black">{plan.name}</h2>
+                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#9c988f]">{plan.subtitle}</p>
+                    <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#211d19]">{plan.name}</h2>
                   </div>
                 </div>
-                <p className="mt-5 text-slate-600">{plan.description}</p>
-                <p className="mt-6 text-4xl font-black text-[#232A31]">{plan.price}<span className="text-sm text-slate-500">/mês</span></p>
-                <div className="mt-6 grid gap-6 md:grid-cols-2">
-                  <div>
-                    <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Inclui</h3>
-                    <ul className="space-y-3">{plan.features.map((feature) => <li key={feature} className="flex gap-2 text-sm font-semibold text-slate-700"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" /> {feature}</li>)}</ul>
-                  </div>
-                  <div>
-                    <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Fora do plano</h3>
-                    <ul className="space-y-3">{plan.notIncluded.map((feature) => <li key={feature} className="flex gap-2 text-sm font-semibold text-slate-500"><XCircle className="h-5 w-5 shrink-0 text-slate-300" /> {feature}</li>)}</ul>
-                  </div>
-                </div>
-                <Link href="/register" className={plan.highlight ? "mt-7 inline-flex h-12 w-full items-center justify-center rounded-lg bg-[#232A31] px-5 text-sm font-black text-white transition hover:bg-[#E50914]" : "mt-7 inline-flex h-12 w-full items-center justify-center rounded-lg border border-[#E50914]/30 bg-white px-5 text-sm font-black text-[#E50914] transition hover:bg-red-50"}>
+                <p className="mt-4 text-sm text-[#6d6a63]">{plan.description}</p>
+                <p className="mt-5 text-4xl font-semibold tracking-tight text-[#211d19]">{plan.price}<span className="text-sm font-normal text-[#9c988f]">/mês</span></p>
+
+                <Link href="/register" className={plan.highlight ? "mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-[#211d19] px-5 text-sm font-medium text-white transition hover:bg-[#37312a]" : "mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[#e7e4dd] bg-white px-5 text-sm font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e]"}>
                   Escolher {plan.name}
                 </Link>
+
+                <div className="mt-6 space-y-2.5 border-t border-[#efece6] pt-5">
+                  {plan.features.map((feature) => (
+                    <p key={feature} className="flex gap-2.5 text-sm text-[#403d38]">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#1f8a54]" /> {feature}
+                    </p>
+                  ))}
+                  {plan.notIncluded.map((feature) => (
+                    <p key={feature} className="flex gap-2.5 text-sm text-[#b0aaa0]">
+                      <X className="mt-0.5 h-4 w-4 shrink-0 text-[#d8d2c7]" /> {feature}
+                    </p>
+                  ))}
+                </div>
               </article>
             );
           })}
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 pb-16">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 p-5">
-            <h2 className="text-2xl font-black">Comparativo rápido</h2>
-            <p className="mt-1 text-sm text-slate-500">Veja a diferença prática entre operação manual e operação integrada.</p>
+      <section className="mx-auto max-w-5xl px-5 pb-14">
+        <div className="overflow-hidden rounded-3xl border border-[#e7e4dd] bg-white">
+          <div className="border-b border-[#efece6] px-6 py-4">
+            <h2 className="text-[0.95rem] font-semibold text-[#211d19]">Comparativo rápido</h2>
+            <p className="mt-0.5 text-sm text-[#9c988f]">A diferença prática entre operação manual e integrada.</p>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="grid grid-cols-[1fr_120px_120px] items-center gap-3 border-b border-[#efece6] bg-[#faf9f6] px-6 py-2.5 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]">
+            <span>Recurso</span>
+            <span className="text-center">Básico</span>
+            <span className="text-center">Completa</span>
+          </div>
+          <div className="divide-y divide-[#efece6]">
             {comparison.map(([label, basic, complete]) => (
-              <div key={String(label)} className="grid grid-cols-[1fr_90px_100px] items-center gap-3 px-5 py-3 text-sm md:grid-cols-[1fr_160px_160px]">
-                <span className="font-bold">{label}</span>
-                <span className="text-center">{basic ? <BadgeCheck className="mx-auto h-5 w-5 text-emerald-500" /> : <span className="text-slate-300">-</span>}</span>
-                <span className="text-center">{complete ? <BadgeCheck className="mx-auto h-5 w-5 text-emerald-500" /> : <span className="text-slate-300">-</span>}</span>
+              <div key={label} className="grid grid-cols-[1fr_120px_120px] items-center gap-3 px-6 py-2.5 text-sm">
+                <span className="text-[#403d38]">{label}</span>
+                <span className="flex justify-center">{basic ? <Check className="h-4 w-4 text-[#1f8a54]" /> : <span className="text-[#d8d2c7]">—</span>}</span>
+                <span className="flex justify-center">{complete ? <Check className="h-4 w-4 text-[#1f8a54]" /> : <span className="text-[#d8d2c7]">—</span>}</span>
               </div>
             ))}
           </div>
         </div>
+
+        <div className="mt-8 overflow-hidden rounded-3xl bg-[#211d19] px-7 py-10 text-center text-white md:px-10">
+          <h2 className="mx-auto max-w-xl text-2xl font-semibold tracking-tight text-balance md:text-3xl">Ainda com dúvida sobre qual plano?</h2>
+          <p className="mx-auto mt-3 max-w-lg text-white/70">Crie sua conta no plano Básico e faça upgrade quando precisar de integrações.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link href="/register" className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#c5362e] px-5 text-sm font-semibold text-white transition hover:bg-[#a92c25]">Começar agora <ArrowRight className="h-4 w-4" /></Link>
+            <a href="https://wa.me/5511930230911" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/20 px-5 text-sm font-semibold text-white transition hover:bg-white/10"><MessageCircle className="h-4 w-4" /> Falar no WhatsApp</a>
+          </div>
+        </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-5 py-7 text-sm text-slate-500">
-          <div className="flex flex-wrap gap-5 font-bold">
-            <span className="flex items-center gap-1"><QrCode className="h-4 w-4 text-[#E50914]" /> Cardápio online</span>
-            <span className="flex items-center gap-1"><Truck className="h-4 w-4 text-[#E50914]" /> Delivery</span>
-            <span className="flex items-center gap-1"><Globe2 className="h-4 w-4 text-[#E50914]" /> Site próprio</span>
-            <span className="flex items-center gap-1"><MessageCircle className="h-4 w-4 text-[#E50914]" /> WhatsApp</span>
+      <footer className="border-t border-[#e7e4dd] bg-[#f7f4ee]">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-5 py-8 text-sm text-[#9c988f]">
+          <Brand />
+          <div className="flex flex-wrap gap-5 font-medium text-[#6d6a63]">
+            <span className="flex items-center gap-1.5"><QrCode className="h-4 w-4 text-[#c5362e]" /> Cardápio online</span>
+            <span className="flex items-center gap-1.5"><Truck className="h-4 w-4 text-[#c5362e]" /> Delivery</span>
+            <Link href="/" className="transition hover:text-[#c5362e]">Início</Link>
+            <Link href="/register" className="font-semibold text-[#c5362e]">Começar agora</Link>
           </div>
-          <Link href="/register" className="font-black text-[#E50914]">Começar agora</Link>
         </div>
       </footer>
+
+      <WhatsAppFloat />
     </main>
   );
 }
