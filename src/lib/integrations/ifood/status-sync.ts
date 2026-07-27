@@ -44,8 +44,12 @@ export async function syncOrderStatusToIFood(externalOrderId: string, status: Or
       });
       return { ok: res.ok, action: "requestCancellation", detail: res.ok ? undefined : res.text };
     }
+    case "completed":
+      // iFood não aceita "finalizar" pela integração — ele conclui sozinho
+      // em até 2h após a entrega. Último passo do lojista é o dispatch.
+      return { ok: true, action: "concluded_by_ifood", detail: "iFood finaliza automaticamente após a entrega" };
     default:
-      // pending, completed: iFood não requer ação do lojista.
+      // pending: iFood não requer ação do lojista.
       return { ok: true, action: "none" };
   }
 }
