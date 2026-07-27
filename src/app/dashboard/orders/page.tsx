@@ -156,17 +156,15 @@ function HistoryRow({ order }: { order: Order }) {
   );
 }
 
-function HistorySection({ title, icon: Icon, rows, emptyText }: { title: string; icon: typeof PackageCheck; rows: Order[]; emptyText: string }) {
+function HistorySection({ title, icon: Icon, tone, rows, emptyText }: { title: string; icon: typeof PackageCheck; tone: string; rows: Order[]; emptyText: string }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="flex items-center justify-between gap-3 border-b border-[#efece6] px-4 py-3">
-        <h2 className="flex items-center gap-2 text-[0.95rem] font-semibold text-[#1b1a17]">
-          <Icon className="h-4 w-4 text-[#9c988f]" />
-          {title}
-        </h2>
-        <span className="inline-flex items-center rounded-full bg-[#faf9f6] px-2.5 py-1 text-xs font-medium text-[#6d6a63] [font-variant-numeric:tabular-nums]">
-          {rows.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`grid h-6 w-6 place-items-center rounded-full ${tone}`}><Icon size={13} /></span>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{title}</h2>
+        </div>
+        <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.7rem] font-semibold text-[#6d6a63] [font-variant-numeric:tabular-nums]">{rows.length}</span>
       </div>
       <div>
         {rows.map((order) => <HistoryRow key={order.id} order={order} />)}
@@ -242,8 +240,8 @@ export default async function OrdersPage() {
         })}
       </section>
 
-      <HistorySection title="Pedidos entregues do dia" icon={PackageCheck} rows={todayDelivered} emptyText="Nenhum pedido entregue hoje." />
-      <HistorySection title="Pedidos cancelados do dia" icon={XCircle} rows={todayCanceled} emptyText="Nenhum pedido cancelado hoje." />
+      <HistorySection title="Pedidos entregues do dia" icon={PackageCheck} tone="bg-emerald-100 text-emerald-700" rows={todayDelivered} emptyText="Nenhum pedido entregue hoje." />
+      <HistorySection title="Pedidos cancelados do dia" icon={XCircle} tone="bg-rose-100 text-rose-700" rows={todayCanceled} emptyText="Nenhum pedido cancelado hoje." />
     </div>
   );
 }
