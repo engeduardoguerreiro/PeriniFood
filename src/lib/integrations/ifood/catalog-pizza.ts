@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import { IFOOD_BASE_URL } from "./config";
-import { uploadImage, putFullItem } from "./catalog";
+import { uploadImage, putFullItem, getItem, patchOptionPrice } from "./catalog";
 import { ifoodContext } from "./catalog-sync";
 
 // Fase B: envia PIZZAS para o iFood usando o template nativo (type PIZZA).
@@ -81,6 +81,7 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
   let failed = 0;
   const errors: string[] = [];
   const images: string[] = [];
+  const prices: string[] = [];
 
   for (const category of batch) {
     const cat = category as Row;
@@ -234,13 +235,41 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
         })),
       ];
       await supabase.from("integration_product_maps").insert(rows);
+
+      // Corrige o preço de cada sabor por TAMANHO. O PUT aninha os sabores por
+      // tamanho mas usa o preço do 1º tamanho para todos; o preço por tamanho só
+      // entra via PATCH /options/price (parentCustomizationOptionId = id do tamanho).
+      const priceByProduct = new Map(flavorOpts.map((f) => ({ id: f.product.id as string, variants: f.variants, base: n(f.product.price) })).map((x) => [x.id, x]));
+      const created = await getItem(merchantId, token, res.itemId as string);
+      const sizeGroup = ((created?.optionGroups as Row[] | undefined) ?? []).find(
+        (g) => (g as Record<string, unknown>).optionGroupType === "SIZE" || (g as Row).name === "Tamanho",
+      ) as Record<string, unknown> | undefined;
+      const sizeOptions = (sizeGroup?.options as Record<string, unknown>[] | undefined) ?? [];
+      const fixes: { optionId: string; sizeId: string; value: number }[] = [];
+      for (const so of sizeOptions) {
+        const sizeName = so.name as string;
+        const sizeId = so.id as string;
+        const saboresGroup = ((so.optionGroups as Record<string, unknown>[] | undefined) ?? []).find((g) => (g as Row).name === "Sabores");
+        for (const fo of ((saboresGroup?.options as Record<string, unknown>[] | undefined) ?? [])) {
+          const ext = (fo.externalCode as string | undefined) ?? "";
+          const pid = ext.startsWith("pf-fl-") ? ext.slice(6) : "";
+          const lk = priceByProduct.get(pid);
+          if (!lk) continue;
+          const want = flavorPriceAt(lk.variants, sizeName, lk.base);
+          const current = n((fo.price as Row | undefined)?.value);
+          if (Math.abs(want - current) >= 0.01) fixes.push({ optionId: fo.id as string, sizeId, value: want });
+        }
+      }
+      const results = await mapPool(fixes, 5, (fx) => patchOptionPrice(merchantId, token, fx.optionId, fx.sizeId, fx.value));
+      const okFixes = results.filter((r) => r.ok).length;
+      prices.push(`${cat.name}: ${okFixes}/${fixes.length} preços/tamanho corrigidos`);
     } else {
       failed += 1;
       errors.push(`${cat.name}: ${(res.error ?? "").slice(0, 120)}`);
     }
   }
 
-  return { ok: true, pushed, remaining: pending.length - batch.length, done: pending.length <= batch.length, failed, errors: errors.slice(0, 5), images };
+  return { ok: true, pushed, remaining: pending.length - batch.length, done: pending.length <= batch.length, failed, errors: errors.slice(0, 5), images, prices };
 }
 
 // Reenvio: apaga no iFood todas as categorias de pizza (template PIZZA) que já

@@ -70,6 +70,21 @@ export async function putFullItem(merchantId: string, token: string, body: unkno
   return { ok: r.ok, status: r.status, itemId, data: r.data, error: r.ok ? null : r.text };
 }
 
+// Lê um item completo (formato normalizado do iFood: grupos/opções aninhados).
+export async function getItem(merchantId: string, token: string, itemId: string) {
+  const r = await api("GET", `/catalog/v2.0/merchants/${merchantId}/items/${itemId}`, token);
+  return r.ok ? (r.data as Record<string, unknown>) : null;
+}
+
+// Define o preço de uma opção. Para SABOR de pizza por tamanho, passe
+// parentCustomizationOptionId = id da opção de tamanho onde o sabor será precificado.
+export async function patchOptionPrice(merchantId: string, token: string, optionId: string, parentCustomizationOptionId: string | null, value: number) {
+  const body: Record<string, unknown> = { optionId, price: { value: Number(value.toFixed(2)) } };
+  if (parentCustomizationOptionId) body.parentCustomizationOptionId = parentCustomizationOptionId;
+  const r = await api("PATCH", `/catalog/v2.0/merchants/${merchantId}/options/price`, token, body);
+  return { ok: r.ok, status: r.status, error: r.ok ? null : r.text };
+}
+
 export async function upsertItem(merchantId: string, token: string, input: ItemInput) {
   const product: Record<string, unknown> = { id: input.productId, name: input.name.slice(0, 100), externalCode: input.externalCode };
   if (input.description) product.description = input.description.slice(0, 1000);
