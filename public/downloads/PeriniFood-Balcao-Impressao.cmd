@@ -7,12 +7,12 @@ rem  PeriniFood - Atalho de impressao do balcao (Chrome)
 rem  Cria um atalho na area de trabalho que abre o sistema
 rem  em modo de impressao SILENCIOSA (sem instalar nada).
 rem
-rem  1) Troque o endereco abaixo pelo mesmo que voce digita
-rem     no navegador para abrir o sistema.
-rem  2) Salve o arquivo e clique duas vezes nele.
+rem  Ja vem configurado para https://perinifood.com.br.
+rem  E so clicar duas vezes neste arquivo.
+rem  (Se um dia mudar o endereco, altere a linha APP_URL abaixo.)
 rem ============================================================
 
-set "APP_URL=https://COLE-AQUI-O-ENDERECO-DO-SISTEMA"
+set "APP_URL=https://perinifood.com.br"
 
 set "SHORTCUT=%USERPROFILE%\Desktop\PeriniFood Balcao.lnk"
 

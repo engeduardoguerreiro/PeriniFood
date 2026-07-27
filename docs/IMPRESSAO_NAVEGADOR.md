@@ -22,17 +22,16 @@ logotipo, então imprime igual ao agente — só que sem instalar nada.
 Duas opções — escolha uma:
 
 **Opção A — automática (recomendada)**
-1. Baixe o arquivo **`PeriniFood-Balcao-Impressao.cmd`**.
-2. Clique com o botão direito → **Editar**, e troque `APP_URL` pelo mesmo
-   endereço que você digita no navegador para abrir o sistema. Salve.
-3. Clique duas vezes no arquivo. Um atalho **“PeriniFood Balcao”** aparece na
+1. Baixe o arquivo **`PeriniFood-Balcao-Impressao.cmd`** (já vem configurado
+   para `https://perinifood.com.br`).
+2. Clique duas vezes no arquivo. Um atalho **“PeriniFood Balcao”** aparece na
    área de trabalho.
 
 **Opção B — manual**
 1. Botão direito na área de trabalho → **Novo → Atalho**.
-2. No local, cole (troque o endereço pelo seu):
+2. No local, cole:
    ```
-   "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --app=https://SEU-ENDERECO
+   "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --app=https://perinifood.com.br
    ```
 3. Nomeie como **PeriniFood Balcao** e conclua.
 
