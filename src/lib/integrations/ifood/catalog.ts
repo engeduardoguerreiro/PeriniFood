@@ -62,6 +62,14 @@ export type ItemInput = {
   imagePath?: string | null;
 };
 
+// Envia um item completo (payload FullItemDto pronto) — usado pelo template de pizza,
+// que monta item + products + optionGroups + options manualmente.
+export async function putFullItem(merchantId: string, token: string, body: unknown) {
+  const r = await api("PUT", `/catalog/v2.0/merchants/${merchantId}/items`, token, body);
+  const itemId = (r.data as { item?: { id?: string } })?.item?.id ?? null;
+  return { ok: r.ok, status: r.status, itemId, data: r.data, error: r.ok ? null : r.text };
+}
+
 export async function upsertItem(merchantId: string, token: string, input: ItemInput) {
   const product: Record<string, unknown> = { id: input.productId, name: input.name.slice(0, 100), externalCode: input.externalCode };
   if (input.description) product.description = input.description.slice(0, 1000);

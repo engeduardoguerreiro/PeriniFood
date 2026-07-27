@@ -5,7 +5,7 @@ import { getCatalogId, ensureCategory, uploadImage, upsertItem } from "./catalog
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
-async function ifoodContext(supabase: ServiceClient, restaurantId: string) {
+export async function ifoodContext(supabase: ServiceClient, restaurantId: string) {
   const { data: integration } = await supabase
     .from("integrations")
     .select("id, external_store_id")
