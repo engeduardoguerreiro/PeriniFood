@@ -37,8 +37,11 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, index: num
 
 // Preço de um sabor num tamanho (espelha flavorPrice do cardápio):
 // variante do mesmo nome → seu preço; senão menor variante; senão preço base.
+// Match do nome do tamanho é case/acento-insensível (o iFood title-caseia o nome,
+// ex.: nossa variante "GRANDE" vira "Grande" na leitura).
 function flavorPriceAt(flavorVariants: Row[], sizeName: string, basePrice: number) {
-  const same = flavorVariants.find((v) => v.name === sizeName);
+  const target = norm(sizeName);
+  const same = flavorVariants.find((v) => norm(v.name as string) === target);
   if (same) return n(same.price);
   if (flavorVariants.length) return Math.min(...flavorVariants.map((v) => n(v.price)));
   return basePrice;
