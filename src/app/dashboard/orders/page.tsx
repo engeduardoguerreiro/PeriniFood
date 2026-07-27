@@ -57,8 +57,15 @@ function orderTime(order: Order) {
   return new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function isIFoodOrder(order: Order) {
+  return order.external_platform === "ifood" || order.source === "ifood";
+}
+
 // Próxima etapa lógica do pedido — vira o botão primário de cada card.
+// Pedidos do iFood NÃO podem ser concluídos manualmente: o iFood é quem
+// finaliza (o operador manda no máximo "Saiu p/ entrega" / dispatch).
 function nextStep(order: Order): { status: OrderStatus; label: string } | null {
+  const ifood = isIFoodOrder(order);
   switch (order.status) {
     case "pending":
     case "accepted":
@@ -66,11 +73,10 @@ function nextStep(order: Order): { status: OrderStatus; label: string } | null {
     case "preparing":
       return { status: "ready", label: "Pronto" };
     case "ready":
-      return order.type === "delivery"
-        ? { status: "out_for_delivery", label: "Saiu" }
-        : { status: "completed", label: "Concluir" };
+      if (order.type === "delivery") return { status: "out_for_delivery", label: "Saiu" };
+      return ifood ? null : { status: "completed", label: "Concluir" };
     case "out_for_delivery":
-      return { status: "completed", label: "Concluir" };
+      return ifood ? null : { status: "completed", label: "Concluir" };
     default:
       return null;
   }
@@ -96,7 +102,7 @@ function OrderCard({ order }: { order: Order }) {
       </p>
 
       <div className="mt-3 flex items-center gap-1.5">
-        {step && (
+        {step ? (
           <form action={updateOrderStatus} className="flex-1">
             <input type="hidden" name="id" value={order.id} />
             <input type="hidden" name="status" value={step.status} />
@@ -104,7 +110,11 @@ function OrderCard({ order }: { order: Order }) {
               {step.label}
             </button>
           </form>
-        )}
+        ) : isIFoodOrder(order) && (order.status === "out_for_delivery" || order.status === "ready") ? (
+          <span className="flex h-9 flex-1 items-center justify-center rounded-lg bg-[#faf9f6] px-2 text-center text-[0.68rem] font-medium text-[#9c988f]">
+            iFood finaliza a entrega
+          </span>
+        ) : null}
         <Link href={`/pedidos/${order.id}/print`} target="_blank" aria-label="Imprimir" className={iconBtn}>
           <Printer size={15} />
         </Link>

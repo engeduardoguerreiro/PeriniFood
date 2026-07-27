@@ -877,6 +877,15 @@ export async function updateOrderStatus(formData: FormData) {
     .eq("id", id)
     .eq("restaurant_id", restaurant.id)
     .maybeSingle();
+
+  // Pedido do iFood não pode ser concluído manualmente — o iFood finaliza sozinho
+  // (o status "completed" chega pelo evento CONCLUDED via polling).
+  if (status === "completed" && order?.external_platform === "ifood") {
+    revalidatePath("/pedidos");
+    revalidatePath("/dashboard/orders");
+    return;
+  }
+
   await supabase.from("orders").update({ status }).eq("id", id).eq("restaurant_id", restaurant.id);
   if (order?.external_order_id && order.external_platform === "ifood") {
     try {
