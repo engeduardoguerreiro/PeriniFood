@@ -222,9 +222,11 @@ export default async function OrdersPage() {
 
       <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
         <div className="flex items-center justify-between gap-3 border-b border-[#efece6] px-4 py-3">
-          <h2 className="text-[0.95rem] font-semibold text-[#1b1a17]">Histórico do dia</h2>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#faf9f6] px-2.5 py-1 text-xs font-medium text-[#6d6a63]">
-            <PackageCheck size={13} />
+          <h2 className="flex items-center gap-2 text-[0.95rem] font-semibold text-[#1b1a17]">
+            <PackageCheck className="h-4 w-4 text-[#9c988f]" />
+            Pedidos entregues do dia
+          </h2>
+          <span className="inline-flex items-center rounded-full bg-[#faf9f6] px-2.5 py-1 text-xs font-medium text-[#6d6a63] [font-variant-numeric:tabular-nums]">
             {todayHistory.length}
           </span>
         </div>
