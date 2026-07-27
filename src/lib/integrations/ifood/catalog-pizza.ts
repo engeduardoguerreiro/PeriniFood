@@ -81,7 +81,6 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
   let failed = 0;
   const errors: string[] = [];
   const images: string[] = [];
-  const prices: string[] = [];
 
   for (const category of batch) {
     const cat = category as Row;
@@ -235,41 +234,13 @@ export async function pushPizzaBatch(restaurantId: string, limit = 1) {
         })),
       ];
       await supabase.from("integration_product_maps").insert(rows);
-
-      // Corrige o preço de cada sabor por TAMANHO. O PUT aninha os sabores por
-      // tamanho mas usa o preço do 1º tamanho para todos; o preço por tamanho só
-      // entra via PATCH /options/price (parentCustomizationOptionId = id do tamanho).
-      const priceByProduct = new Map(flavorOpts.map((f) => ({ id: f.product.id as string, variants: f.variants, base: n(f.product.price) })).map((x) => [x.id, x]));
-      const created = await getItem(merchantId, token, res.itemId as string);
-      const sizeGroup = ((created?.optionGroups as Row[] | undefined) ?? []).find(
-        (g) => (g as Record<string, unknown>).optionGroupType === "SIZE" || (g as Row).name === "Tamanho",
-      ) as Record<string, unknown> | undefined;
-      const sizeOptions = (sizeGroup?.options as Record<string, unknown>[] | undefined) ?? [];
-      const fixes: { optionId: string; sizeId: string; value: number }[] = [];
-      for (const so of sizeOptions) {
-        const sizeName = so.name as string;
-        const sizeId = so.id as string;
-        const saboresGroup = ((so.optionGroups as Record<string, unknown>[] | undefined) ?? []).find((g) => (g as Row).name === "Sabores");
-        for (const fo of ((saboresGroup?.options as Record<string, unknown>[] | undefined) ?? [])) {
-          const ext = (fo.externalCode as string | undefined) ?? "";
-          const pid = ext.startsWith("pf-fl-") ? ext.slice(6) : "";
-          const lk = priceByProduct.get(pid);
-          if (!lk) continue;
-          const want = flavorPriceAt(lk.variants, sizeName, lk.base);
-          const current = n((fo.price as Row | undefined)?.value);
-          if (Math.abs(want - current) >= 0.01) fixes.push({ optionId: fo.id as string, sizeId, value: want });
-        }
-      }
-      const results = await mapPool(fixes, 5, (fx) => patchOptionPrice(merchantId, token, fx.optionId, fx.sizeId, fx.value));
-      const okFixes = results.filter((r) => r.ok).length;
-      prices.push(`${cat.name}: ${okFixes}/${fixes.length} preços/tamanho corrigidos`);
     } else {
       failed += 1;
       errors.push(`${cat.name}: ${(res.error ?? "").slice(0, 120)}`);
     }
   }
 
-  return { ok: true, pushed, remaining: pending.length - batch.length, done: pending.length <= batch.length, failed, errors: errors.slice(0, 5), images, prices };
+  return { ok: true, pushed, remaining: pending.length - batch.length, done: pending.length <= batch.length, failed, errors: errors.slice(0, 5), images };
 }
 
 // Reenvio: apaga no iFood todas as categorias de pizza (template PIZZA) que já
@@ -316,4 +287,66 @@ export async function resetPizzas(restaurantId: string) {
   }
 
   return { ok: true, deletedCategories: deletedCats, clearedMaps };
+}
+
+// Corrige o preço de cada SABOR por TAMANHO nas pizzas já enviadas. O PUT do
+// template aninha os sabores por tamanho mas aplica o preço do 1º tamanho a
+// todos; o preço por tamanho só entra via PATCH /options/price
+// (parentCustomizationOptionId = id da opção de tamanho). Idempotente: só dá
+// PATCH onde o preço difere do nosso. Rode DEPOIS do push (estrutura assentada).
+export async function fixPizzaPrices(restaurantId: string) {
+  const supabase = createServiceClient();
+  const ctx = await ifoodContext(supabase, restaurantId);
+  if ("error" in ctx) return { ok: false, error: ctx.error };
+  const { integration, merchantId, token } = ctx;
+
+  const { data: sentinels } = await supabase
+    .from("integration_product_maps")
+    .select("external_product_id, external_product_name")
+    .eq("restaurant_id", restaurantId)
+    .eq("integration_id", integration.id)
+    .like("external_variant_id", "pzcat:%");
+  const items = (sentinels ?? []).map((s) => s as Row).filter((s) => s.external_product_id);
+  if (!items.length) return { ok: true, prices: [] as string[] };
+
+  // Preços dos nossos sabores por produto (variantes + preço base).
+  const [{ data: products }, { data: variants }] = await Promise.all([
+    supabase.from("products").select("id, price").eq("restaurant_id", restaurantId).eq("active", true),
+    supabase.from("product_variants").select("product_id, name, price, active").eq("active", true),
+  ]);
+  const variantsByProduct = new Map<string, Row[]>();
+  for (const v of (variants ?? []) as Row[]) {
+    const arr = variantsByProduct.get(v.product_id as string) ?? [];
+    arr.push(v);
+    variantsByProduct.set(v.product_id as string, arr);
+  }
+  const baseById = new Map(((products ?? []) as Row[]).map((p) => [p.id as string, n(p.price)]));
+
+  const prices: string[] = [];
+  for (const item of items) {
+    const created = await getItem(merchantId, token, item.external_product_id as string);
+    const sizeGroup = ((created?.optionGroups as Row[] | undefined) ?? []).find(
+      (g) => (g as Record<string, unknown>).optionGroupType === "SIZE" || (g as Row).name === "Tamanho",
+    ) as Record<string, unknown> | undefined;
+    const sizeOptions = (sizeGroup?.options as Record<string, unknown>[] | undefined) ?? [];
+    const fixes: { optionId: string; sizeId: string; value: number }[] = [];
+    for (const so of sizeOptions) {
+      const sizeName = so.name as string;
+      const sizeId = so.id as string;
+      const saboresGroup = ((so.optionGroups as Record<string, unknown>[] | undefined) ?? []).find((g) => (g as Row).name === "Sabores");
+      for (const fo of (saboresGroup?.options as Record<string, unknown>[] | undefined) ?? []) {
+        const ext = (fo.externalCode as string | undefined) ?? "";
+        const pid = ext.startsWith("pf-fl-") ? ext.slice(6) : "";
+        if (!baseById.has(pid)) continue;
+        const want = flavorPriceAt(variantsByProduct.get(pid) ?? [], sizeName, baseById.get(pid) as number);
+        const current = n((fo.price as Row | undefined)?.value);
+        if (Math.abs(want - current) >= 0.01) fixes.push({ optionId: fo.id as string, sizeId, value: want });
+      }
+    }
+    const results = await mapPool(fixes, 5, (fx) => patchOptionPrice(merchantId, token, fx.optionId, fx.sizeId, fx.value));
+    const okFixes = results.filter((r) => r.ok).length;
+    prices.push(`${item.external_product_name ?? "pizza"}: ${okFixes}/${fixes.length} preços corrigidos`);
+  }
+
+  return { ok: true, prices };
 }

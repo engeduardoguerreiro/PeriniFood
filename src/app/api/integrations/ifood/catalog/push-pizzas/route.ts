@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { pushPizzaBatch, resetPizzas } from "@/lib/integrations/ifood/catalog-pizza";
+import { pushPizzaBatch, resetPizzas, fixPizzaPrices } from "@/lib/integrations/ifood/catalog-pizza";
 
 export const maxDuration = 60;
 
@@ -28,6 +28,10 @@ export async function GET(request: Request) {
     if (url.searchParams.get("reset") === "1") {
       const reset = await resetPizzas(integration.restaurant_id);
       return NextResponse.json(reset);
+    }
+    if (url.searchParams.get("fixprices") === "1") {
+      const fixed = await fixPizzaPrices(integration.restaurant_id);
+      return NextResponse.json(fixed);
     }
     const result = await pushPizzaBatch(integration.restaurant_id);
     return NextResponse.json(result);
