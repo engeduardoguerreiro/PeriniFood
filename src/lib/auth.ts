@@ -29,6 +29,11 @@ export const getSessionContext = cache(async () => {
 export async function requireRestaurant() {
   const context = await getSessionContext();
   if (!context.user) redirect("/login");
-  if (!context.restaurant) redirect("/register");
+  if (!context.restaurant) {
+    // Admins da plataforma não têm restaurante — vão para o painel /admin.
+    const { isPlatformAdminEmail } = await import("./platform-admin");
+    if (isPlatformAdminEmail(context.user.email)) redirect("/admin");
+    redirect("/register");
+  }
   return context as Awaited<ReturnType<typeof getSessionContext>> & { restaurant: Restaurant };
 }
