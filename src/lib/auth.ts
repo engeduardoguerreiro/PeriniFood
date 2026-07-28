@@ -35,5 +35,11 @@ export async function requireRestaurant() {
     if (isPlatformAdminEmail(context.user.email)) redirect("/admin");
     redirect("/register");
   }
+  // Assinatura suspensa/cancelada pela equipe PeriniFood corta o acesso ao
+  // sistema (os dados do cliente ficam intactos até a reativação).
+  const { getAccessState } = await import("./platform-billing");
+  const access = await getAccessState(context.restaurant.id);
+  if (access.blocked) redirect("/assinatura-suspensa");
+
   return context as Awaited<ReturnType<typeof getSessionContext>> & { restaurant: Restaurant };
 }

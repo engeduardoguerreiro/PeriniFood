@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
+import { AdminNav } from "@/components/admin-nav";
 import { signOut } from "@/app/actions";
 
 export const metadata = { title: "PeriniFood · Admin" };
@@ -19,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </span>
           </Link>
           <div className="flex items-center gap-4">
+            <AdminNav />
             <span className="hidden text-xs text-[#9c988f] sm:block">{email}</span>
             <form action={signOut}>
               <button className="rounded-lg border border-[#e7e4dd] px-3 py-1.5 text-xs font-medium text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]">

@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Cable, ChefHat, Receipt, TrendingUp, Users } from "lucide-react";
+import { ArrowLeft, Blocks, CreditCard, KeyRound, ReceiptText, Store, Trash2 } from "lucide-react";
 import { listUserEmails, requirePlatformAdmin } from "@/lib/platform-admin";
-import { isRestaurantOpen } from "@/lib/opening-hours";
-import { money, statusLabel } from "@/lib/utils";
-import type { Order, Restaurant } from "@/lib/types";
-
-const providerLabel: Record<string, string> = {
-  ifood: "iFood",
-  "99food": "99Food",
-  keeta: "Keeta",
-  whatsapp: "WhatsApp",
-  own_menu: "Cardápio próprio",
-  webhook: "Webhook / API",
-  rappi: "Rappi",
-};
+import {
+  getSubscription,
+  methodLabel,
+  monthLabel,
+  planLabel,
+  PLANS,
+  statusLabelSub,
+  statusToneSub,
+  type Payment,
+} from "@/lib/platform-billing";
+import { MODULE_GROUPS, PLATFORM_MODULES, stageLabel, stageTone } from "@/lib/platform-modules";
+import { money } from "@/lib/utils";
+import type { Restaurant } from "@/lib/types";
+import { deletePayment, registerPayment, saveClient, saveModules, saveSubscription, setSubscriptionStatus } from "@/app/admin/actions";
 
 const roleLabel: Record<string, string> = {
   owner: "Dono",
@@ -24,28 +25,19 @@ const roleLabel: Record<string, string> = {
   kitchen: "Cozinha",
 };
 
-const integrationTone: Record<string, string> = {
-  connected: "bg-emerald-50 text-emerald-700",
-  active: "bg-emerald-50 text-emerald-700",
-  pending: "bg-amber-50 text-amber-700",
-  error: "bg-rose-50 text-rose-700",
-};
+const field = "mt-1 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-sm text-[#2b2925] outline-none transition focus:border-[#c5362e]";
+const labelCls = "text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]";
+const primaryBtn = "rounded-xl bg-[#211d19] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#37312a]";
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]">{label}</p>
-      <p className="mt-0.5 text-sm text-[#2b2925]">{value || "—"}</p>
-    </div>
-  );
-}
-
-function Card({ title, icon: Icon, children }: { title: string; icon: typeof Users; children: React.ReactNode }) {
+function Card({ title, icon: Icon, children, aside }: { title: string; icon: typeof Store; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-[#c5362e]"><Icon size={13} /></span>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{title}</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-[#c5362e]"><Icon size={13} /></span>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{title}</h2>
+        </div>
+        {aside}
       </div>
       {children}
     </section>
@@ -60,127 +52,223 @@ export default async function AdminClientPage({ params }: { params: Promise<{ id
   if (!restaurant) notFound();
   const r = restaurant as Restaurant;
 
-  const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const [{ data: members }, { count: productCount }, { count: categoryCount }, { count: orderCountTotal }, { data: orders30 }, { data: lastOrders }, { data: integrations }, emailById] =
-    await Promise.all([
-      service.from("restaurant_users").select("user_id, role, created_at").eq("restaurant_id", id).order("created_at", { ascending: true }),
-      service.from("products").select("id", { count: "exact", head: true }).eq("restaurant_id", id).eq("active", true),
-      service.from("categories").select("id", { count: "exact", head: true }).eq("restaurant_id", id),
-      service.from("orders").select("id", { count: "exact", head: true }).eq("restaurant_id", id),
-      service.from("orders").select("total, status").eq("restaurant_id", id).gte("created_at", since30),
-      service.from("orders").select("*").eq("restaurant_id", id).order("created_at", { ascending: false }).limit(10),
-      service.from("integrations").select("provider, status, external_store_name, last_sync_at, receive_orders, send_order_status, sync_menu").eq("restaurant_id", id),
-      listUserEmails(service),
-    ]);
-  const revenue30 = (orders30 ?? []).filter((o) => o.status !== "canceled").reduce((s, o) => s + Number(o.total), 0);
-  const open = isRestaurantOpen(r);
+  const [{ sub, ready }, { data: paymentRows }, { data: members }, emailById] = await Promise.all([
+    getSubscription(id),
+    service.from("platform_payments").select("*").eq("restaurant_id", id).order("paid_on", { ascending: false }).limit(24).then((x) => (x.error ? { data: [] } : x)),
+    service.from("restaurant_users").select("user_id, role").eq("restaurant_id", id),
+    listUserEmails(service),
+  ]);
+
+  const payments = (paymentRows ?? []) as unknown as Payment[];
+  const status = sub?.status ?? "trial";
+  const enabled = new Set(sub?.modules ?? []);
+  const suspended = status === "suspended" || status === "canceled";
+  const paidTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#c5362e]">
-            <ArrowLeft size={13} /> Todos os clientes
+            <ArrowLeft size={13} /> Todos os assinantes
           </Link>
-          <div className="mt-1.5 flex items-center gap-3">
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{r.name}</h1>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${open ? "bg-emerald-50 text-emerald-700" : "bg-[#f1efea] text-[#6d6a63]"}`}>
-              {open ? "Aberta" : "Fechada"}
-            </span>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusToneSub[status]}`}>{statusLabelSub[status]}</span>
+            {sub?.suspension_reason && <span className="text-xs text-[#9c988f]">{sub.suspension_reason}</span>}
           </div>
-          <p className="text-sm text-[#9c988f]">
-            Cliente desde {new Date(r.created_at).toLocaleDateString("pt-BR")} · /{r.slug}
-          </p>
+          <p className="text-sm text-[#9c988f]">Cliente desde {new Date(r.created_at).toLocaleDateString("pt-BR")} · /{r.slug}</p>
         </div>
-        <a
-          href={`/cardapio/${r.slug}`}
-          target="_blank"
-          className="rounded-xl border border-[#e7e4dd] bg-white px-4 py-2 text-sm font-medium text-[#2b2925] transition hover:border-[#c5362e] hover:text-[#c5362e]"
-        >
-          Ver cardápio público
-        </a>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {suspended ? (
+            <form action={setSubscriptionStatus}>
+              <input type="hidden" name="restaurant_id" value={id} />
+              <input type="hidden" name="status" value="active" />
+              <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">Reativar acesso</button>
+            </form>
+          ) : (
+            <>
+              <form action={setSubscriptionStatus}>
+                <input type="hidden" name="restaurant_id" value={id} />
+                <input type="hidden" name="status" value="past_due" />
+                <button className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100">
+                  Marcar em atraso
+                </button>
+              </form>
+              <form action={setSubscriptionStatus} className="flex items-center gap-2">
+                <input type="hidden" name="restaurant_id" value={id} />
+                <input type="hidden" name="status" value="suspended" />
+                <input name="suspension_reason" placeholder="Motivo (opcional)" className="w-44 rounded-lg border border-[#e7e4dd] px-3 py-2 text-sm outline-none focus:border-[#c5362e]" />
+                <button className="rounded-xl bg-[#c5362e] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#a92c25]">Suspender sistema</button>
+              </form>
+            </>
+          )}
+        </div>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Produtos ativos</p><p className="mt-1 text-2xl font-semibold [font-variant-numeric:tabular-nums]">{productCount ?? 0}</p><p className="text-xs text-[#9c988f]">{categoryCount ?? 0} categorias</p></div>
-        <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Pedidos (total)</p><p className="mt-1 text-2xl font-semibold [font-variant-numeric:tabular-nums]">{orderCountTotal ?? 0}</p></div>
-        <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Pedidos (30d)</p><p className="mt-1 text-2xl font-semibold [font-variant-numeric:tabular-nums]">{(orders30 ?? []).length}</p></div>
-        <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Receita (30d)</p><p className="mt-1 text-2xl font-semibold [font-variant-numeric:tabular-nums]">{money(revenue30)}</p></div>
-      </section>
+      {suspended && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+          O acesso deste cliente ao sistema está <strong>bloqueado</strong>. Ele vê um aviso de assinatura suspensa ao entrar. Ao receber o pagamento
+          (inclusive em dinheiro), registre abaixo com &quot;reativar&quot; marcado — ou use o botão Reativar acesso.
+        </div>
+      )}
+
+      {!ready && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Aplique a migration <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">20260728000100_platform_billing.sql</code> para salvar plano, módulos e pagamentos.
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Dados do cliente" icon={ChefHat}>
-          <div className="grid grid-cols-2 gap-4">
-            <Info label="Telefone" value={r.phone ?? ""} />
-            <Info label="WhatsApp" value={r.whatsapp ?? ""} />
-            <Info label="E-mail" value={r.email ?? ""} />
-            <Info label="Cidade" value={[r.city, r.state].filter(Boolean).join(" / ")} />
-            <Info label="Endereço" value={r.address ?? ""} />
-            <Info label="Taxa de entrega" value={money(Number(r.delivery_fee ?? 0))} />
-          </div>
-          <div className="mt-4 flex flex-wrap gap-1.5 border-t border-[#efece6] pt-4">
-            {r.delivery_enabled && <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">Entrega</span>}
-            {r.pickup_enabled && <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">Retirada</span>}
-            {r.table_service_enabled && <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">Mesa</span>}
-          </div>
+        <Card title="Dados do cliente" icon={Store}>
+          <form action={saveClient} className="space-y-3">
+            <input type="hidden" name="restaurant_id" value={id} />
+            <div>
+              <label className={labelCls}>Nome do restaurante</label>
+              <input name="name" defaultValue={r.name} className={field} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>Telefone</label><input name="phone" defaultValue={r.phone ?? ""} className={field} /></div>
+              <div><label className={labelCls}>WhatsApp</label><input name="whatsapp" defaultValue={r.whatsapp ?? ""} className={field} /></div>
+            </div>
+            <div><label className={labelCls}>E-mail</label><input name="email" type="email" defaultValue={r.email ?? ""} className={field} /></div>
+            <div className="grid grid-cols-[1fr_90px] gap-3">
+              <div><label className={labelCls}>Cidade</label><input name="city" defaultValue={r.city ?? ""} className={field} /></div>
+              <div><label className={labelCls}>UF</label><input name="state" defaultValue={r.state ?? ""} maxLength={2} className={field} /></div>
+            </div>
+            <button className={primaryBtn}>Salvar dados</button>
+          </form>
         </Card>
 
-        <Card title="Integrações" icon={Cable}>
-          {(integrations ?? []).length ? (
-            <ul className="space-y-2.5">
-              {(integrations ?? []).map((i) => (
-                <li key={i.provider} className="flex items-center justify-between gap-3">
+        <Card title="Assinatura" icon={CreditCard}>
+          <form action={saveSubscription} className="space-y-3">
+            <input type="hidden" name="restaurant_id" value={id} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Plano</label>
+                <select name="plan" defaultValue={sub?.plan ?? "basico"} className={field}>
+                  {PLANS.map((p) => <option key={p} value={p}>{planLabel[p]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Mensalidade (R$)</label>
+                <input name="monthly_amount" inputMode="decimal" defaultValue={String(sub?.monthly_amount ?? 0)} className={field} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>Dia de vencimento</label><input name="billing_day" type="number" min={1} max={28} defaultValue={sub?.billing_day ?? 5} className={field} /></div>
+              <div><label className={labelCls}>Responsável</label><input name="contact_name" defaultValue={sub?.contact_name ?? ""} className={field} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>E-mail de cobrança</label><input name="contact_email" type="email" defaultValue={sub?.contact_email ?? ""} className={field} /></div>
+              <div><label className={labelCls}>Telefone de cobrança</label><input name="contact_phone" defaultValue={sub?.contact_phone ?? ""} className={field} /></div>
+            </div>
+            <div><label className={labelCls}>Observações internas</label><textarea name="notes" rows={2} defaultValue={sub?.notes ?? ""} className={field} /></div>
+            <button className={primaryBtn}>Salvar assinatura</button>
+          </form>
+        </Card>
+      </div>
+
+      <Card
+        title="Módulos contratados"
+        icon={Blocks}
+        aside={<span className="text-xs text-[#9c988f]">{enabled.size} de {PLATFORM_MODULES.length} liberados</span>}
+      >
+        <form action={saveModules} className="space-y-5">
+          <input type="hidden" name="restaurant_id" value={id} />
+          {MODULE_GROUPS.map((group) => (
+            <div key={group}>
+              <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]">{group}</p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {PLATFORM_MODULES.filter((m) => m.group === group).map((m) => (
+                  <label key={m.key} className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#e7e4dd] p-3 transition hover:border-[#dcd8cf] has-[:checked]:border-[#c5362e] has-[:checked]:bg-[#fdf7f6]">
+                    <input type="checkbox" name="module" value={m.key} defaultChecked={enabled.has(m.key)} className="mt-0.5 h-4 w-4 accent-[#c5362e]" />
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-medium text-[#2b2925]">{m.name}</span>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${stageTone[m.stage]}`}>{stageLabel[m.stage]}</span>
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[#9c988f]">{m.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button className={primaryBtn}>Salvar módulos</button>
+        </form>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+        <Card title="Registrar pagamento" icon={ReceiptText}>
+          <form action={registerPayment} className="space-y-3">
+            <input type="hidden" name="restaurant_id" value={id} />
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>Valor (R$)</label><input name="amount" inputMode="decimal" defaultValue={String(sub?.monthly_amount ?? 0)} className={field} required /></div>
+              <div>
+                <label className={labelCls}>Forma</label>
+                <select name="method" className={field}>
+                  {Object.entries(methodLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>Data do pagamento</label><input name="paid_on" type="date" defaultValue={today} className={field} /></div>
+              <div><label className={labelCls}>Competência</label><input name="reference_month" type="month" defaultValue={today.slice(0, 7)} className={field} /></div>
+            </div>
+            <div><label className={labelCls}>Observação</label><input name="notes" placeholder="Ex.: pago em dinheiro na loja" className={field} /></div>
+            <label className="flex items-center gap-2 text-sm text-[#2b2925]">
+              <input type="checkbox" name="reactivate" defaultChecked className="h-4 w-4 accent-[#c5362e]" />
+              Reativar acesso do cliente ao registrar
+            </label>
+            <button className={primaryBtn}>Lançar pagamento</button>
+          </form>
+        </Card>
+
+        <Card title="Histórico de mensalidades" icon={ReceiptText} aside={<span className="text-xs font-medium text-[#6d6a63]">Total {money(paidTotal)}</span>}>
+          {payments.length ? (
+            <ul className="divide-y divide-[#efece6]">
+              {payments.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div>
-                    <p className="text-sm font-medium text-[#2b2925]">{providerLabel[i.provider] ?? i.provider}</p>
+                    <p className="text-sm font-medium text-[#2b2925]">{money(Number(p.amount))} <span className="text-xs font-normal text-[#9c988f]">· {methodLabel[p.method] ?? p.method}</span></p>
                     <p className="text-xs text-[#9c988f]">
-                      {[i.external_store_name, i.receive_orders ? "recebe pedidos" : null, i.send_order_status ? "envia status" : null, i.sync_menu ? "sincroniza cardápio" : null]
-                        .filter(Boolean)
-                        .join(" · ") || "Sem detalhes"}
+                      Pago em {new Date(`${p.paid_on}T12:00:00`).toLocaleDateString("pt-BR")} · ref. {monthLabel(String(p.reference_month).slice(0, 7))}
+                      {p.notes ? ` · ${p.notes}` : ""}
                     </p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${integrationTone[i.status] ?? "bg-[#f1efea] text-[#6d6a63]"}`}>{i.status}</span>
+                  <form action={deletePayment}>
+                    <input type="hidden" name="restaurant_id" value={id} />
+                    <input type="hidden" name="payment_id" value={p.id} />
+                    <button aria-label="Excluir lançamento" className="grid h-8 w-8 place-items-center rounded-lg border border-[#e7e4dd] text-[#9c988f] transition hover:border-[#c5362e] hover:text-[#c5362e]">
+                      <Trash2 size={13} />
+                    </button>
+                  </form>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-[#9c988f]">Nenhuma integração configurada.</p>
-          )}
-        </Card>
-
-        <Card title="Usuários" icon={Users}>
-          {(members ?? []).length ? (
-            <ul className="space-y-2.5">
-              {(members ?? []).map((m) => (
-                <li key={m.user_id} className="flex items-center justify-between gap-3">
-                  <p className="truncate text-sm text-[#2b2925]">{emailById.get(m.user_id) || m.user_id}</p>
-                  <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">{roleLabel[m.role] ?? m.role}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-[#9c988f]">Nenhum usuário vinculado.</p>
-          )}
-        </Card>
-
-        <Card title="Últimos pedidos" icon={Receipt}>
-          {(lastOrders ?? []).length ? (
-            <ul className="space-y-2.5">
-              {((lastOrders ?? []) as Order[]).map((o) => (
-                <li key={o.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-[#2b2925]">#{o.code ?? o.order_number} · {new Date(o.created_at).toLocaleDateString("pt-BR")}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-xs text-[#9c988f]">{statusLabel[o.status]}</span>
-                    <strong className="[font-variant-numeric:tabular-nums]">{money(o.total)}</strong>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-[#9c988f]">Nenhum pedido registrado.</p>
+            <p className="text-sm text-[#9c988f]">Nenhuma mensalidade registrada.</p>
           )}
         </Card>
       </div>
-      <p className="flex items-center gap-1.5 text-xs text-[#b0aaa0]"><TrendingUp size={12} /> Dados em tempo real, somente leitura.</p>
+
+      <Card title="Acessos do cliente" icon={KeyRound}>
+        {(members ?? []).length ? (
+          <ul className="grid gap-2 md:grid-cols-2">
+            {(members ?? []).map((m) => (
+              <li key={m.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-[#e7e4dd] px-3 py-2">
+                <span className="truncate text-sm text-[#2b2925]">{emailById.get(m.user_id) || m.user_id}</span>
+                <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">{roleLabel[m.role] ?? m.role}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[#9c988f]">Nenhum usuário vinculado.</p>
+        )}
+      </Card>
     </div>
   );
 }
