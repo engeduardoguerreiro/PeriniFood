@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { nextDueDate } from "@/lib/platform-billing";
 
@@ -14,10 +15,12 @@ function num(form: FormData, key: string, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function refresh(id: string) {
+// Revalida as telas e volta para o cliente com o aviso de confirmação.
+function done(id: string, feedback: string): never {
   revalidatePath("/admin");
   revalidatePath("/admin/relatorios");
   revalidatePath(`/admin/clientes/${id}`);
+  redirect(`/admin/clientes/${id}?ok=${feedback}`);
 }
 
 // Dados cadastrais do cliente (o que a PeriniFood precisa para atendimento).
@@ -38,7 +41,7 @@ export async function saveClient(formData: FormData) {
     })
     .eq("id", id);
 
-  refresh(id);
+  done(id, "cliente");
 }
 
 // Plano, valor, vencimento e contato de cobrança.
@@ -62,7 +65,7 @@ export async function saveSubscription(formData: FormData) {
   };
 
   await service.from("platform_subscriptions").upsert(payload, { onConflict: "restaurant_id" });
-  refresh(id);
+  done(id, "assinatura");
 }
 
 // Módulos contratados — inclui os que ainda estão em construção (piloto).
@@ -79,7 +82,7 @@ export async function saveModules(formData: FormData) {
     await service.from("platform_subscriptions").insert({ restaurant_id: id, modules, status: "active" });
   }
 
-  refresh(id);
+  done(id, "modulos");
 }
 
 // Corta o acesso do cliente ao sistema (inadimplência) ou reativa — inclusive
@@ -104,7 +107,7 @@ export async function setSubscriptionStatus(formData: FormData) {
       { onConflict: "restaurant_id" },
     );
 
-  refresh(id);
+  done(id, "status");
 }
 
 // Lança um recebimento da NOSSA mensalidade. Ao registrar, reativa o cliente
@@ -137,7 +140,7 @@ export async function registerPayment(formData: FormData) {
       );
   }
 
-  refresh(id);
+  done(id, "pagamento");
 }
 
 export async function deletePayment(formData: FormData) {
@@ -146,5 +149,5 @@ export async function deletePayment(formData: FormData) {
   const paymentId = text(formData, "payment_id");
   if (!paymentId) return;
   await service.from("platform_payments").delete().eq("id", paymentId);
-  refresh(id);
+  done(id, "pagamento-removido");
 }

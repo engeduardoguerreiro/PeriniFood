@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Blocks, CreditCard, KeyRound, ReceiptText, Store, Trash2 } from "lucide-react";
+import { ArrowLeft, Blocks, CheckCircle2, CreditCard, KeyRound, ReceiptText, Store, Trash2 } from "lucide-react";
+import { SubmitButton } from "@/components/submit-button";
 import { listUserEmails, requirePlatformAdmin } from "@/lib/platform-admin";
 import {
   getSubscription,
@@ -27,7 +28,15 @@ const roleLabel: Record<string, string> = {
 
 const field = "mt-1 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-sm text-[#2b2925] outline-none transition focus:border-[#c5362e]";
 const labelCls = "text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]";
-const primaryBtn = "rounded-xl bg-[#211d19] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#37312a]";
+
+const feedbackText: Record<string, string> = {
+  cliente: "Dados do cliente salvos.",
+  assinatura: "Assinatura atualizada.",
+  modulos: "Módulos salvos.",
+  status: "Situação da assinatura atualizada.",
+  pagamento: "Pagamento registrado.",
+  "pagamento-removido": "Lançamento removido.",
+};
 
 function Card({ title, icon: Icon, children, aside }: { title: string; icon: typeof Store; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -44,9 +53,17 @@ function Card({ title, icon: Icon, children, aside }: { title: string; icon: typ
   );
 }
 
-export default async function AdminClientPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminClientPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ok?: string }>;
+}) {
   const { service } = await requirePlatformAdmin();
   const { id } = await params;
+  const { ok } = await searchParams;
+  const feedback = ok ? feedbackText[ok] : null;
 
   const { data: restaurant } = await service.from("restaurants").select("*").eq("id", id).maybeSingle();
   if (!restaurant) notFound();
@@ -108,6 +125,13 @@ export default async function AdminClientPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
+      {feedback && (
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+          <CheckCircle2 size={16} className="shrink-0" />
+          {feedback}
+        </div>
+      )}
+
       {suspended && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
           O acesso deste cliente ao sistema está <strong>bloqueado</strong>. Ele vê um aviso de assinatura suspensa ao entrar. Ao receber o pagamento
@@ -138,7 +162,7 @@ export default async function AdminClientPage({ params }: { params: Promise<{ id
               <div><label className={labelCls}>Cidade</label><input name="city" defaultValue={r.city ?? ""} className={field} /></div>
               <div><label className={labelCls}>UF</label><input name="state" defaultValue={r.state ?? ""} maxLength={2} className={field} /></div>
             </div>
-            <button className={primaryBtn}>Salvar dados</button>
+            <SubmitButton>Salvar dados</SubmitButton>
           </form>
         </Card>
 
@@ -166,7 +190,7 @@ export default async function AdminClientPage({ params }: { params: Promise<{ id
               <div><label className={labelCls}>Telefone de cobrança</label><input name="contact_phone" defaultValue={sub?.contact_phone ?? ""} className={field} /></div>
             </div>
             <div><label className={labelCls}>Observações internas</label><textarea name="notes" rows={2} defaultValue={sub?.notes ?? ""} className={field} /></div>
-            <button className={primaryBtn}>Salvar assinatura</button>
+            <SubmitButton>Salvar assinatura</SubmitButton>
           </form>
         </Card>
       </div>
@@ -197,7 +221,7 @@ export default async function AdminClientPage({ params }: { params: Promise<{ id
               </div>
             </div>
           ))}
-          <button className={primaryBtn}>Salvar módulos</button>
+          <SubmitButton>Salvar módulos</SubmitButton>
         </form>
       </Card>
 
@@ -223,7 +247,7 @@ export default async function AdminClientPage({ params }: { params: Promise<{ id
               <input type="checkbox" name="reactivate" defaultChecked className="h-4 w-4 accent-[#c5362e]" />
               Reativar acesso do cliente ao registrar
             </label>
-            <button className={primaryBtn}>Lançar pagamento</button>
+            <SubmitButton pendingLabel="Lançando…">Lançar pagamento</SubmitButton>
           </form>
         </Card>
 
