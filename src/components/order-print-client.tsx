@@ -154,20 +154,50 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
     }
   }
 
+  // Fallback universal: manda a comanda para a janela de impressão do navegador.
+  // Funciona em qualquer navegador e qualquer máquina, sem instalar nada — é o
+  // sistema operacional que lista as impressoras instaladas.
+  function printViaBrowser() {
+    setStatus("Abrindo a impressão do navegador…");
+    const finish = () => { window.location.href = "/pedidos?status=printed"; };
+    window.addEventListener("afterprint", finish, { once: true });
+    window.setTimeout(() => {
+      try {
+        window.print();
+      } catch {
+        finish();
+      }
+    }, 300);
+    window.setTimeout(finish, 20000);
+  }
+
   useEffect(() => {
     if (printedRef.current) return;
     printedRef.current = true;
     if (auto) {
       let done = false;
-      const finish = (ok: boolean) => {
+      window.setTimeout(() => {
+        void printDirect()
+          .then((ok) => {
+            if (done) return;
+            done = true;
+            // Agente imprimiu: volta. Agente falhou/ausente: imprime pelo
+            // navegador em vez de desistir — a comanda nunca fica sem sair.
+            if (ok) window.location.href = "/pedidos?status=printed";
+            else printViaBrowser();
+          })
+          .catch(() => {
+            if (done) return;
+            done = true;
+            printViaBrowser();
+          });
+      }, 0);
+      // Se o agente travar, não deixa o usuário esperando: cai pro navegador.
+      window.setTimeout(() => {
         if (done) return;
         done = true;
-        window.location.href = `/pedidos?status=${ok ? "printed" : "print_offline"}`;
-      };
-      window.setTimeout(() => {
-        void printDirect().then(finish).catch(() => finish(false));
-      }, 0);
-      window.setTimeout(() => finish(false), 9000);
+        printViaBrowser();
+      }, 6000);
       return;
     }
     void checkAgent()
@@ -200,20 +230,25 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#211d19] px-3 py-2 text-xs font-black text-white"
+        >
+          <Printer className="h-4 w-4" />
+          Imprimir comanda
+        </button>
+        <button
+          type="button"
           onClick={printDirect}
           disabled={printing}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#211d19] px-3 py-2 text-xs font-black text-white disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-xs font-black text-[#2b2925] disabled:opacity-60"
         >
           {printing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-          Enviar para impressora
+          Enviar pelo agente local
         </button>
-        <button type="button" onClick={() => window.print()} className="rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-xs font-black text-[#2b2925]">
-          Imprimir pelo navegador
-        </button>
-        <a href="/docs/PRINT_AGENT.md" target="_blank" className="rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-xs font-black text-[#2b2925]">
-          Instalar agente
-        </a>
       </div>
+      <p className="mt-2 text-[11px] text-[#6d6a63]">
+        &quot;Imprimir comanda&quot; abre a janela de impressão do computador, onde aparecem as impressoras instaladas. Funciona em qualquer navegador.
+      </p>
     </div>
   );
 }

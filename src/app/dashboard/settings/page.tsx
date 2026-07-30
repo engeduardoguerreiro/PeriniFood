@@ -274,7 +274,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
           <TabPanel id="impressao">
             <section id="impressao">
-          <ConfigSection title="Impressão de pedidos" description="O sistema verifica automaticamente o agente local antes de enviar qualquer pedido para a impressora.">
+          <ConfigSection title="Impressão de pedidos" description="Clique em Imprimir teste: abre a janela de impressão do computador, já com as impressoras instaladas na lista. Escolha a sua e confirme — o navegador lembra a escolha.">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <Field label="Status da impressão">
                 <label className="flex h-9 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#403d38]">
@@ -282,15 +282,21 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   Impressão ativa
                 </label>
               </Field>
-              <Field label="Método de impressão">
-                <select className={inputClass} name="printer_method" defaultValue={printerSettings.method ?? "browser"}>
-                  <option value="browser">Navegador / window.print</option>
-                  <option value="thermal">Impressora térmica local</option>
-                  <option value="network">Impressora de rede / IP</option>
-                  <option value="fiscal">Impressora fiscal (preparado)</option>
+              <Field label="Como imprimir">
+                <select className={inputClass} name="printer_method" defaultValue={printerSettings.method === "thermal" ? "thermal" : "browser"}>
+                  <option value="browser">Pelo navegador — funciona em qualquer computador (recomendado)</option>
+                  <option value="thermal">Pelo agente local — impressão silenciosa (precisa instalar)</option>
                 </select>
               </Field>
-              <Field label="Nome da impressora">
+              <Field label="Testar e instalar">
+                <a
+                  href="/impressao"
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-[#211d19] px-4 text-sm font-medium text-white transition hover:bg-[#37312a]"
+                >
+                  Configurar impressora
+                </a>
+              </Field>
+              <Field label="Impressora do agente local (opcional)">
                 <PrinterDiscovery initialName={printerSettings.printer_name} />
               </Field>
               <Field label="Largura do papel">
@@ -326,10 +332,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               </Field>
             </div>
             <p className={`mt-3 ${noteClass}`}>
-              <strong className="font-semibold text-[#403d38]">Recomendado no balcão:</strong> escolha o método <strong className="font-semibold text-[#403d38]">Navegador</strong> e abra o sistema pelo atalho de impressão silenciosa do Chrome — imprime direto, sem instalar nada.{" "}
+              <strong className="font-semibold text-[#403d38]">Não precisa instalar nada.</strong> A impressão pelo navegador funciona em qualquer
+              computador e em qualquer navegador — quem lista as impressoras é a própria janela de impressão do Windows.{" "}
+              <strong className="font-semibold text-[#403d38]">Quer que imprima sozinho, sem aparecer a janela?</strong>{" "}
+              <a href="/downloads/PeriniFood-Balcao-Impressao.cmd" className="font-semibold text-[#c5362e] underline">Baixe este atalho</a> e use o
+              sistema por ele (Chrome em modo impressão direta).{" "}
               <a href="/docs/IMPRESSAO_NAVEGADOR.md" target="_blank" className="font-semibold text-[#c5362e] underline">Ver guia</a>
-              {" · "}
-              <a href="/downloads/PeriniFood-Balcao-Impressao.cmd" className="font-semibold text-[#c5362e] underline">baixar atalho</a>. O agente local (.exe) segue disponível como alternativa.
             </p>
             <SaveBar label="Salvar impressão" />
           </ConfigSection>

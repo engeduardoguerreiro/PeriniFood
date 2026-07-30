@@ -10,17 +10,28 @@ import { ClipboardList, Pizza } from "lucide-react";
 import { readFile } from "fs/promises";
 import path from "path";
 
+// Reduz o logo para a largura útil da bobina (80mm ≈ 576px). Sem isso, um logo
+// de 3 MB vira ~4 MB de base64 embutido na comanda: a página fica pesada, demora
+// a pintar e a impressão dispara antes de tudo renderizar (sai em branco/cortada).
+async function shrinkForReceipt(buffer: Buffer): Promise<string> {
+  try {
+    const { default: sharp } = await import("sharp");
+    const png = await sharp(buffer).resize({ width: 576, withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer();
+    return `data:image/png;base64,${png.toString("base64")}`;
+  } catch {
+    return `data:image/png;base64,${buffer.toString("base64")}`;
+  }
+}
+
 async function toDataUri(url: string): Promise<string> {
   try {
     if (/^https?:\/\//.test(url)) {
       const res = await fetch(url, { cache: "force-cache" });
       if (!res.ok) return "";
-      const buffer = Buffer.from(await res.arrayBuffer());
-      const type = res.headers.get("content-type") || "image/png";
-      return `data:${type};base64,${buffer.toString("base64")}`;
+      return await shrinkForReceipt(Buffer.from(await res.arrayBuffer()));
     }
     const buffer = await readFile(path.join(process.cwd(), "public", url.replace(/^\//, "")));
-    return `data:image/png;base64,${buffer.toString("base64")}`;
+    return await shrinkForReceipt(buffer);
   } catch {
     return "";
   }
@@ -284,13 +295,17 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
     );
   }
 
+  // Fluxo automático com agente local. A comanda fica renderizada de verdade
+  // (não fora da tela) porque, se o agente não responder, o componente cai para
+  // a impressão do navegador — que só imprime o que está no documento visível.
   if (auto) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#f7f6f3] p-6">
-        <div className="w-full max-w-sm rounded-2xl border border-[#e7e4dd] bg-white p-6 shadow-sm">
+      <main className="min-h-screen bg-white py-4 print:py-0">
+        <style>{printStyles}</style>
+        <div className="print-hide mx-auto mb-4 w-[80mm] max-w-full">
           <OrderPrintClient content={receiptText} settings={printerSettings} auto />
         </div>
-        <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden="true">{comanda}</div>
+        <div className="mx-auto w-[80mm] max-w-full">{comanda}</div>
       </main>
     );
   }

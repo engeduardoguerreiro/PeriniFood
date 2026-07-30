@@ -8,3 +8,6 @@ supabase/.temp
 *.log
 *.zip
 *.exe
+# O instalador do agente de impressão precisa ir para o deploy: é o download
+# oferecido ao cliente em /impressao. Sem esta exceção o link dá 404.
+!public/downloads/*.exe
