@@ -72,9 +72,20 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
         <div className="absolute inset-0 bg-black/55" />
         {/* Vitrine da loja: logo grande em destaque e informações centralizadas. */}
         <div className="relative mx-auto flex max-w-[1320px] flex-col items-center px-4 pb-8 pt-10 text-center">
-          <div className="grid h-32 w-32 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white p-2 text-3xl font-black text-red-600 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ring-4 ring-white/20 md:h-40 md:w-40">
-            {current.logo_url ? <img src={current.logo_url} alt="" className="h-full w-full object-contain" /> : current.name.slice(0, 2)}
-          </div>
+          {/* Logo solto sobre a capa: sem moldura, para logotipo com fundo
+              transparente aparecer transparente mesmo. A sombra segue o
+              contorno da arte (drop-shadow, não box-shadow). */}
+          {current.logo_url ? (
+            <img
+              src={current.logo_url}
+              alt={current.name}
+              className="h-44 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)] md:h-60"
+            />
+          ) : (
+            <div className="grid h-44 w-44 place-items-center rounded-2xl bg-white/10 text-4xl font-black text-white ring-1 ring-white/25 md:h-60 md:w-60">
+              {current.name.slice(0, 2)}
+            </div>
+          )}
 
           <h1 className="mt-5 text-3xl font-black drop-shadow-sm md:text-4xl">{current.name}</h1>
 
