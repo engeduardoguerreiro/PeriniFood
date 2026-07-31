@@ -24,6 +24,10 @@ const startedAt = new Date();
 const defaultAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  // Domínio de produção. Sem ele o navegador bloqueia a resposta do agente e o
+  // painel mostra "Agente offline" mesmo com o serviço rodando normalmente.
+  "https://perinifood.com.br",
+  "https://www.perinifood.com.br",
   "https://perinifood.vercel.app",
   "https://perinifood-seven.vercel.app",
 ];
@@ -97,6 +101,13 @@ function corsHeaders(req) {
   if (!origin || allowedOrigins.has(origin)) {
     headers["Access-Control-Allow-Origin"] = origin || "http://127.0.0.1";
     headers["Vary"] = "Origin";
+  }
+
+  // Private Network Access: o Chrome exige este cabeçalho para deixar uma
+  // página HTTPS conversar com 127.0.0.1. Sem ele o preflight é barrado e o
+  // agente aparece como offline, mesmo respondendo normalmente.
+  if (req.headers["access-control-request-private-network"]) {
+    headers["Access-Control-Allow-Private-Network"] = "true";
   }
 
   return headers;
