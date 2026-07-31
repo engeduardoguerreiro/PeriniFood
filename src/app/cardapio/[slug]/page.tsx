@@ -64,32 +64,33 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
 
   return (
     <main className="min-h-screen bg-[#f1f1f1] text-[#243640]">
-      <section className="relative min-h-[246px] overflow-hidden bg-[#3b1114] text-white">
+      <section className="relative overflow-hidden bg-[#3b1114] text-white">
         <div
           className="absolute inset-0 scale-105 bg-cover bg-center blur-[1px]"
           style={{ backgroundImage: cover ? `url(${cover})` : "linear-gradient(135deg,#6b1116,#1f2933)" }}
         />
         <div className="absolute inset-0 bg-black/55" />
-        <div className="relative mx-auto flex min-h-[246px] max-w-[1320px] items-end gap-6 px-4 pb-8">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-2xl font-black text-red-600 shadow-lg">
-              {current.logo_url ? <img src={current.logo_url} alt="" className="h-full w-full object-cover" /> : current.name.slice(0, 2)}
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-black md:text-3xl">{current.name}</h1>
-              <p className="mt-1 flex max-w-3xl items-center gap-2 text-sm text-white/90">
-                <MapPin className="h-4 w-4 shrink-0" />
-                <span className="truncate">{publicAddress || "Endereço não informado"}</span>
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-bold">
-                <span className="flex items-center gap-2">
-                  <span className={storeOpen ? "h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" : "h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"} />
-                  {storeOpen ? `Aberto - entrega em ${current.estimated_delivery_time ?? "50 min"}` : "Fechado"}
-                </span>
-                <span>Pedido mínimo {money(current.minimum_order ?? 0)}</span>
-                {openingLabel && <span>{openingLabel}</span>}
-              </div>
-            </div>
+        {/* Vitrine da loja: logo grande em destaque e informações centralizadas. */}
+        <div className="relative mx-auto flex max-w-[1320px] flex-col items-center px-4 pb-8 pt-10 text-center">
+          <div className="grid h-32 w-32 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white p-2 text-3xl font-black text-red-600 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ring-4 ring-white/20 md:h-40 md:w-40">
+            {current.logo_url ? <img src={current.logo_url} alt="" className="h-full w-full object-contain" /> : current.name.slice(0, 2)}
+          </div>
+
+          <h1 className="mt-5 text-3xl font-black drop-shadow-sm md:text-4xl">{current.name}</h1>
+
+          <p className="mt-2 flex max-w-3xl items-center justify-center gap-2 text-sm text-white/90">
+            <MapPin className="h-4 w-4 shrink-0" />
+            <span>{publicAddress || "Endereço não informado"}</span>
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-bold">
+            <span className="flex items-center gap-2">
+              <span className={storeOpen ? "h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" : "h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"} />
+              {storeOpen ? `Aberto - entrega em ${current.estimated_delivery_time ?? "50 min"}` : "Fechado"}
+            </span>
+            <span className="text-white/40">•</span>
+            <span>Pedido mínimo {money(current.minimum_order ?? 0)}</span>
+            {openingLabel && <><span className="text-white/40">•</span><span>{openingLabel}</span></>}
           </div>
         </div>
       </section>

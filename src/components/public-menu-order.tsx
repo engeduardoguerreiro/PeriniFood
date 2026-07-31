@@ -124,6 +124,9 @@ export function PublicMenuOrder({
   const [search, setSearch] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [couponsOpen, setCouponsOpen] = useState(false);
+  // Busca de sabor: mesma facilidade do PDV interno. Com dezenas de sabores,
+  // rolar a lista inteira no celular é o que mais trava o pedido.
+  const [flavorSearch, setFlavorSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
@@ -152,6 +155,7 @@ export function PublicMenuOrder({
 
   function openProduct(product: Product) {
     if (!restaurant.is_open) return;
+    setFlavorSearch("");
     const isPizza = isPizzaProduct(product);
     const productVariants = variants.filter((item) => item.product_id === product.id && item.active);
     const selectedVariant = productVariants[0];
@@ -403,61 +407,91 @@ export function PublicMenuOrder({
                   const flavors = isPizza ? flavorChoices(draftProduct, products) : [];
                   return (
                     <>
-                      {isPizza && maxFlavors > 1 && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Sabores</h3>
-                          <p className="text-sm text-slate-500">Escolha se esta pizza terá 1, 2, 3 ou {maxFlavors} sabores.</p>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {Array.from({ length: maxFlavors }, (_, index) => index + 1).map((count) => (
-                              <button
-                                key={count}
-                                type="button"
-                                onClick={() => {
-                                  const nextFlavors = [draftProduct.name];
-                                  setDraft({
-                                    ...draft,
-                                    flavorCount: count,
-                                    flavors: nextFlavors,
-                                    price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
-                                  });
-                                }}
-                                className={Number(draft.flavorCount ?? 1) === count ? "rounded-full bg-red-600 px-4 py-2 text-sm font-black text-white" : "rounded-full border border-slate-200 px-4 py-2 text-sm font-bold"}
-                              >
-                                {count} sabor{count > 1 ? "es" : ""}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {flavors.map((flavor) => {
-                              const selected = draft.flavors.includes(flavor.name) ?? false;
-                              const limit = Number(draft.flavorCount ?? 1);
-                              return (
-                                <label key={flavor.id} className="flex cursor-pointer items-center justify-between gap-4 py-3">
-                                  <span>{flavor.name}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selected}
-                                    onChange={(event) => {
-                                      const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
-                                      const next = event.target.checked ? [...current, flavor.name].slice(0, limit) : current;
-                                      const pricedFlavors = next.length ? next : [draftProduct.name];
-                                      setDraft({
-                                        ...draft,
-                                        flavors: pricedFlavors,
-                                        price: highestFlavorPrice(pricedFlavors, draft.variantName, products, variants, draft.price),
-                                      });
-                                    }}
-                                    disabled={!selected && (draft.flavors.length ?? 0) >= limit}
-                                  />
-                                </label>
-                              );
-                            })}
-                          </div>
-                          <p className="mt-3 rounded bg-slate-50 p-3 text-xs font-semibold text-slate-500">
-                            Selecionados: {(draft.flavors ?? []).join(" / ")}
-                          </p>
-                        </section>
-                      )}
+                      {isPizza && maxFlavors > 1 && (() => {
+                        const limit = Number(draft.flavorCount ?? 1);
+                        const term = flavorSearch.trim().toLowerCase();
+                        const filteredFlavors = term ? flavors.filter((flavor) => flavor.name.toLowerCase().includes(term)) : flavors;
+                        return (
+                          <section className="border-b border-slate-100 p-5">
+                            <div className="flex items-center justify-between gap-3">
+                              <h3 className="font-black">Sabores</h3>
+                              <span className="text-sm font-bold text-slate-500">
+                                {draft.flavors.length}/{limit} escolhido{limit > 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500">Escolha se esta pizza terá 1, 2, 3 ou {maxFlavors} sabores.</p>
+
+                            <div className="mt-4 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+                              {Array.from({ length: maxFlavors }, (_, index) => index + 1).map((count) => (
+                                <button
+                                  key={count}
+                                  type="button"
+                                  onClick={() => {
+                                    const nextFlavors = [draftProduct.name];
+                                    setDraft({
+                                      ...draft,
+                                      flavorCount: count,
+                                      flavors: nextFlavors,
+                                      price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
+                                    });
+                                  }}
+                                  className={Number(draft.flavorCount ?? 1) === count ? "rounded-full bg-red-600 px-4 py-2 text-sm font-black text-white" : "rounded-full px-4 py-2 text-sm font-bold text-slate-500 transition hover:text-slate-800"}
+                                >
+                                  {count} sabor{count > 1 ? "es" : ""}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="relative mt-4">
+                              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                              <input
+                                value={flavorSearch}
+                                onChange={(event) => setFlavorSearch(event.target.value)}
+                                placeholder="Buscar sabor…"
+                                className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-red-500"
+                              />
+                            </div>
+
+                            <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-slate-200">
+                              {filteredFlavors.map((flavor) => {
+                                const selected = draft.flavors.includes(flavor.name) ?? false;
+                                const atLimit = !selected && draft.flavors.length >= limit;
+                                return (
+                                  <label
+                                    key={flavor.id}
+                                    className={`flex cursor-pointer items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm transition last:border-0 hover:bg-slate-50 ${atLimit ? "opacity-40" : ""}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="h-5 w-5 shrink-0 accent-red-600"
+                                      checked={selected}
+                                      onChange={(event) => {
+                                        const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
+                                        const next = event.target.checked ? [...current, flavor.name].slice(0, limit) : current;
+                                        const pricedFlavors = next.length ? next : [draftProduct.name];
+                                        setDraft({
+                                          ...draft,
+                                          flavors: pricedFlavors,
+                                          price: highestFlavorPrice(pricedFlavors, draft.variantName, products, variants, draft.price),
+                                        });
+                                      }}
+                                      disabled={atLimit}
+                                    />
+                                    <span className="font-medium">{flavor.name}</span>
+                                  </label>
+                                );
+                              })}
+                              {!filteredFlavors.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Nenhum sabor encontrado.</p>}
+                            </div>
+
+                            {draft.flavors.length > 0 && (
+                              <p className="mt-3 text-sm text-slate-500">
+                                Selecionados: <span className="font-bold text-slate-700">{draft.flavors.join(" / ")}</span>
+                              </p>
+                            )}
+                          </section>
+                        );
+                      })()}
 
                       {!!productVariants.length && (
                         <section className="border-b border-slate-100 p-5">

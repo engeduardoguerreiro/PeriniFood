@@ -247,6 +247,75 @@ class PeriniFoodPrintAgentSetup
         }
     }
 
+    // Reinstalacao por cima da anterior: o Windows so libera o arquivo alguns
+    // instantes depois de o processo morrer. Tenta algumas vezes antes de
+    // desistir e, no ultimo caso, renomeia o arquivo travado (o Windows permite
+    // renomear um executavel em uso) para conseguir gravar a versao nova.
+    static void ExtractWithRetry(string resourceName, string destination)
+    {
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            try
+            {
+                Extract(resourceName, destination);
+                return;
+            }
+            catch (IOException)
+            {
+                System.Threading.Thread.Sleep(600);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                System.Threading.Thread.Sleep(600);
+            }
+        }
+
+        try
+        {
+            string stale = destination + ".old-" + DateTime.Now.ToString("yyyyMMddHHmmss");
+            File.Move(destination, stale);
+        }
+        catch { }
+
+        Extract(resourceName, destination);
+    }
+
+    // Encerra o agente que ficou rodando da instalacao anterior. Sem isso o
+    // node.exe segue com o arquivo aberto e a copia falha.
+    static void StopRunningAgent(string installDir)
+    {
+        string taskName = "PeriniFood Print Agent";
+        RunHidden("schtasks.exe", "/End /TN \"" + taskName + "\"");
+        RunHidden("schtasks.exe", "/Delete /TN \"" + taskName + "\" /F");
+        RunHidden("sc.exe", "stop PeriniFoodPrintAgent");
+        RunHidden("sc.exe", "delete PeriniFoodPrintAgent");
+
+        foreach (string name in new string[] { "node", "PeriniFoodPrintAgent.Service" })
+        {
+            Process[] running;
+            try { running = Process.GetProcessesByName(name); }
+            catch { continue; }
+
+            foreach (Process process in running)
+            {
+                try
+                {
+                    // So mata o que roda da nossa pasta, para nao derrubar outro
+                    // Node.js que o cliente use na maquina.
+                    string path = process.MainModule.FileName;
+                    if (path != null && path.StartsWith(installDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        process.Kill();
+                        process.WaitForExit(5000);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        System.Threading.Thread.Sleep(1200);
+    }
+
     static int RunHidden(string fileName, string arguments)
     {
         ProcessStartInfo psi = new ProcessStartInfo(fileName, arguments);
@@ -273,14 +342,15 @@ class PeriniFoodPrintAgentSetup
             string agentPath = Path.Combine(installDir, "perinifood-print-bridge.js");
             string servicePath = Path.Combine(installDir, "PeriniFoodPrintAgent.Service.exe");
 
-            Extract("node.exe", nodePath);
-            Extract("perinifood-print-bridge.js", agentPath);
-            Extract("PeriniFoodPrintAgent.Service.exe", servicePath);
+            // Para o agente ANTES de gravar os arquivos. Fazer o contrario quebra
+            // toda reinstalação com "the process cannot access the file node.exe
+            // because it is being used by another process".
+            StopRunningAgent(installDir);
 
-            string taskName = "PeriniFood Print Agent";
-            RunHidden("schtasks.exe", "/Delete /TN \"" + taskName + "\" /F");
-            RunHidden("sc.exe", "stop PeriniFoodPrintAgent");
-            RunHidden("sc.exe", "delete PeriniFoodPrintAgent");
+            ExtractWithRetry("node.exe", nodePath);
+            ExtractWithRetry("perinifood-print-bridge.js", agentPath);
+            ExtractWithRetry("PeriniFoodPrintAgent.Service.exe", servicePath);
+
             int createCode = RunHidden("sc.exe", "create PeriniFoodPrintAgent binPath= \"" + servicePath + "\" start= auto DisplayName= \"PeriniFood Print Agent\"");
             if (createCode != 0) throw new Exception("Nao foi possivel criar o servico. Execute o instalador como administrador.");
             RunHidden("sc.exe", "description PeriniFoodPrintAgent \"Agente local de impressao do PeriniFood.\"");
@@ -293,7 +363,15 @@ class PeriniFoodPrintAgentSetup
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Nao foi possivel instalar o PeriniFood Print Agent.\n\n" + ex.Message, "PeriniFood", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(
+                "Nao foi possivel instalar o PeriniFood Print Agent.\n\n" + ex.Message +
+                "\n\nO que fazer:\n" +
+                "1. Feche o PeriniFood e reinicie o computador.\n" +
+                "2. Clique com o botao direito no instalador e escolha\n" +
+                "   \"Executar como administrador\".\n\n" +
+                "Enquanto isso, a impressao pelo navegador continua funcionando\n" +
+                "normalmente (Configuracoes > Impressao > Configurar impressora).",
+                "PeriniFood", MessageBoxButtons.OK, MessageBoxIcon.Error);
             Environment.Exit(1);
         }
     }
