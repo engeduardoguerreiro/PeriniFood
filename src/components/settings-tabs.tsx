@@ -12,8 +12,12 @@ export function SettingsTabs({ tabs, children }: { tabs: { id: string; label: st
 
   useEffect(() => {
     const applyHash = () => {
+      // Depois de salvar, a action volta com ?tab=<aba> para o lojista continuar
+      // onde estava (e enxergar o aviso de confirmação no topo).
+      const fromQuery = new URLSearchParams(window.location.search).get("tab");
       const hash = window.location.hash.replace("#", "");
-      if (hash && tabs.some((tab) => tab.id === hash)) setActive(hash);
+      const target = hash || fromQuery || "";
+      if (target && tabs.some((tab) => tab.id === target)) setActive(target);
     };
     applyHash();
     window.addEventListener("hashchange", applyHash);
@@ -47,4 +51,11 @@ export function SettingsTabs({ tabs, children }: { tabs: { id: string; label: st
 export function TabPanel({ id, children }: { id: string; children: ReactNode }) {
   const active = useContext(TabContext);
   return <div hidden={active !== id}>{children}</div>;
+}
+
+// Faz a action voltar para a aba em que o lojista estava ao salvar.
+// Precisa ficar DENTRO do <form> para ser enviado.
+export function TabReturnTo({ base = "/configuracoes" }: { base?: string }) {
+  const active = useContext(TabContext);
+  return <input type="hidden" name="return_to" value={active ? `${base}?tab=${active}` : base} />;
 }

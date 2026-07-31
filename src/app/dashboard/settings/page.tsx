@@ -6,7 +6,7 @@ import { FileInput } from "@/components/file-input";
 import { OpeningHoursEditor } from "@/components/opening-hours-editor";
 import { PrinterDiscovery } from "@/components/printer-discovery";
 import { SettingsCepLookup } from "@/components/settings-cep-lookup";
-import { SettingsTabs, TabPanel } from "@/components/settings-tabs";
+import { SettingsTabs, TabPanel, TabReturnTo } from "@/components/settings-tabs";
 import { requireRestaurant } from "@/lib/auth";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
 import { isRestaurantOpen } from "@/lib/opening-hours";
@@ -346,7 +346,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
           <TabPanel id="entrega">
             <ConfigSection title="Taxas de entrega por raio">
-          <input type="hidden" name="return_to" value="/configuracoes" />
+          <TabReturnTo />
           <DeliveryFeeRulesEditor rules={rules} />
           <SaveBar label="Salvar taxas de entrega" formAction={saveDeliveryFeeRules} />
             </ConfigSection>

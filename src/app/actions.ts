@@ -200,13 +200,37 @@ async function replaceProductOptionGroup(
   if (itemsError) throw new Error(itemsError.message);
 }
 
+// Larguras máximas por tipo de imagem. Sem isso o lojista sobe a foto original
+// da câmera (2–3 MB) e ela vai inteira para o cardápio, o cabeçalho e a comanda,
+// deixando as páginas pesadas e a impressão lenta.
+const UPLOAD_MAX_WIDTH: Record<string, number> = {
+  logos: 512,
+  products: 900,
+  banners: 1600,
+  "site-covers": 1920,
+};
+
+async function shrinkUpload(bytes: Buffer, folder: string): Promise<Buffer> {
+  const width = UPLOAD_MAX_WIDTH[folder];
+  if (!width) return bytes;
+  try {
+    const { default: sharp } = await import("sharp");
+    const image = sharp(bytes).rotate().resize({ width, withoutEnlargement: true });
+    const meta = await sharp(bytes).metadata();
+    const output = meta.hasAlpha ? await image.png({ compressionLevel: 9 }).toBuffer() : await image.jpeg({ quality: 82 }).toBuffer();
+    return output.length < bytes.length ? output : bytes;
+  } catch {
+    return bytes;
+  }
+}
+
 async function saveUpload(file: FormDataEntryValue | null, folder: string) {
   if (!(file instanceof File) || !file.size) return null;
   const allowed = new Set(["image/png", "image/jpeg", "image/webp"]);
   if (!allowed.has(file.type)) throw new Error("Envie uma imagem PNG, JPG ou WEBP.");
   const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
+  const bytes = await shrinkUpload(Buffer.from(await file.arrayBuffer()), folder);
 
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const service = createServiceClient();
@@ -825,8 +849,10 @@ export async function updateRestaurant(formData: FormData) {
   const deliveryRules = deliveryFeeRulesPayload(formData, restaurant.id);
   await replaceDeliveryFeeRules(restaurant.id, deliveryRules);
 
-  revalidatePath("/dashboard/settings");
-  revalidatePath("/configuracoes");
+  // "layout": o cabeçalho do painel (nome/logo da loja) é renderizado no layout;
+  // revalidar só a página deixaria a logo antiga no topo.
+  revalidatePath("/dashboard/settings", "layout");
+  revalidatePath("/configuracoes", "layout");
   revalidatePath("/dashboard/pdv");
   revalidatePath("/pedidos/novo");
   revalidatePath(`/r/${restaurant.slug}`);
@@ -858,8 +884,10 @@ export async function saveDeliveryFeeRules(formData: FormData) {
   } catch (error) {
     redirectWithFeedback(formData, "/configuracoes", "saved", error instanceof Error ? error.message : "Erro desconhecido.");
   }
-  revalidatePath("/dashboard/settings");
-  revalidatePath("/configuracoes");
+  // "layout": o cabeçalho do painel (nome/logo da loja) é renderizado no layout;
+  // revalidar só a página deixaria a logo antiga no topo.
+  revalidatePath("/dashboard/settings", "layout");
+  revalidatePath("/configuracoes", "layout");
   revalidatePath("/dashboard/pdv");
   revalidatePath("/pedidos/novo");
   revalidatePath(`/r/${restaurant.slug}`);
