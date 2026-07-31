@@ -158,14 +158,16 @@ export function PublicMenuOrder({
     setFlavorSearch("");
     const isPizza = isPizzaProduct(product);
     const productVariants = variants.filter((item) => item.product_id === product.id && item.active);
+    // Produto sem tamanhos (bebida, por exemplo) não tem variante: sem o
+    // optional chaining aqui a função quebrava e o modal nunca abria.
     const selectedVariant = productVariants[0];
     const dough = isPizza ? groupOptions(options, product.id, "Tipos de Massas", pizzaOptions) : [];
     setDraft({
       id: product.id,
-      variantId: selectedVariant.id ?? null,
-      variantName: selectedVariant.name ?? null,
+      variantId: selectedVariant?.id ?? null,
+      variantName: selectedVariant?.name ?? null,
       name: product.name,
-      price: Number(selectedVariant.price ?? product.price),
+      price: Number(selectedVariant?.price ?? product.price),
       quantity: 1,
       dough: dough.length === 1 ? { name: dough[0].name, price: Number(dough[0].additional_price) } : null,
       crust: null,
@@ -180,6 +182,30 @@ export function PublicMenuOrder({
     if (!draft) return;
     setCart((current) => [...current, draft]);
     setDraft(null);
+    setCartOpen(true);
+  }
+
+  // Produto sem nada para escolher (bebida, sobremesa) vai direto para o
+  // carrinho: abrir um modal só com "quantidade" é atrito à toa.
+  function addSimpleToCart(product: Product) {
+    if (!restaurant.is_open) return;
+    setCart((current) => [
+      ...current,
+      {
+        id: product.id,
+        variantId: null,
+        variantName: null,
+        name: product.name,
+        price: Number(product.price),
+        quantity: 1,
+        dough: null,
+        crust: null,
+        additions: [],
+        flavorCount: 0,
+        flavors: [],
+        notes: "",
+      },
+    ]);
     setCartOpen(true);
   }
 
@@ -349,10 +375,10 @@ export function PublicMenuOrder({
                         <button
                           key={product.id}
                           type="button"
-                          onClick={() => openProduct(product)}
+                          onClick={() => (hasOptions ? openProduct(product) : addSimpleToCart(product))}
                           disabled={!restaurant.is_open}
-                          className="group relative grid min-h-[142px] grid-cols-[1fr_116px] gap-4 overflow-hidden rounded-lg bg-white p-4 text-left shadow-sm ring-1 ring-transparent transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
-                          aria-label={`Adicionar ${product.name}`}
+                          className="group relative grid min-h-[142px] grid-cols-[1fr_116px] gap-4 overflow-hidden rounded-lg bg-white p-4 pb-12 text-left shadow-sm ring-1 ring-transparent transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+                          aria-label={hasOptions ? `Personalizar ${product.name}` : `Adicionar ${product.name} ao carrinho`}
                         >
                           <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-red-50/0 via-red-50/0 to-red-50/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                           <div className="relative min-w-0">
@@ -366,7 +392,13 @@ export function PublicMenuOrder({
                             </div>
                             {!restaurant.is_open && <span className="absolute bottom-1 right-1 rounded-full bg-slate-500 px-3 py-1 text-[10px] font-black uppercase text-white">Indisponível</span>}
                           </div>
-                          {hasOptions && <span className="absolute bottom-2 right-3 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600 transition group-hover:bg-red-600 group-hover:text-white">Personalizar</span>}
+                          {/* Ação sempre visível: sem ela o card de bebida parecia
+                              apenas informativo, sem jeito de comprar. */}
+                          {restaurant.is_open && (
+                            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white shadow-sm transition group-hover:bg-red-700">
+                              {hasOptions ? "Personalizar" : <><Plus className="h-3.5 w-3.5" /> Adicionar</>}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
