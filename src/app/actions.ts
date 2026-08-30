@@ -725,7 +725,7 @@ export async function saveProduct(formData: FormData) {
       error instanceof Error ? error.message : "Não foi possível salvar o produto.",
     );
   }
-  redirect("/cardapio/produtos");
+  redirect("/cardapio/produtos?status=saved");
 }
 
 export async function toggleProduct(formData: FormData) {

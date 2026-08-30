@@ -4,6 +4,8 @@
 import Link from "next/link";
 import { CheckCircle2, Eye, ImagePlus, Pizza, Save, Settings2, ShoppingBag, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ImagePicker } from "@/components/image-picker";
+import { SubmitButton } from "@/components/submit-button";
 import { saveProduct } from "@/app/actions";
 import { money } from "@/lib/utils";
 import type { Category, PizzaOption, Product, ProductOption, ProductType, ProductVariant } from "@/lib/types";
@@ -169,7 +171,9 @@ export function ProductForm({
         <div className="flex flex-wrap gap-2">
           {restaurantSlug && <Link href={`/cardapio/${restaurantSlug}`} className="btn-muted text-sm"><Eye className="h-4 w-4" /> Visualizar no cardápio</Link>}
           <Link href="/cardapio/produtos" className="btn-muted text-sm"><X className="h-4 w-4" /> Cancelar</Link>
-          <button className="btn-primary text-sm"><Save className="h-4 w-4" /> Salvar</button>
+          <SubmitButton className="btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-60" pendingLabel="Salvando…">
+            <Save className="h-4 w-4" /> Salvar
+          </SubmitButton>
         </div>
       </header>
 
@@ -295,14 +299,12 @@ export function ProductForm({
 
         <aside className="space-y-6">
           <Card title="Foto do produto" subtitle="Imagem usada no cardápio online." icon={ImagePlus}>
-            <div className="space-y-4">
-              <div className="grid aspect-[4/3] place-items-center overflow-hidden rounded border border-[#e7e4dd] bg-[#faf9f6] text-sm font-bold text-[#b0aaa0]">
-                {product.image_url ? <img src={product.image_url} alt="Imagem atual" className="h-full w-full object-cover" /> : "Sem imagem"}
-              </div>
-              <input className="field-light" name="image_file" type="file" accept="image/png,image/jpeg,image/webp" />
-              <input className="field-light" name="image_url" placeholder="Ou cole uma URL de imagem" defaultValue={product.image_url ?? ""} />
-              <p className="text-xs text-[#9c988f]">Use PNG, JPG ou WEBP. A imagem enviada fica em `public/uploads/products`.</p>
-            </div>
+            <ImagePicker
+              name="image_file"
+              urlFieldName="image_url"
+              currentUrl={product.image_url}
+              hint="Use PNG, JPG ou WEBP. Ela aparece no cardápio online e na comanda."
+            />
           </Card>
 
           <Card title="Configurações de venda" subtitle="Disponibilidade e canais." icon={Settings2}>

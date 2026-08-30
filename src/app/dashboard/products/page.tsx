@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { requireRestaurant } from "@/lib/auth";
 import { ProductList } from "@/components/product-list";
+import { ActionFeedback } from "@/components/action-feedback";
 import type { Product } from "@/lib/types";
 
-export default async function ProductsPage() {
+export default async function ProductsPage({ status = "", error = "" }: { status?: string; error?: string } = {}) {
   const { supabase, restaurant } = await requireRestaurant();
   const { data } = await supabase
     .from("products")
@@ -15,6 +16,8 @@ export default async function ProductsPage() {
 
   return (
     <div className="space-y-6">
+      <ActionFeedback status={status} error={error} />
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Produtos</h1>
