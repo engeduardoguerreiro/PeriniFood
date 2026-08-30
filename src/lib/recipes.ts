@@ -44,7 +44,9 @@ export function parseRecipe(row: Record<string, unknown> | null | undefined): Re
 export function linesToList(value: string): string[] {
   return value
     .split("\n")
-    .map((line) => line.replace(/^\s*[-•*\d.)]+\s*/, "").trim())
+    // Remove só marcador de lista de verdade ("- ", "• ", "1. ", "2) ").
+    // Número seguido de espaço é QUANTIDADE ("250 g de mussarela") e permanece.
+    .map((line) => line.replace(/^\s*(?:[-–—•*]\s*|\d{1,3}[.)]\s+)/, "").trim())
     .filter(Boolean)
     .slice(0, 60);
 }
