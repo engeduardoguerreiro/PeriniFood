@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Layers, Pizza, ShoppingBag, Tags } from "lucide-react";
+import { ArrowUpRight, ClipboardCheck, Layers, Pizza, ShoppingBag, Tags } from "lucide-react";
 
 const menuItems = [
   {
@@ -20,6 +20,12 @@ const menuItems = [
     description: "Classifique produtos como pizza, esfiha, bebida, combo e sobremesa.",
     href: "/cardapio/tipos",
     icon: Tags,
+  },
+  {
+    title: "Fichas técnicas",
+    description: "Padronize o preparo: ingredientes, montagem e padrão visual para imprimir.",
+    href: "/cardapio/fichas",
+    icon: ClipboardCheck,
   },
   {
     title: "Opções de pizza",

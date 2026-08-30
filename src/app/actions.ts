@@ -1614,3 +1614,32 @@ export async function legacySaveIntegration(formData: FormData) {
   }, { onConflict: "restaurant_id,provider" });
   revalidatePath("/dashboard/integrations");
 }
+
+// Ficha técnica de produção do produto (documento interno da cozinha).
+export async function saveRecipe(formData: FormData) {
+  const { supabase, restaurant } = await requireRestaurant();
+  const productId = text(formData, "product_id");
+  if (!productId) return;
+
+  const { linesToList } = await import("@/lib/recipes");
+  const payload = {
+    restaurant_id: restaurant.id,
+    product_id: productId,
+    yield_label: text(formData, "yield_label") || null,
+    ingredients: linesToList(String(formData.get("ingredients") ?? "")),
+    steps: linesToList(String(formData.get("steps") ?? "")),
+    visual_standard: text(formData, "visual_standard") || null,
+    notes: text(formData, "notes") || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("product_recipes").upsert(payload, { onConflict: "product_id" });
+  if (error) {
+    redirectWithFeedback(formData, `/cardapio/fichas/${productId}`, "saved", error.message);
+  }
+
+  revalidatePath("/cardapio/fichas");
+  revalidatePath(`/cardapio/fichas/${productId}`);
+  revalidatePath(`/ficha/${productId}/print`);
+  redirect("/cardapio/fichas?status=saved");
+}

@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
+  ClipboardCheck,
   ClipboardList,
   Cog,
   Home,
@@ -38,6 +39,7 @@ const navGroups = [
   ]],
   ["Catálogo", [
     ["Cardápio", "/cardapio", ChefHat],
+    ["Fichas técnicas", "/cardapio/fichas", ClipboardCheck],
     ["Cupons", "/cupons", TicketPercent],
     ["Integrações", "/integracoes", Cable],
   ]],
