@@ -388,7 +388,7 @@ export function PublicMenuOrder({
                           </div>
                           <div className="relative">
                             <div className="h-28 w-28 overflow-hidden rounded-lg bg-slate-100">
-                              {product.image_url ? <img src={product.image_url} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-red-500">Sem foto</div>}
+                              {product.image_url ? <img src={product.image_url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-red-500">Sem foto</div>}
                             </div>
                             {!restaurant.is_open && <span className="absolute bottom-1 right-1 rounded-full bg-slate-500 px-3 py-1 text-[10px] font-black uppercase text-white">Indisponível</span>}
                           </div>
@@ -419,7 +419,7 @@ export function PublicMenuOrder({
           <div className="grid max-h-[88vh] w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-2xl md:grid-cols-[310px_1fr]">
             <div className="space-y-5 p-5">
               <div className="aspect-square overflow-hidden rounded-lg bg-slate-100">
-                {draftProduct.image_url ? <img src={draftProduct.image_url} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>}
+                {draftProduct.image_url ? <img src={draftProduct.image_url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>}
               </div>
               <div>
                 <h2 className="text-3xl font-black text-red-600">{draftProduct.name}</h2>
