@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowUpRight, Layers, Pizza, ShoppingBag, Tags } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
 
 const menuItems = [
   {
@@ -66,5 +65,5 @@ function CardapioHome() {
 }
 
 export default function Page() {
-  return <AppShell><CardapioHome /></AppShell>;
+  return <><CardapioHome /></>;
 }

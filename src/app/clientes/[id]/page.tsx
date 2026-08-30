@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { deleteCustomer, saveCustomer } from "@/app/actions";
-import { AppShell } from "@/components/app-shell";
 import { ActionFeedback } from "@/components/action-feedback";
 import { SettingsCepLookup } from "@/components/settings-cep-lookup";
 import { requireRestaurant } from "@/lib/auth";
@@ -255,5 +254,5 @@ async function CustomerDetail({ id, status, error }: { id: string; status: strin
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ status: string; error: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
-  return <AppShell><CustomerDetail id={id} status={sp.status} error={sp.error} /></AppShell>;
+  return <><CustomerDetail id={id} status={sp.status} error={sp.error} /></>;
 }

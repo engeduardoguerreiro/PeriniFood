@@ -1,7 +1,6 @@
 import { Power, Trash2 } from "lucide-react";
 import { deleteProductType, saveProductType, toggleProductType } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
-import { AppShell } from "@/components/app-shell";
 import { requireRestaurant } from "@/lib/auth";
 import type { ProductType } from "@/lib/types";
 
@@ -83,5 +82,5 @@ async function TypesPage({ searchParams }: { searchParams: Promise<{ status: str
 }
 
 export default function Page({ searchParams }: { searchParams: Promise<{ status: string; error: string }> }) {
-  return <AppShell><TypesPage searchParams={searchParams} /></AppShell>;
+  return <><TypesPage searchParams={searchParams} /></>;
 }

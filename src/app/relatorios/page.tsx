@@ -1,5 +1,4 @@
 import { BadgeDollarSign, CreditCard, ShoppingBag, Users, Package, Percent, Store, TrendingUp } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
 import { ReportCard } from "@/components/reports/ReportCard";
 import { ReportChart } from "@/components/reports/ReportChart";
 import { ReportFilters } from "@/components/reports/ReportFilters";
@@ -37,5 +36,5 @@ async function OverviewContent({ searchParams }: { searchParams: ReportSearchPar
 
 export default async function Page({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
   const sp = await searchParams;
-  return <AppShell><OverviewContent searchParams={sp} /></AppShell>;
+  return <><OverviewContent searchParams={sp} /></>;
 }

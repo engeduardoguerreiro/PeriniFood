@@ -1,7 +1,6 @@
 import { Power, Trash2 } from "lucide-react";
 import { deletePizzaOption, savePizzaOption, togglePizzaOption } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
-import { AppShell } from "@/components/app-shell";
 import { requireRestaurant } from "@/lib/auth";
 import type { PizzaOption, PizzaOptionKind } from "@/lib/types";
 
@@ -111,5 +110,5 @@ async function PizzaOptionsPage({ searchParams }: { searchParams: Promise<{ stat
 }
 
 export default function Page({ searchParams }: { searchParams: Promise<{ status: string; error: string }> }) {
-  return <AppShell><PizzaOptionsPage searchParams={searchParams} /></AppShell>;
+  return <><PizzaOptionsPage searchParams={searchParams} /></>;
 }

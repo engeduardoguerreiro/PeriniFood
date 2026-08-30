@@ -1,6 +1,5 @@
 ﻿import { deleteCoupon, saveCoupon, saveLoyaltyProgram } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
-import { AppShell } from "@/components/app-shell";
 import { requireRestaurant } from "@/lib/auth";
 import { loyaltyCampaignFromOpeningHours } from "@/lib/loyalty";
 import { money } from "@/lib/utils";
@@ -160,8 +159,8 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
 
 export default function CouponsPage({ searchParams }: { searchParams: Promise<{ status: string; error: string }> }) {
   return (
-    <AppShell>
+    <>
       <CouponsContent searchParams={searchParams} />
-    </AppShell>
+    </>
   );
 }

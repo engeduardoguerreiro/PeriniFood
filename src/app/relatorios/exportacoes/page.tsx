@@ -1,5 +1,4 @@
 import { Download, FileSpreadsheet } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/reports/ExportButton";
 import { PdfButton } from "@/components/reports/PdfButton";
 import { ReportFilters } from "@/components/reports/ReportFilters";
@@ -46,5 +45,5 @@ async function Content({ searchParams }: { searchParams: ReportSearchParams }) {
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
-  return <AppShell><Content searchParams={await searchParams} /></AppShell>;
+  return <><Content searchParams={await searchParams} /></>;
 }

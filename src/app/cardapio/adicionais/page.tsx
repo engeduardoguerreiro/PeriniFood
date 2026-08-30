@@ -1,5 +1,4 @@
 ﻿import { saveAddon, toggleAddon } from "@/app/actions";
-import { AppShell } from "@/components/app-shell";
 import { requireRestaurant } from "@/lib/auth";
 import type { ProductAddon } from "@/lib/types";
 
@@ -60,5 +59,5 @@ async function AddonsPage() {
 }
 
 export default function Page() {
-  return <AppShell><AddonsPage /></AppShell>;
+  return <><AddonsPage /></>;
 }

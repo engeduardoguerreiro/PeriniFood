@@ -1,6 +1,5 @@
 import { updatePdvOrder } from "@/app/actions";
 import { ManualOrderBuilder } from "@/components/manual-order-builder";
-import { AppShell } from "@/components/app-shell";
 import { requireRestaurant } from "@/lib/auth";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
 import type { Category, Customer, DeliveryFeeRule, Order, OrderItem, PizzaOption, Product, ProductOption, ProductType, ProductVariant } from "@/lib/types";
@@ -91,7 +90,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
   }).filter((item) => item.id);
 
   return (
-    <AppShell>
+    <>
       <ManualOrderBuilder
         action={updatePdvOrder}
         mode="edit"
@@ -120,6 +119,6 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
         maxPizzaFlavors={Math.min(4, Math.max(1, Number(restaurant.max_pizza_flavors ?? 1)))}
         pizzaOptions={(pizzaOptions ?? []) as PizzaOption[]}
       />
-    </AppShell>
+    </>
   );
 }

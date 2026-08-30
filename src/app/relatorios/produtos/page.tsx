@@ -1,5 +1,4 @@
 import { Package, Star, TrendingUp, Utensils } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
 import { ReportCard } from "@/components/reports/ReportCard";
 import { ReportChart } from "@/components/reports/ReportChart";
 import { ReportFilters } from "@/components/reports/ReportFilters";
@@ -28,5 +27,5 @@ async function Content({ searchParams }: { searchParams: ReportSearchParams }) {
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
-  return <AppShell><Content searchParams={await searchParams} /></AppShell>;
+  return <><Content searchParams={await searchParams} /></>;
 }
