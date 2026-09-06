@@ -31,3 +31,10 @@ export function mergeDeliveryRulesIntoOpeningHours(openingHours: Restaurant["ope
     _delivery_fee_rules: rules,
   };
 }
+
+// Em bancos onde a tabela ainda não existe (drift de migration), "relation does
+// not exist" vale como "sem regras cadastradas": o chamador usa o fallback do
+// JSON em vez de tratar como indisponibilidade. Qualquer outro erro é real.
+export function isMissingRelationError(error: { code?: string; message?: string } | null | undefined) {
+  return Boolean(error) && (error?.code === "42P01" || /does not exist|schema cache/i.test(error?.message ?? ""));
+}

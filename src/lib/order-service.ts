@@ -6,7 +6,7 @@ import { priceCart, amount, type PricingCatalog } from "./order-pricing";
 import { boundedText, PublicError, uuid } from "./security";
 import { getAccessState } from "./platform-billing";
 import { isRestaurantOpen } from "./opening-hours";
-import { deliveryRulesFromRestaurant } from "./delivery-fee-rules";
+import { deliveryRulesFromRestaurant, isMissingRelationError } from "./delivery-fee-rules";
 import { addressText, shippingAddress, shippingFee } from "./shipping";
 import type { DeliveryFeeRule, Restaurant } from "./types";
 
@@ -56,7 +56,7 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     const address=shippingAddress(Object.fromEntries(form));
     deliveryAddress=addressText(address);
     const {data:rules,error:rulesError}=await service.from("delivery_fee_rules").select("*").eq("restaurant_id",restaurantId).eq("active",true);
-    if (rulesError) throw new PublicError("Frete temporariamente indisponível.",503);
+    if (rulesError && !isMissingRelationError(rulesError)) throw new PublicError("Frete temporariamente indisponível.",503);
     const quote=await shippingFee(store,(rules?.length ? rules : deliveryRulesFromRestaurant(store)) as DeliveryFeeRule[],address);
     if (deliveryFee!==quote.fee) throw new PublicError("O frete foi atualizado. Recalcule a entrega antes de confirmar.");
     deliveryFee=quote.fee;

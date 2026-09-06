@@ -82,6 +82,28 @@ create unique index if not exists customers_restaurant_email_unique
 create unique index if not exists customers_restaurant_phone_unique
   on public.customers (restaurant_id, phone) where phone is not null;
 
+-- delivery_fee_rules vive na migration 20260522000300, que o banco de SP pulou
+-- (o app vinha usando o fallback em restaurants.opening_hours). Recriada aqui
+-- de forma idempotente para o código de frete e as políticas abaixo terem a tabela.
+create table if not exists public.delivery_fee_rules (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  name text not null,
+  min_km numeric(8,2) not null default 0,
+  max_km numeric(8,2),
+  fee numeric(12,2) not null default 0,
+  free_delivery boolean not null default false,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists delivery_fee_rules_restaurant_idx on public.delivery_fee_rules (restaurant_id, active);
+alter table public.delivery_fee_rules enable row level security;
+grant select, insert, update, delete on public.delivery_fee_rules to authenticated;
+drop policy if exists "members manage delivery fee rules" on public.delivery_fee_rules;
+create policy "members manage delivery fee rules" on public.delivery_fee_rules
+for all using (app_private.is_restaurant_member(restaurant_id))
+with check (app_private.is_restaurant_member(restaurant_id));
+
 create or replace function app_private.owns_restaurant(target uuid)
 returns boolean language sql security definer set search_path = '' stable as $$
   select exists(select 1 from public.restaurants where id=target and owner_id=auth.uid());
@@ -137,39 +159,36 @@ begin
   end loop;
   return new;
 end $$;
-drop trigger if exists restaurants_guard_owner on public.restaurants;
-create trigger restaurants_guard_owner before update on public.restaurants for each row execute function app_private.guard_tenant_links('[]');
-drop trigger if exists products_guard_tenant on public.products;
-create trigger products_guard_tenant before insert or update on public.products for each row execute function app_private.guard_tenant_links('[["category_id","categories"],["product_type_id","product_types"]]');
-drop trigger if exists orders_guard_tenant on public.orders;
-create trigger orders_guard_tenant before insert or update on public.orders for each row execute function app_private.guard_tenant_links('[["customer_id","customers"],["table_id","tables"],["integration_id","integrations"]]');
-drop trigger if exists items_guard_tenant on public.order_items;
-create trigger items_guard_tenant before insert or update on public.order_items for each row execute function app_private.guard_tenant_links('[["order_id","orders"],["product_id","products"]]');
-drop trigger if exists options_guard_tenant on public.product_options;
-create trigger options_guard_tenant before insert or update on public.product_options for each row execute function app_private.guard_tenant_links('[["product_id","products"]]');
-drop trigger if exists option_items_guard_tenant on public.product_option_items;
-create trigger option_items_guard_tenant before insert or update on public.product_option_items for each row execute function app_private.guard_tenant_links('[["option_id","product_options"]]');
-drop trigger if exists sessions_guard_tenant on public.customer_sessions;
-create trigger sessions_guard_tenant before insert or update on public.customer_sessions for each row execute function app_private.guard_tenant_links('[["customer_id","customers"]]');
-drop trigger if exists item_addons_guard_tenant on public.order_item_addons;
-create trigger item_addons_guard_tenant before insert or update on public.order_item_addons for each row execute function app_private.guard_tenant_links('[["order_item_id","order_items"],["addon_id","product_addons"]]');
-drop trigger if exists variants_guard_tenant on public.product_variants;
-create trigger variants_guard_tenant before insert or update on public.product_variants for each row execute function app_private.guard_tenant_links('[["product_id","products"]]');
-drop trigger if exists addresses_guard_tenant on public.customer_addresses;
-create trigger addresses_guard_tenant before insert or update on public.customer_addresses for each row execute function app_private.guard_tenant_links('[["customer_id","customers"]]');
-drop trigger if exists recipes_guard_tenant on public.product_recipes;
-create trigger recipes_guard_tenant before insert or update on public.product_recipes for each row execute function app_private.guard_tenant_links('[["product_id","products"]]');
-drop trigger if exists product_maps_guard_tenant on public.integration_product_maps;
-create trigger product_maps_guard_tenant before insert or update on public.integration_product_maps for each row execute function app_private.guard_tenant_links('[["integration_id","integrations"],["product_id","products"]]');
-drop trigger if exists payment_maps_guard_tenant on public.integration_payment_maps;
-create trigger payment_maps_guard_tenant before insert or update on public.integration_payment_maps for each row execute function app_private.guard_tenant_links('[["integration_id","integrations"]]');
-drop trigger if exists integration_orders_guard_tenant on public.integration_orders;
-create trigger integration_orders_guard_tenant before insert or update on public.integration_orders for each row execute function app_private.guard_tenant_links('[["integration_id","integrations"],["order_id","orders"]]');
+-- Triggers de isolamento de tenant, só nas tabelas que existirem neste banco.
+do $$ declare spec record;
+begin
+  for spec in select * from (values
+    ('restaurants_guard_owner','restaurants','before update','[]'),
+    ('products_guard_tenant','products','before insert or update','[["category_id","categories"],["product_type_id","product_types"]]'),
+    ('orders_guard_tenant','orders','before insert or update','[["customer_id","customers"],["table_id","tables"],["integration_id","integrations"]]'),
+    ('items_guard_tenant','order_items','before insert or update','[["order_id","orders"],["product_id","products"]]'),
+    ('options_guard_tenant','product_options','before insert or update','[["product_id","products"]]'),
+    ('option_items_guard_tenant','product_option_items','before insert or update','[["option_id","product_options"]]'),
+    ('sessions_guard_tenant','customer_sessions','before insert or update','[["customer_id","customers"]]'),
+    ('item_addons_guard_tenant','order_item_addons','before insert or update','[["order_item_id","order_items"],["addon_id","product_addons"]]'),
+    ('variants_guard_tenant','product_variants','before insert or update','[["product_id","products"]]'),
+    ('addresses_guard_tenant','customer_addresses','before insert or update','[["customer_id","customers"]]'),
+    ('recipes_guard_tenant','product_recipes','before insert or update','[["product_id","products"]]'),
+    ('product_maps_guard_tenant','integration_product_maps','before insert or update','[["integration_id","integrations"],["product_id","products"]]'),
+    ('payment_maps_guard_tenant','integration_payment_maps','before insert or update','[["integration_id","integrations"]]'),
+    ('integration_orders_guard_tenant','integration_orders','before insert or update','[["integration_id","integrations"],["order_id","orders"]]')
+  ) as v(trigger_name, table_name, timing, links) loop
+    if to_regclass('public.'||spec.table_name) is null then raise notice 'security: tabela % ausente, trigger % pulado', spec.table_name, spec.trigger_name; continue; end if;
+    execute format('drop trigger if exists %I on public.%I', spec.trigger_name, spec.table_name);
+    execute format('create trigger %I %s on public.%I for each row execute function app_private.guard_tenant_links(%L)', spec.trigger_name, spec.timing, spec.table_name, spec.links);
+  end loop;
+end $$;
 
 -- Restrictive policies supplement existing membership checks (never replace them).
 do $$ declare t text; operation text;
 begin
   foreach t in array array['restaurants','categories','products','product_options','product_option_items','product_types','product_addons','pizza_options','delivery_fee_rules','coupons','loyalty_programs','product_recipes'] loop
+    if to_regclass('public.'||t) is null then raise notice 'security: tabela % ausente neste banco, políticas puladas', t; continue; end if;
     foreach operation in array array['INSERT','UPDATE','DELETE'] loop
       -- Initial restaurant creation is already constrained to owner_id=auth.uid().
       if t='restaurants' and operation='INSERT' then continue; end if;
@@ -182,6 +201,7 @@ begin
     end loop;
   end loop;
   foreach t in array array['integrations','integration_product_maps','integration_payment_maps','integration_logs','integration_orders'] loop
+    if to_regclass('public.'||t) is null then raise notice 'security: tabela % ausente neste banco, políticas puladas', t; continue; end if;
     execute format('drop policy if exists security_sensitive_access on public.%I', t);
     execute format('create policy security_sensitive_access on public.%I as restrictive for all to authenticated using (app_private.user_restaurant_role(restaurant_id) in (''owner'',''admin'',''manager''))',t);
   end loop;

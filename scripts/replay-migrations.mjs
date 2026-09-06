@@ -51,6 +51,8 @@ for (const f of base) {
   }
 }
 console.log(`BASE: ${baseOk} instruções ok, ${baseFail} falharam (esperado: itens exclusivos do Supabase)`);
+const dropArg = process.argv.find(a => a.startsWith("--drop="));
+if (dropArg) for (const t of dropArg.slice(7).split(",").filter(Boolean)) { await db.exec(`drop table if exists public.${t} cascade`); console.log(`SIMULAÇÃO: tabela ${t} removida (como no banco de SP)`); }
 for (const [k, g] of [...grouped.entries()].sort((a,b)=>b[1].n-a[1].n)) console.log(`   · ${String(g.n).padStart(3)}x  ${k}   ex: ${g.ex}`);
 
 console.log("\n=== MIGRATION NOVA (para na primeira falha) ===");
