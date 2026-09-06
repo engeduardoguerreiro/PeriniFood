@@ -23,15 +23,15 @@ returns public.restaurant_role language sql security definer set search_path = p
 $$;
 
 
-create table public.customer_sessions (
+create table if not exists public.customer_sessions (
   token_hash text primary key check (token_hash ~ '^[a-f0-9]{64}$'),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   customer_id uuid not null references public.customers(id) on delete cascade,
   expires_at timestamptz not null,
   created_at timestamptz not null default now()
 );
-create index customer_sessions_expiry_idx on public.customer_sessions(expires_at);
-create table public.security_rate_limits (
+create index if not exists customer_sessions_expiry_idx on public.customer_sessions(expires_at);
+create table if not exists public.security_rate_limits (
   key text primary key,
   count integer not null,
   expires_at timestamptz not null
@@ -98,6 +98,7 @@ drop policy if exists "owners manage memberships" on public.restaurant_users;
 create policy "owners manage memberships" on public.restaurant_users for update to authenticated
   using (app_private.owns_restaurant(restaurant_id))
   with check (app_private.owns_restaurant(restaurant_id));
+drop policy if exists "members read restaurants" on public.restaurants;
 create policy "members read restaurants" on public.restaurants for select to authenticated
   using (owner_id=auth.uid() or app_private.is_restaurant_member(id));
 
@@ -136,19 +137,33 @@ begin
   end loop;
   return new;
 end $$;
+drop trigger if exists restaurants_guard_owner on public.restaurants;
 create trigger restaurants_guard_owner before update on public.restaurants for each row execute function app_private.guard_tenant_links('[]');
+drop trigger if exists products_guard_tenant on public.products;
 create trigger products_guard_tenant before insert or update on public.products for each row execute function app_private.guard_tenant_links('[["category_id","categories"],["product_type_id","product_types"]]');
+drop trigger if exists orders_guard_tenant on public.orders;
 create trigger orders_guard_tenant before insert or update on public.orders for each row execute function app_private.guard_tenant_links('[["customer_id","customers"],["table_id","tables"],["integration_id","integrations"]]');
+drop trigger if exists items_guard_tenant on public.order_items;
 create trigger items_guard_tenant before insert or update on public.order_items for each row execute function app_private.guard_tenant_links('[["order_id","orders"],["product_id","products"]]');
+drop trigger if exists options_guard_tenant on public.product_options;
 create trigger options_guard_tenant before insert or update on public.product_options for each row execute function app_private.guard_tenant_links('[["product_id","products"]]');
+drop trigger if exists option_items_guard_tenant on public.product_option_items;
 create trigger option_items_guard_tenant before insert or update on public.product_option_items for each row execute function app_private.guard_tenant_links('[["option_id","product_options"]]');
+drop trigger if exists sessions_guard_tenant on public.customer_sessions;
 create trigger sessions_guard_tenant before insert or update on public.customer_sessions for each row execute function app_private.guard_tenant_links('[["customer_id","customers"]]');
+drop trigger if exists item_addons_guard_tenant on public.order_item_addons;
 create trigger item_addons_guard_tenant before insert or update on public.order_item_addons for each row execute function app_private.guard_tenant_links('[["order_item_id","order_items"],["addon_id","product_addons"]]');
+drop trigger if exists variants_guard_tenant on public.product_variants;
 create trigger variants_guard_tenant before insert or update on public.product_variants for each row execute function app_private.guard_tenant_links('[["product_id","products"]]');
+drop trigger if exists addresses_guard_tenant on public.customer_addresses;
 create trigger addresses_guard_tenant before insert or update on public.customer_addresses for each row execute function app_private.guard_tenant_links('[["customer_id","customers"]]');
+drop trigger if exists recipes_guard_tenant on public.product_recipes;
 create trigger recipes_guard_tenant before insert or update on public.product_recipes for each row execute function app_private.guard_tenant_links('[["product_id","products"]]');
+drop trigger if exists product_maps_guard_tenant on public.integration_product_maps;
 create trigger product_maps_guard_tenant before insert or update on public.integration_product_maps for each row execute function app_private.guard_tenant_links('[["integration_id","integrations"],["product_id","products"]]');
+drop trigger if exists payment_maps_guard_tenant on public.integration_payment_maps;
 create trigger payment_maps_guard_tenant before insert or update on public.integration_payment_maps for each row execute function app_private.guard_tenant_links('[["integration_id","integrations"]]');
+drop trigger if exists integration_orders_guard_tenant on public.integration_orders;
 create trigger integration_orders_guard_tenant before insert or update on public.integration_orders for each row execute function app_private.guard_tenant_links('[["integration_id","integrations"],["order_id","orders"]]');
 
 -- Restrictive policies supplement existing membership checks (never replace them).
@@ -158,6 +173,7 @@ begin
     foreach operation in array array['INSERT','UPDATE','DELETE'] loop
       -- Initial restaurant creation is already constrained to owner_id=auth.uid().
       if t='restaurants' and operation='INSERT' then continue; end if;
+      execute format('drop policy if exists %I on public.%I', 'security_role_'||lower(operation), t);
       execute format('create policy %I on public.%I as restrictive for %s to authenticated %s',
         'security_role_'||lower(operation),t,operation,
         case when operation='INSERT' then 'with check (app_private.user_restaurant_role(restaurant_id) in (''owner'',''admin'',''manager''))'
@@ -166,8 +182,10 @@ begin
     end loop;
   end loop;
   foreach t in array array['integrations','integration_product_maps','integration_payment_maps','integration_logs','integration_orders'] loop
+    execute format('drop policy if exists security_sensitive_access on public.%I', t);
     execute format('create policy security_sensitive_access on public.%I as restrictive for all to authenticated using (app_private.user_restaurant_role(restaurant_id) in (''owner'',''admin'',''manager''))',t);
   end loop;
+  drop policy if exists security_customer_access on public.customers;
   create policy security_customer_access on public.customers as restrictive for all to authenticated
     using (app_private.user_restaurant_role(restaurant_id) in ('owner','admin','manager','cashier'));
 end $$;

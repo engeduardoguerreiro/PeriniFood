@@ -67,6 +67,8 @@ for (const st of stmts) {
   }
 }
 console.log(`OK: todas as ${stmts.length} instruções executaram.`);
+if (process.argv.includes("--twice")) { let k=0; for (const st of stmts) { k++; try { await db.exec(st); } catch (e) { console.log(`2ª EXECUÇÃO falhou na instrução #${k}: ${e.message}
+   sql: ${st.slice(0,200).replace(/s+/g," ")}`); process.exit(3); } } console.log("OK: 2ª execução idêntica também passou (idempotente)."); }
 const pol = await db.query("select count(*)::int as n from pg_policies where policyname like 'security_%'");
 const fn = await db.query("select proname from pg_proc where proname in ('save_order_atomic','consume_security_rate_limit','cleanup_security_data','guard_tenant_links','owns_restaurant') order by 1");
 const rl = await db.query("select public.consume_security_rate_limit($1, 3, 60) as ok", ["a".repeat(64)]);
