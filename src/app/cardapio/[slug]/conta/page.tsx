@@ -1,10 +1,11 @@
 ﻿import { PublicCustomerAccount } from "@/components/public-customer-account";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { publicRestaurant } from "@/lib/public-data";
 import type { Restaurant } from "@/lib/types";
 
 export default async function PublicCustomerAccountPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data: restaurant } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
 
   if (!restaurant) {
@@ -15,5 +16,5 @@ export default async function PublicCustomerAccountPage({ params }: { params: Pr
     );
   }
 
-  return <PublicCustomerAccount restaurant={restaurant as Restaurant} />;
+  return <PublicCustomerAccount restaurant={publicRestaurant(restaurant as Restaurant)} />;
 }

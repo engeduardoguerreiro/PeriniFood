@@ -1,3 +1,4 @@
+import { requireIntegrationToken } from "@/lib/integrations/ingress";
 import { NextResponse } from "next/server";
 import { pollAndProcessIFood } from "@/lib/integrations/ifood/polling";
 
@@ -5,13 +6,8 @@ import { pollAndProcessIFood } from "@/lib/integrations/ifood/polling";
 // pedidos/eventos do iFood via polling e processá-los.
 // Protegido por token: use ?key=IFOOD_POLL_SECRET.
 export async function GET(request: Request) {
-  const secret = process.env.IFOOD_POLL_SECRET;
-  if (secret) {
-    const key = new URL(request.url).searchParams.get("key");
-    if (key !== secret) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = requireIntegrationToken(request, process.env.IFOOD_POLL_SECRET);
+  if (denied) return denied;
   try {
     const result = await pollAndProcessIFood();
     return NextResponse.json({ ok: true, ...result });

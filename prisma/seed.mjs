@@ -37,7 +37,8 @@ async function main() {
 
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const email = "contato@fornonordestino.com.br";
-  const password = process.env.SEED_ADMIN_PASSWORD || "Forno@2026";
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  if (!password || password.length < 12) throw new Error("Defina SEED_ADMIN_PASSWORD com pelo menos 12 caracteres.");
 
   let user = await findUserByEmail(supabase, email);
   if (!user) {
@@ -175,7 +176,7 @@ async function main() {
     if (error && !error.message.includes("integrations")) throw error;
   }
 
-  console.log(`Seed concluido: ${restaurant.name} (${restaurant.slug}) / admin ${email} / senha ${password}`);
+  console.log(`Seed concluido: ${restaurant.name} (${restaurant.slug}) / admin ${email}`);
 }
 
 main().catch((error) => {

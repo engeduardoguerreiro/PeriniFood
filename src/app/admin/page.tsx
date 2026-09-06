@@ -42,7 +42,7 @@ export default async function AdminOverviewPage() {
   const mrr = billable.reduce((sum, s) => sum + s.monthly_amount, 0);
   const pastDue = subs.filter((s) => s.status === "past_due").length;
   const suspended = subs.filter((s) => s.status === "suspended").length;
-  const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const since30 = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const newClients = rows.filter((r) => r.created_at >= since30).length;
 
   return (

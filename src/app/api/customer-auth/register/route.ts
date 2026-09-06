@@ -1,64 +1,30 @@
-import { NextResponse } from "next/server";
 import { hashCustomerPassword, safeCustomerProfile } from "@/lib/customer-auth";
+import { authRateLimit, startCustomerSession } from "@/lib/customer-session";
 import { createServiceClient } from "@/lib/supabase/service";
-import { digits } from "@/lib/utils";
-
-const customerFields = "id, name, phone, whatsapp, email, cpf, birth_date, address, neighborhood, city, state, zip_code";
+import { assertSameOrigin, boundedText, emailAddress, privateJson, publicFailure, PublicError, readObject, uuid } from "@/lib/security";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as Record<string, string | undefined>;
-    const restaurantId = String(body.restaurantId ?? "").trim();
-    const name = String(body.name ?? "").trim();
-    const phone = digits(String(body.phone ?? ""));
-    const email = String(body.email ?? "").trim().toLowerCase();
-    const password = String(body.password ?? "");
-
-    if (!restaurantId || !name || !phone || !email || !password) {
-      return NextResponse.json({ ok: false, message: "Preencha nome, celular, e-mail e senha." }, { status: 400 });
+    assertSameOrigin(request);
+    const body = await readObject(request);
+    const restaurantId = uuid(body.restaurantId);
+    const email = emailAddress(body.email);
+    const password = boundedText(body.password, 128, true);
+    const name = boundedText(body.name, 120, true);
+    const phone = boundedText(body.phone, 25, true).replace(/\D/g, "");
+    if (password.length < 12) throw new PublicError("Use uma senha com pelo menos 12 caracteres.");
+    if (!/^\d{10,13}$/.test(phone)) throw new PublicError("Informe um telefone válido.");
+    await authRateLimit(request, restaurantId, email);
+    // INSERT only: conflicts must never overwrite another account or password.
+    const { data: customer, error } = await createServiceClient().from("customers").insert({
+      restaurant_id: restaurantId, name, phone, whatsapp: phone, email,
+      password_hash: await hashCustomerPassword(password),
+    }).select("id, name, phone, whatsapp, email").single();
+    if (error) {
+      if (error.code === "23505") throw new PublicError("Não foi possível cadastrar esses dados. Se já possui conta, entre ou contate a loja.", 409);
+      throw error;
     }
-    if (password.length < 6) {
-      return NextResponse.json({ ok: false, message: "A senha precisa ter pelo menos 6 caracteres." }, { status: 400 });
-    }
-
-    const supabase = createServiceClient();
-    const payload = {
-      restaurant_id: restaurantId,
-      name,
-      phone,
-      whatsapp: phone,
-      email,
-      cpf: digits(String(body.cpf ?? "")) || null,
-      birth_date: body.birthDate || null,
-      address: body.address || null,
-      neighborhood: body.neighborhood || null,
-      city: body.city || null,
-      state: body.state || null,
-      zip_code: digits(String(body.zipCode ?? "")) || null,
-      password_hash: hashCustomerPassword(password),
-    };
-
-    const { data: existing, error: findError } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("restaurant_id", restaurantId)
-      .eq("email", email)
-      .maybeSingle();
-
-    if (findError) {
-      return NextResponse.json({ ok: false, message: findError.message }, { status: 500 });
-    }
-
-    const result = existing?.id ?
-       await supabase.from("customers").update(payload).eq("id", existing.id).select(customerFields).single()
-      : await supabase.from("customers").insert(payload).select(customerFields).single();
-
-    if (result.error) {
-      return NextResponse.json({ ok: false, message: result.error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ ok: true, customer: safeCustomerProfile(result.data) });
-  } catch (error) {
-    return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "Não foi possível criar a conta." }, { status: 500 });
-  }
+    await startCustomerSession(restaurantId, customer.id);
+    return privateJson({ ok: true, customer: safeCustomerProfile(customer) }, 201);
+  } catch (error) { return publicFailure(error); }
 }

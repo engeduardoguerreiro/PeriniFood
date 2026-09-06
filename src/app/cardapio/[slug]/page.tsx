@@ -3,7 +3,8 @@ import { Bike, MapPin } from "lucide-react";
 import { PublicMenuOrder } from "@/components/public-menu-order";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
 import { currentOpeningLabel, isRestaurantOpen } from "@/lib/opening-hours";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { publicRestaurant, PUBLIC_PRODUCT_FIELDS } from "@/lib/public-data";
 import { money } from "@/lib/utils";
 import type { Category, Coupon, DeliveryFeeRule, LoyaltyProgram, PizzaOption, Product, ProductOption, ProductVariant, Restaurant } from "@/lib/types";
 
@@ -26,9 +27,9 @@ function sortProductsByCategoryPrice(products: Product[], variants: ProductVaria
 export default async function PublicMenuPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ success?: string }> }) {
   const { slug } = await params;
   const sp = await searchParams;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data: restaurant } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
-  const current = restaurant as Restaurant | null;
+  const current = restaurant ? publicRestaurant(restaurant as Restaurant) : null;
 
   if (!current) {
     return (
@@ -40,8 +41,8 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
 
   const [{ data: categories }, { data: products }, { data: variants }, { data: options }, { data: deliveryRules }, { data: pizzaOptions }, { data: coupons }, { data: loyalty }] = await Promise.all([
     supabase.from("categories").select("*").eq("restaurant_id", current.id).eq("active", true).order("display_order"),
-    supabase.from("products").select("*").eq("restaurant_id", current.id).eq("active", true).order("price", { ascending: true }).order("name", { ascending: true }),
-    supabase.from("product_variants").select("*").eq("active", true),
+    supabase.from("products").select(PUBLIC_PRODUCT_FIELDS).eq("restaurant_id", current.id).eq("active", true).order("price", { ascending: true }).order("name", { ascending: true }),
+    supabase.from("product_variants").select("*, products!inner(restaurant_id)").eq("products.restaurant_id", current.id).eq("active", true),
     supabase.from("product_options").select("*, product_option_items(*)").eq("restaurant_id", current.id),
     supabase.from("delivery_fee_rules").select("*").eq("restaurant_id", current.id).eq("active", true).order("min_km"),
     supabase.from("pizza_options").select("*").eq("restaurant_id", current.id).eq("active", true),
@@ -52,7 +53,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
   const cover = current.site_cover_url ?? current.banner_url ?? current.cover_url;
   const storeOpen = isRestaurantOpen(current);
   const openingLabel = currentOpeningLabel(current);
-  const publicRestaurant = { ...current, is_open: storeOpen };
+  const storefront = { ...current, is_open: storeOpen };
   const publicAddress = [
     current.address,
     current.address_number ? `n ${current.address_number}` : null,
@@ -122,7 +123,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
       {sp.success && <div className="mx-auto mt-5 max-w-[1320px] rounded-lg border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">Pedido enviado com sucesso.</div>}
       {!storeOpen && <div className="mx-auto mt-5 max-w-[1320px] rounded-lg border border-red-200 bg-red-50 p-4 font-bold text-red-700">A loja está fechada no momento. Você pode consultar o cardápio, mas novos pedidos estão bloqueados.</div>}
       <PublicMenuOrder
-        restaurant={publicRestaurant}
+        restaurant={storefront}
         categories={(categories ?? []) as Category[]}
         products={sortProductsByCategoryPrice((products ?? []) as Product[], (variants ?? []) as ProductVariant[])}
         variants={(variants ?? []) as ProductVariant[]}

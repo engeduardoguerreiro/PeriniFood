@@ -1,3 +1,4 @@
+import { secretMatches, PublicError, boundedText } from "@/lib/security";
 ﻿import { createServiceClient } from "@/lib/supabase/service";
 
 export type NormalizedExternalOrder = {
@@ -53,13 +54,18 @@ export type NormalizedExternalOrder = {
   rawPayload: unknown;
 };
 
+function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string,unknown> : {}; }
+function optionalText(value: unknown) { return value == null ? undefined : boundedText(String(value),1000); }
+export type IntegrationRecord = { id:string;restaurant_id:string;provider:string;external_store_id?:string;webhook_secret?:string;is_enabled?:boolean;enabled?:boolean;receive_orders?:boolean;credentials?:Record<string,unknown>;settings?:Record<string,unknown>;auto_accept_orders?:boolean };
+
 export function normalizeGenericExternalOrder(provider: string, payload: unknown): NormalizedExternalOrder {
-  const data = payload as Record<string, any>;
-  const delivery = data.delivery ?? {};
-  const totals = data.totals ?? {};
-  const items = Array.isArray(data.items) ? data.items : [];
-  const customer = data.customer ?? {};
-  const address = delivery.address ?? {};
+  const data = record(payload);
+  const delivery = record(data.delivery);
+  const totals = record(data.totals);
+  const items = Array.isArray(data.items) ? data.items.map(record) : [];
+  if (!items.length || items.length > 100) throw new PublicError("Itens inválidos.");
+  const customer = record(data.customer);
+  const address = record(delivery.address);
 
   return {
     provider,
@@ -74,17 +80,17 @@ export function normalizeGenericExternalOrder(provider: string, payload: unknown
     delivery: {
       type: delivery.type === "PICKUP" ? "pickup" : delivery.type === "COUNTER" ? "dine_in" : "delivery",
       address: {
-        street: address.street,
-        number: address.number,
-        neighborhood: address.neighborhood,
-        complement: address.complement,
-        reference: address.reference,
-        city: address.city,
-        state: address.state,
-        zipCode: address.zipCode,
+        street: optionalText(address.street),
+        number: optionalText(address.number),
+        neighborhood: optionalText(address.neighborhood),
+        complement: optionalText(address.complement),
+        reference: optionalText(address.reference),
+        city: optionalText(address.city),
+        state: optionalText(address.state),
+        zipCode: optionalText(address.zipCode),
       },
     },
-    items: items.map((entry: Record<string, any>) => {
+    items: items.map((entry) => {
       const quantity = Number(entry.quantity ?? 1);
       const unitPrice = Number(entry.unitPrice ?? entry.price ?? 0);
       return {
@@ -95,7 +101,7 @@ export function normalizeGenericExternalOrder(provider: string, payload: unknown
         unitPrice,
         total: Number(entry.total ?? unitPrice * quantity),
         notes: entry.notes ? String(entry.notes) : undefined,
-        addons: Array.isArray(entry.addons) ? entry.addons.map((addon: Record<string, any>) => ({
+        addons: Array.isArray(entry.addons) ? entry.addons.map(record).map((addon) => ({
           externalAddonId: addon.externalAddonId ? String(addon.externalAddonId) : undefined,
           name: String(addon.name ?? "Adicional"),
           price: Number(addon.price ?? 0),
@@ -104,17 +110,17 @@ export function normalizeGenericExternalOrder(provider: string, payload: unknown
       };
     }),
     payment: {
-      method: String((data.payment ?? {}).method ?? "other").toLowerCase(),
-      status: (data.payment ?? {}).status,
-      changeFor: (data.payment ?? {}).changeFor ? Number((data.payment ?? {}).changeFor) : undefined,
+      method: String(record(data.payment).method ?? "other").toLowerCase(),
+      status: optionalText(record(data.payment).status),
+      changeFor: record(data.payment).changeFor ? Number(record(data.payment).changeFor) : undefined,
     },
     totals: {
-      subtotal: Number(totals.subtotal ?? items.reduce((sum: number, item: any) => sum + Number(item.total ?? item.unitPrice ?? 0), 0)),
+      subtotal: Number(totals.subtotal ?? items.reduce((sum: number, item) => sum + Number(item.total ?? item.unitPrice ?? 0), 0)),
       deliveryFee: Number(totals.deliveryFee ?? 0),
       discount: Number(totals.discount ?? 0),
       total: Number(totals.total ?? totals.subtotal ?? 0),
     },
-    notes: data.notes,
+    notes: optionalText(data.notes),
     rawPayload: payload,
   };
 }
@@ -139,26 +145,17 @@ function orderSourceForProvider(provider: string) {
 }
 
 export async function findIntegrationForPayload(provider: string, normalized: NormalizedExternalOrder, token: string | null) {
-  const supabase = createServiceClient();
-  let query = supabase.from("integrations").select("*").eq("provider", provider);
-  if (normalized.externalStoreId) query = query.or(`external_store_id.eq.${normalized.externalStoreId},credentials->>merchantId.eq.${normalized.externalStoreId},credentials->>externalStoreId.eq.${normalized.externalStoreId}`);
-  let { data, error } = await query.limit(10);
-  if (error) {
-    const fallback = await supabase.from("integrations").select("*").eq("provider", provider).limit(50);
-    data = (fallback.data ?? []).filter((item) => {
-      const storeId = item.credentials.merchantId ?? item.credentials.externalStoreId ?? item.settings.externalStoreId;
-      return !normalized.externalStoreId || storeId === normalized.externalStoreId;
-    });
-  }
-  const candidates = data ?? [];
-  if (token) {
-    const byToken = candidates.find((item) => item.webhook_secret === token || item.credentials.webhookSecret === token || item.settings.webhookSecret === token);
-    if (byToken) return byToken;
-  }
-  return candidates.find((item) => item.is_enabled || item.enabled) ?? candidates[0] ?? null;
+  if (!token || token.length < 32 || !normalized.externalStoreId) return null;
+  const { data, error } = await createServiceClient().from("integrations").select("*")
+    .eq("provider",provider).eq("external_store_id",normalized.externalStoreId).limit(2);
+  if (error || data?.length !== 1) return null;
+  const integration = data[0] as IntegrationRecord;
+  if (!(integration.is_enabled ?? integration.enabled) || integration.receive_orders === false) return null;
+  const secret=integration.webhook_secret ?? integration.credentials?.webhookSecret ?? integration.settings?.webhookSecret;
+  return secretMatches(secret,token) ? integration : null;
 }
 
-export async function createOrderFromExternalPayload(normalized: NormalizedExternalOrder, integration: any) {
+export async function createOrderFromExternalPayload(normalized: NormalizedExternalOrder, integration: IntegrationRecord) {
   const supabase = createServiceClient();
   const restaurantId = integration.restaurant_id;
   const phone = normalized.customer.phone ?? null;

@@ -1,3 +1,4 @@
+import { readObject, publicFailure } from "@/lib/security";
 ﻿import { NextRequest, NextResponse } from "next/server";
 import {
   createOrderFromExternalPayload,
@@ -23,12 +24,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   let payload: unknown;
   try {
-    payload = await request.json();
+    payload = await readObject(request, 262144);
   } catch {
     return NextResponse.json({ ok: false, error: "JSON inválido." }, { status: 400 });
   }
 
-  const normalized = normalizeGenericExternalOrder(provider, payload);
+  let normalized;
+  try { normalized = normalizeGenericExternalOrder(provider, payload); } catch(error) { return publicFailure(error); }
   const token = bearerToken(request);
   const integration = await findIntegrationForPayload(provider, normalized, token);
 

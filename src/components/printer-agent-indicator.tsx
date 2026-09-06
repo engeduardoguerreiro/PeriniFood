@@ -54,9 +54,9 @@ export function PrinterAgentIndicator() {
   }
 
   useEffect(() => {
-    void check();
+    const initial = window.setTimeout(() => void check(), 0);
     const interval = window.setInterval(() => void check(), 30000);
-    return () => window.clearInterval(interval);
+    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
   }, []);
 
   const connected = state === "connected";

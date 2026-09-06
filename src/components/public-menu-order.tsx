@@ -104,7 +104,6 @@ export function PublicMenuOrder({
   products,
   variants,
   options,
-  deliveryRules,
   pizzaOptions,
   coupons,
   loyalty,
@@ -140,13 +139,13 @@ export function PublicMenuOrder({
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(`gastroflow_customer_${restaurant.slug}`);
-      if (saved) setCustomerName(JSON.parse(saved).name ?? "");
-    } catch {
-      setCustomerName("");
-    }
-  }, [restaurant.slug]);
+    window.localStorage.removeItem('gastroflow_customer_' + restaurant.slug);
+    const controller = new AbortController();
+    fetch('/api/customer-auth/profile?restaurantId=' + restaurant.id, { signal: controller.signal })
+      .then(async response => response.ok ? response.json() : null)
+      .then(data => { if (data?.ok) setCustomerName(data.customer.name); }).catch(() => {});
+    return () => controller.abort();
+  }, [restaurant.id, restaurant.slug]);
 
   function isPizzaProduct(product: Product | undefined | null) {
     if (!product?.category_id) return false;

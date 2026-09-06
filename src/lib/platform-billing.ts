@@ -116,7 +116,7 @@ export const getAccessState = cache(async (restaurantId: string) => {
     .select("status, modules, suspension_reason")
     .eq("restaurant_id", restaurantId)
     .maybeSingle();
-  if (error || !data) return { blocked: false, status: null as SubscriptionStatus | null, modules: [] as string[], reason: null as string | null };
+  if (error || !data) return { blocked: Boolean(error), status: null as SubscriptionStatus | null, modules: [] as string[], reason: null as string | null };
   const raw = (data as Record<string, unknown>).modules;
   const modules = Array.isArray(raw) ? (raw as string[]) : [];
   const status = (data as Record<string, unknown>).status as SubscriptionStatus;

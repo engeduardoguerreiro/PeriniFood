@@ -1,9 +1,9 @@
 ﻿"use client";
 
-/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import { CheckCircle2, Eye, ImagePlus, Pizza, Save, Settings2, ShoppingBag, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ImagePicker } from "@/components/image-picker";
 import { SubmitButton } from "@/components/submit-button";
 import { saveProduct } from "@/app/actions";
@@ -145,13 +145,8 @@ export function ProductForm({
       sort_order: saved?.sort_order ?? index,
     };
   });
-  const [sizeRows, setSizeRows] = useState<SizeRow[]>(() => isPizza ? buildSizeRows() : []);
+  const [sizeRows, setSizeRows] = useState<SizeRow[]>(() => buildSizeRows());
 
-  useEffect(() => {
-    if (isPizza) setSizeRows(buildSizeRows());
-    else setSizeRows([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPizza, pizzaOptions, variants]);
 
   function updateSizeRow(index: number, patch: Partial<SizeRow>) {
     setSizeRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));

@@ -1,15 +1,17 @@
-﻿import { StatusBadge } from "@/components/status-badge";
+﻿import { notFound } from "next/navigation";
+import { StatusBadge } from "@/components/status-badge";
 import { createServiceClient } from "@/lib/supabase/service";
 import { money, orderCode } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
 
 export default async function PublicOrderTrackingPage({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;
+  if (!/^[a-f0-9]{48}$/.test(codigo)) notFound();
   const supabase = createServiceClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("*")
-    .or(`code.eq.${codigo},order_number.eq.${Number(codigo) || -1}`)
+    .select("id,code,order_number,status,type,total")
+    .eq("code", codigo)
     .maybeSingle();
 
   if (!order) {
@@ -17,7 +19,7 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
   }
 
   const current = order as Order;
-  const { data: items } = await supabase.from("order_items").select("*").eq("order_id", current.id);
+  const { data: items } = await supabase.from("order_items").select("id,product_name,quantity,total_price").eq("order_id", current.id);
 
   return (
     <main className="min-h-screen bg-[#FFF6E9] px-5 py-10 text-[#0F1720]">

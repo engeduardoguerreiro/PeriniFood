@@ -7,13 +7,13 @@ export function maskSecret(value: string | null) {
 export function generateWhatsAppLink(phone: string, message: string) {
   const digits = phone.replace(/\D/g, "");
   const normalized = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${normalized}text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 }
 
 export function sanitizeHeaders(headers: Headers) {
   const safe: Record<string, string> = {};
   headers.forEach((value, key) => {
-    safe[key] = key.toLowerCase().includes("authorization") || key.toLowerCase().includes("secret") ? maskSecret(value) : value;
+    safe[key] = /authorization|secret|cookie|token|api.key/i.test(key) ? maskSecret(value) : value;
   });
   return safe;
 }

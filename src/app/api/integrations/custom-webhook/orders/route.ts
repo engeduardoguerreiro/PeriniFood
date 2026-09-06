@@ -1,3 +1,4 @@
+import { readObject, publicFailure } from "@/lib/security";
 import { NextRequest, NextResponse } from "next/server";
 import {
   createOrderFromExternalPayload,
@@ -16,12 +17,13 @@ function bearerToken(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let payload: unknown;
   try {
-    payload = await request.json();
+    payload = await readObject(request, 262144);
   } catch {
     return NextResponse.json({ ok: false, error: "JSON inválido." }, { status: 400 });
   }
 
-  const normalized = normalizeGenericExternalOrder("webhook", payload);
+  let normalized;
+  try { normalized = normalizeGenericExternalOrder("webhook", payload); } catch(error) { return publicFailure(error); }
   const token = bearerToken(request);
   if (!token) {
     await logIntegrationEvent({

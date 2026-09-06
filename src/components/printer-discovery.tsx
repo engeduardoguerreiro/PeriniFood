@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffectEvent, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, RefreshCw, Download } from "lucide-react";
 
 type DetectedPrinter = {
@@ -101,12 +101,14 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
     }
   }
 
+  const initialize = useEffectEvent(loadPrinters);
+  const pollStatus = useEffectEvent(loadStatus);
   useEffect(() => {
-    void loadPrinters();
+    const initial = window.setTimeout(() => void initialize(), 0);
     const interval = window.setInterval(() => {
-      void loadStatus().catch(() => setOnline(false));
+      void pollStatus().catch(() => setOnline(false));
     }, 30000);
-    return () => window.clearInterval(interval);
+    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
   }, []);
 
   return (

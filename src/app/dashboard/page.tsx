@@ -1,3 +1,4 @@
+import { CUSTOMER_FIELDS } from "@/lib/public-data";
 import Link from "next/link";
 import { BarChart3, ClipboardList, Radio, ReceiptText, Trophy, TrendingUp } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
@@ -125,7 +126,7 @@ export default async function DashboardPage() {
   const [{ data: rangeOrdersData }, { count: productCount }, { count: customerCount }] = await Promise.all([
     supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).gte("created_at", rangeStart).order("created_at", { ascending: false }),
     supabase.from("products").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id).eq("active", true),
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id),
+    supabase.from("customers").select(CUSTOMER_FIELDS, { count: "exact", head: true }).eq("restaurant_id", restaurant.id),
   ]);
   const rangeOrders = (rangeOrdersData ?? []) as Order[];
 

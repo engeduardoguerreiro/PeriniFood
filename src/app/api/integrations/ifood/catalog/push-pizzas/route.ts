@@ -1,3 +1,4 @@
+import { requireIntegrationToken } from "@/lib/integrations/ingress";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { pushPizzaBatch, resetPizzas, fixPizzaPrices } from "@/lib/integrations/ifood/catalog-pizza";
@@ -10,11 +11,8 @@ export const maxDuration = 60;
 // reprocessar do zero (ex.: reenviar imagens). Depois chame de novo sem reset.
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const secret = process.env.IFOOD_POLL_SECRET;
-  if (secret) {
-    const key = url.searchParams.get("key");
-    if (key !== secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  }
+  const denied = requireIntegrationToken(request, process.env.IFOOD_POLL_SECRET);
+  if (denied) return denied;
   try {
     const supabase = createServiceClient();
     const { data: integration } = await supabase

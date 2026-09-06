@@ -1,3 +1,4 @@
+import { requireIntegrationToken } from "@/lib/integrations/ingress";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { processIFoodEvent } from "@/lib/integrations/ifood/event-processor";
@@ -12,6 +13,8 @@ type IFoodEvent = { id?: string; code?: string; fullCode?: string; orderId?: str
 const ACCEPTED = () => new NextResponse(null, { status: 202 });
 
 export async function POST(request: Request) {
+  const denied = requireIntegrationToken(request, process.env.IFOOD_WEBHOOK_SECRET);
+  if (denied) return denied;
   let events: IFoodEvent[] = [];
   try {
     const body = await request.json();

@@ -1,18 +1,20 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "crypto";
+import { promisify } from "node:util";
 
 const keyLength = 64;
+const derive = promisify(scrypt);
 
-export function hashCustomerPassword(password: string) {
+export async function hashCustomerPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, keyLength).toString("hex");
+  const hash = ((await derive(password, salt, keyLength)) as Buffer).toString("hex");
   return `scrypt$${salt}$${hash}`;
 }
 
-export function verifyCustomerPassword(password: string, storedHash: string | null | undefined) {
-  if (!storedHash) return false;
+export async function verifyCustomerPassword(password: string, storedHash: string | null | undefined) {
+  if (!storedHash || password.length > 128) return false;
   const [method, salt, hash] = storedHash.split("$");
-  if (method !== "scrypt" || !salt || !hash) return false;
-  const candidate = Buffer.from(scryptSync(password, salt, keyLength).toString("hex"), "hex");
+  if (method !== "scrypt" || !/^[a-f0-9]{32}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hash)) return false;
+  const candidate = (await derive(password, salt, keyLength)) as Buffer;
   const original = Buffer.from(hash, "hex");
   if (candidate.length !== original.length) return false;
   return timingSafeEqual(candidate, original);

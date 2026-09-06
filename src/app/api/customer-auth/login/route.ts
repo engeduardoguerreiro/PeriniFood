@@ -1,37 +1,24 @@
-import { NextResponse } from "next/server";
 import { safeCustomerProfile, verifyCustomerPassword } from "@/lib/customer-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { authRateLimit, startCustomerSession } from "@/lib/customer-session";
+import { assertSameOrigin, boundedText, emailAddress, privateJson, publicFailure, PublicError, readObject, uuid } from "@/lib/security";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { restaurantId: string; email: string; password: string };
-    const restaurantId = String(body.restaurantId ?? "").trim();
-    const email = String(body.email ?? "").trim().toLowerCase();
-    const password = String(body.password ?? "");
-
-    if (!restaurantId || !email || !password) {
-      return NextResponse.json({ ok: false, message: "Informe e-mail e senha." }, { status: 400 });
-    }
-
-    const supabase = createServiceClient();
-    const { data: customer, error } = await supabase
-      .from("customers")
-      .select("id, name, phone, whatsapp, email, cpf, birth_date, address, neighborhood, city, state, zip_code, password_hash")
-      .eq("restaurant_id", restaurantId)
-      .eq("email", email)
-      .maybeSingle();
-
-    if (error) {
-      return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
-    }
-    if (!customer || !verifyCustomerPassword(password, customer.password_hash)) {
-      return NextResponse.json({ ok: false, message: "E-mail ou senha inválidos." }, { status: 401 });
-    }
-
-    await supabase.from("customers").update({ last_login_at: new Date().toISOString() }).eq("id", customer.id);
-
-    return NextResponse.json({ ok: true, customer: safeCustomerProfile(customer) });
-  } catch (error) {
-    return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "Não foi possível entrar." }, { status: 500 });
-  }
+    assertSameOrigin(request);
+    const body = await readObject(request);
+    const restaurantId = uuid(body.restaurantId);
+    const email = emailAddress(body.email);
+    const password = boundedText(body.password, 128, true);
+    await authRateLimit(request, restaurantId, email);
+    const { data: customer, error } = await createServiceClient().from("customers")
+      .select("id, name, phone, whatsapp, email, cpf, birth_date, address, address_number, neighborhood, complement, reference, city, state, zip_code, password_hash")
+      .eq("restaurant_id", restaurantId).eq("email", email).maybeSingle();
+    if (error) throw error;
+    const hash = customer?.password_hash ?? `scrypt$${"0".repeat(32)}$${"0".repeat(128)}`;
+    const valid = await verifyCustomerPassword(password, hash);
+    if (!customer || !valid) throw new PublicError("E-mail ou senha inválidos.", 401);
+    await startCustomerSession(restaurantId, customer.id);
+    return privateJson({ ok: true, customer: safeCustomerProfile(customer) });
+  } catch (error) { return publicFailure(error); }
 }

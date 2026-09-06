@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { MapPin, Minus, Pencil, Plus, Printer, Search, ShoppingCart, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffectEvent, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { createPdvOrder } from "@/app/actions";
 import { money } from "@/lib/utils";
@@ -352,15 +352,11 @@ export function ManualOrderBuilder({
     const nameTerm = customerName.trim();
     const phoneTerm = onlyDigits(customerPhone);
     const queryTerm = phoneTerm.length >= 3 ? phoneTerm : nameTerm;
-    if (queryTerm.length < 2) {
-      setCustomerMatches([]);
-      setShowCustomerMatches(false);
-      setCustomerLookupStatus("");
-      return;
-    }
+
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
+      if (queryTerm.length < 2) { setCustomerMatches([]); setShowCustomerMatches(false); setCustomerLookupStatus(""); return; }
       setCustomerLookupStatus("Buscando cliente...");
       try {
         const response = await fetch(`/api/customers?q=${encodeURIComponent(queryTerm)}`, { signal: controller.signal });
@@ -394,10 +390,11 @@ export function ManualOrderBuilder({
     return () => window.clearTimeout(timer);
   }, [customerLookupStatus, showCustomerMatches, customerMatches.length]);
 
+  const calculateCurrentDelivery = useEffectEvent(() => calculateDeliveryRule(address, "Endereço completo."));
   useEffect(() => {
     if (orderType !== "delivery" || !addressIsComplete) return;
     const timer = window.setTimeout(() => {
-      void calculateDeliveryRule(address, "Endereço completo.");
+      void calculateCurrentDelivery();
     }, 650);
     return () => window.clearTimeout(timer);
   }, [address.street, address.number, address.neighborhood, address.city, address.state, address.cep, orderType, addressIsComplete]);

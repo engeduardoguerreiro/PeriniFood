@@ -72,7 +72,7 @@ export function isRestaurantOpen(restaurant: Pick<Restaurant, "is_open" | "openi
   const openingHours = restaurant.opening_hours as OpeningHours;
   const current = currentSaoPauloParts(date);
   const day = openingHours[current.weekday];
-  if (!day.active) return false;
+  if (!day?.active) return false;
 
   const openMinutes = minutesFromTime(day.open);
   const closeMinutes = minutesFromTime(day.close);
@@ -91,6 +91,6 @@ export function currentOpeningLabel(restaurant: Pick<Restaurant, "opening_hours"
   const current = currentSaoPauloParts();
   const day = openingHours[current.weekday];
 
-  if (!day.active || !day.open || !day.close) return "Fechado hoje";
+  if (!day?.active || !day.open || !day.close) return "Fechado hoje";
   return `Hoje: ${day.open} às ${day.close}`;
 }

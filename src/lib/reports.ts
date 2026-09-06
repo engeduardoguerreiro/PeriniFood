@@ -1,3 +1,4 @@
+import { CUSTOMER_FIELDS } from "@/lib/public-data";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Customer, Order, OrderItem, Product, Restaurant } from "@/lib/types";
@@ -228,7 +229,7 @@ export async function loadReportDataset(
       ? supabase.from("order_items").select("*").eq("restaurant_id", restaurant.id).in("order_id", orderIds)
       : Promise.resolve({ data: [] as Row[] }),
     supabase.from("products").select("*, categories(name)").eq("restaurant_id", restaurant.id),
-    supabase.from("customers").select("*").eq("restaurant_id", restaurant.id),
+    supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id),
   ]);
 
   const items = filterItems((itemRows ?? []) as OrderItem[], orders, searchParams);

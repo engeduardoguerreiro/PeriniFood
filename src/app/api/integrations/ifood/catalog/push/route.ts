@@ -1,3 +1,4 @@
+import { requireIntegrationToken } from "@/lib/integrations/ingress";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { pushCatalogBatch } from "@/lib/integrations/ifood/catalog-sync";
@@ -7,11 +8,8 @@ export const maxDuration = 60;
 // Envia um lote do cardápio para o iFood. Protegido por token.
 // Chame repetidamente (ex.: cron externo ou botão) até done = true.
 export async function GET(request: Request) {
-  const secret = process.env.IFOOD_POLL_SECRET;
-  if (secret) {
-    const key = new URL(request.url).searchParams.get("key");
-    if (key !== secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  }
+  const denied = requireIntegrationToken(request, process.env.IFOOD_POLL_SECRET);
+  if (denied) return denied;
   try {
     const supabase = createServiceClient();
     const { data: integration } = await supabase

@@ -1,3 +1,4 @@
+import { CUSTOMER_FIELDS } from "@/lib/public-data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -50,7 +51,7 @@ function parseStoredAddress(raw: string | null) {
 async function CustomerDetail({ id, status, error }: { id: string; status: string; error: string }) {
   const { supabase, restaurant } = await requireRestaurant();
   const [{ data: customer }, { data: orders }, { data: loyalty }] = await Promise.all([
-    supabase.from("customers").select("*").eq("restaurant_id", restaurant.id).eq("id", id).maybeSingle(),
+    supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).eq("id", id).maybeSingle(),
     supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).eq("customer_id", id).order("created_at", { ascending: false }),
     supabase.from("loyalty_programs").select("*").eq("restaurant_id", restaurant.id).maybeSingle(),
   ]);
@@ -189,7 +190,7 @@ async function CustomerDetail({ id, status, error }: { id: string; status: strin
             <p className="mt-0.5 text-xs text-[#9c988f]">Preencha uma nova senha para o cliente acessar a conta no cardápio online.</p>
             <div className="mt-3">
               <Field label="Nova senha">
-                <input className={inputClass} name="new_password" type="password" minLength={6} placeholder="Mínimo 6 caracteres" />
+                <p className="text-sm">A senha é pessoal. Alterações devem ser feitas pelo titular da conta.</p>
               </Field>
             </div>
             <p className="mt-3 rounded-lg bg-[#faf9f6] p-2.5 text-xs text-[#6d6a63]">Se deixar em branco, a senha atual não será alterada.</p>

@@ -1,3 +1,4 @@
+import { CUSTOMER_FIELDS } from "@/lib/public-data";
 ﻿import Link from "next/link";
 import { deleteCustomer, saveCustomer } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
@@ -15,7 +16,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const { supabase, restaurant } = await requireRestaurant();
   const sp = await searchParams;
   const query = (sp.q ?? "").trim();
-  let request = supabase.from("customers").select("*").eq("restaurant_id", restaurant.id).order("created_at", { ascending: false });
+  let request = supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).order("created_at", { ascending: false });
   if (query) request = request.or(`name.ilike.%${query}%,phone.ilike.%${query}%,whatsapp.ilike.%${query}%`);
   const [{ data, error }, { data: loyalty }, { data: orders }] = await Promise.all([
     request,

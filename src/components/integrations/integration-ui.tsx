@@ -5,7 +5,12 @@ import { integrationProviders, providerInfo, statusClass, statusLabel } from "@/
 import { maskSecret } from "@/lib/integrations/security";
 import { money } from "@/lib/utils";
 
-type IntegrationRecord = Record<string, any>;
+export type IntegrationRecord = Record<string, unknown> & {
+    id?:string;provider?:string;status?:string;is_enabled?:boolean;enabled?:boolean;name?:string;price?:number;created_at?:string;
+    event_type?:string;error_message?:string;message?:string;external_product_id?:string;external_product_name?:string;
+    external_payment_code?:string;external_payment_name?:string;internal_payment_method?:string;
+    credentials?:Record<string,unknown>;settings?:Record<string,unknown>;config?:Record<string,unknown>;
+  };
 
 export function IntegrationOverview({ integrations }: { integrations: IntegrationRecord[] }) {
   return (
@@ -45,10 +50,13 @@ export function IntegrationOverview({ integrations }: { integrations: Integratio
   );
 }
 
-function valueFromIntegration<T = string>(integration: IntegrationRecord | null, key: string, fallback: T | string = "") {
+function valueFromIntegration(integration: IntegrationRecord | null, key:string, fallback:boolean):boolean;
+function valueFromIntegration(integration: IntegrationRecord | null, key:string, fallback?:string):string;
+function valueFromIntegration(integration: IntegrationRecord | null, key:string, fallback:string|boolean="") {
   if (!integration) return fallback;
-  const snake = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-  return integration[snake] ?? integration[key] ?? integration.credentials?.[key] ?? integration.settings?.[key] ?? integration.config?.[key] ?? fallback;
+  const snake=key.replace(/[A-Z]/g,letter=>"_"+letter.toLowerCase());
+  const value=integration[snake] ?? integration[key] ?? integration.credentials?.[key] ?? integration.settings?.[key] ?? integration.config?.[key] ?? fallback;
+  return typeof fallback === "boolean" ? value === true || value === "true" : String(value);
 }
 
 export function MarketplaceIntegrationSettings({
@@ -229,7 +237,7 @@ export function LogPreview({ logs }: { logs: IntegrationRecord[] }) {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-[#faf9f6] text-xs uppercase text-[#9c988f]"><tr><th className="p-3">Data</th><th>Evento</th><th>Status</th><th>Erro</th></tr></thead>
-          <tbody>{logs.map((log) => <tr key={log.id} className="border-t border-[#efece6]"><td className="p-3">{new Date(log.created_at).toLocaleString("pt-BR")}</td><td>{log.event_type}</td><td>{log.status}</td><td>{log.error_message ?? log.message ?? "-"}</td></tr>)}</tbody>
+          <tbody>{logs.map((log) => <tr key={log.id} className="border-t border-[#efece6]"><td className="p-3">{log.created_at ? new Date(log.created_at).toLocaleString("pt-BR") : "-"}</td><td>{log.event_type}</td><td>{log.status}</td><td>{log.error_message ?? log.message ?? "-"}</td></tr>)}</tbody>
         </table>
       </div>
     </section>

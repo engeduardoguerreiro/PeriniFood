@@ -1,3 +1,4 @@
+import { CUSTOMER_FIELDS } from "@/lib/public-data";
 import { updatePdvOrder } from "@/app/actions";
 import { ManualOrderBuilder } from "@/components/manual-order-builder";
 import { requireRestaurant } from "@/lib/auth";
@@ -52,7 +53,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
   ]);
   const current = order as Order;
   const { data: customer } = current.customer_id ?
-     await supabase.from("customers").select("*").eq("restaurant_id", restaurant.id).eq("id", current.customer_id).maybeSingle()
+     await supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).eq("id", current.customer_id).maybeSingle()
     : { data: null };
   const currentCustomer = customer as Customer | null;
   const address = currentCustomer ?

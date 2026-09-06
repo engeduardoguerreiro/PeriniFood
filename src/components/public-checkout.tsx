@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Bike, CheckCircle2, CreditCard, Mail, MapPin, Search, UserRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPublicOrder } from "@/app/actions";
 import { money } from "@/lib/utils";
 import type { DeliveryFeeRule, Restaurant } from "@/lib/types";
@@ -75,40 +75,7 @@ function lineTotal(item: CartLine) {
   return (Number(item.price) + extras) * item.quantity;
 }
 
-function deliveryRuleLabel(rule: DeliveryFeeRule) {
-  const range = rule.max_km === null ? `a partir de ${rule.min_km} km` : `${rule.min_km} a ${rule.max_km} km`;
-  return `${rule.name || range} - ${rule.free_delivery ? "grátis" : money(rule.fee)}`;
-}
-
-function onlyDigits(value: string | null | undefined) {
-  return (value ?? "").replace(/\D/g, "");
-}
-
-function chooseRuleByDistance(rules: DeliveryFeeRule[], distanceKm: number) {
-  return [...rules]
-    .sort((a, b) => Number(a.max_km ?? 9999) - Number(b.max_km ?? 9999))
-    .find((rule) => distanceKm >= Number(rule.min_km ?? 0) && (rule.max_km === null || distanceKm <= Number(rule.max_km)));
-}
-
-function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const deltaLat = toRad(b.lat - a.lat);
-  const deltaLon = toRad(b.lon - a.lon);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const value = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-}
-
-async function geocodeAddress(query: string) {
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
-  const data = await response.json() as Array<{ lat: string; lon: string }>;
-  const first = data[0];
-  if (!first.lat || !first.lon) return null;
-  return { lat: Number(first.lat), lon: Number(first.lon) };
-}
-
-export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Restaurant; deliveryRules: DeliveryFeeRule[] }) {
+export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { restaurant: Restaurant; deliveryRules: DeliveryFeeRule[]; checkoutError?: string }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [addressStatus, setAddressStatus] = useState("");
@@ -126,19 +93,18 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
   const [needsChange, setNeedsChange] = useState<"no" | "yes">("no");
 
   useEffect(() => {
-    const saved = window.sessionStorage.getItem(`gastroflow_cart_${restaurant.slug}`);
-    if (saved) setCart(JSON.parse(saved) as CartLine[]);
-    const savedCustomer = window.localStorage.getItem(`gastroflow_customer_${restaurant.slug}`);
-    if (savedCustomer) {
-      try {
-        applyCustomerProfile(JSON.parse(savedCustomer) as CustomerProfile, false);
-      } catch {
-        window.localStorage.removeItem(`gastroflow_customer_${restaurant.slug}`);
-      }
-    }
-  }, [restaurant.slug]);
+    window.localStorage.removeItem('gastroflow_customer_' + restaurant.slug);
+    const controller = new AbortController();
+    Promise.resolve().then(() => {
+      try { const saved = window.sessionStorage.getItem('gastroflow_cart_' + restaurant.slug); if (saved) setCart(JSON.parse(saved)); } catch { window.sessionStorage.removeItem('gastroflow_cart_' + restaurant.slug); }
+    });
+    fetch('/api/customer-auth/profile?restaurantId=' + restaurant.id, { signal: controller.signal })
+      .then(async response => response.ok ? response.json() : null)
+      .then(data => { if (data?.ok) applyCustomerProfile(data.customer); }).catch(() => {});
+    return () => controller.abort();
+  }, [restaurant.id, restaurant.slug]);
 
-  function applyCustomerProfile(customer: CustomerProfile, persist = true) {
+  function applyCustomerProfile(customer: CustomerProfile) {
     setCustomerId(customer.id ?? "");
     setCustomerDraft({
       name: customer.name ?? "",
@@ -156,7 +122,6 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
       city: customer.city || current.city,
       state: customer.state || current.state,
     }));
-    if (persist) window.localStorage.setItem(`gastroflow_customer_${restaurant.slug}`, JSON.stringify(customer));
   }
 
   async function submitCustomerAuth(mode: "login" | "register") {
@@ -214,45 +179,17 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
         : "";
   const canSubmit = !checkoutBlockReason;
 
-  async function calculateDeliveryRule(nextAddress: Address, messagePrefix = "Endereço encontrado.") {
-    if (!deliveryRules.length) {
-      setAddressStatus(`${messagePrefix} Frete padrão aplicado.`);
-      return;
-    }
-    if (!nextAddress.street || !nextAddress.number || !nextAddress.neighborhood || !nextAddress.city || !nextAddress.state) {
-      setAddressStatus(`${messagePrefix} Informe o número para calcular o frete automaticamente.`);
-      return;
-    }
-    if (onlyDigits(restaurant.zip_code) && onlyDigits(restaurant.zip_code) === onlyDigits(nextAddress.cep)) {
-      const rule = chooseRuleByDistance(deliveryRules, 0);
-      if (rule) setDeliveryRuleId(rule.id);
-      setAddressStatus(`${messagePrefix} Distância estimada: 0 km. Frete aplicado automaticamente.`);
-      return;
-    }
-
+  const calculateDeliveryRule = useCallback(async (nextAddress: Address, messagePrefix = "Endereço informado.") => {
     setDeliveryCalculating(true);
     try {
-      const customerQuery = `${nextAddress.street}, ${nextAddress.number}, ${nextAddress.neighborhood}, ${nextAddress.city}, ${nextAddress.state}, Brasil`;
-      const restaurantQuery = `${restaurant.address ?? ""}, ${restaurant.address_number ?? ""}, ${restaurant.neighborhood ?? ""}, ${restaurant.city ?? ""}, ${restaurant.state ?? ""}, ${restaurant.zip_code ?? ""}, Brasil`;
-      const [customerCoords, restaurantCoords] = await Promise.all([geocodeAddress(customerQuery), geocodeAddress(restaurantQuery)]);
-      if (customerCoords && restaurantCoords) {
-        const distanceKm = haversineKm(restaurantCoords, customerCoords);
-        const rule = chooseRuleByDistance(deliveryRules, distanceKm);
-        if (rule) {
-          setDeliveryRuleId(rule.id);
-          setAddressStatus(`${messagePrefix} Distância estimada: ${distanceKm.toFixed(1)} km. Frete aplicado automaticamente.`);
-          return;
-        }
-        setAddressStatus(`${messagePrefix} Distância estimada: ${distanceKm.toFixed(1)} km, fora das faixas de entrega.`);
-        return;
-      }
-      setAddressStatus(`${messagePrefix} Não foi possível estimar a distância. Frete padrão aplicado.`);
-    } catch {
-      setAddressStatus(`${messagePrefix} Não foi possível estimar a distância. Frete padrão aplicado.`);
-    } finally {
-      setDeliveryCalculating(false);
-    }
-  }
+      const response = await fetch("/api/shipping/quote", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({restaurantId:restaurant.id,address:nextAddress}) });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message ?? "Não foi possível calcular o frete.");
+      setDeliveryRuleId(data.ruleId);
+      setAddressStatus(messagePrefix + " Frete calculado: " + money(data.fee));
+    } catch (error) { setAddressStatus(error instanceof Error ? error.message : "Não foi possível calcular o frete."); }
+    finally { setDeliveryCalculating(false); }
+  }, [restaurant.id]);
 
   useEffect(() => {
     if (type !== "delivery" || !addressIsComplete) return;
@@ -260,7 +197,7 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
       void calculateDeliveryRule(address, "Endereço completo.");
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [address.street, address.number, address.neighborhood, address.city, address.state, address.cep, type, addressIsComplete]);
+  }, [address, type, addressIsComplete, calculateDeliveryRule]);
 
   async function lookupCep() {
     const cep = address.cep.replace(/\D/g, "");
@@ -295,6 +232,7 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
 
   return (
     <main className="min-h-screen bg-[#f1f1f1] px-5 py-8 text-[#243640]">
+      {checkoutError && <p role="alert" className="mx-auto mb-5 max-w-[1280px] rounded-lg bg-red-50 p-4 text-red-700">{checkoutError}</p>}
       {!restaurant.is_open && (
         <div className="mx-auto mb-6 max-w-[1280px] rounded-lg border border-red-200 bg-red-50 p-4 font-bold text-red-700">
           A loja está fechada no momento. Volte ao cardápio para consultar os produtos disponíveis.
@@ -302,24 +240,9 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
       )}
       <form
         action={createPublicOrder}
-        onSubmit={() => {
-          window.localStorage.setItem(`gastroflow_customer_${restaurant.slug}`, JSON.stringify({
-            id: customerId,
-            name: customerDraft.name,
-            phone: customerDraft.phone,
-            whatsapp: customerDraft.phone,
-            email: customerDraft.email,
-            cpf: customerDraft.cpf,
-            birthDate: customerDraft.birthDate,
-            address: address.street,
-            neighborhood: address.neighborhood,
-            city: address.city,
-            state: address.state,
-            zipCode: address.cep,
-          }));
-        }}
         className="mx-auto grid max-w-[1280px] gap-8 lg:grid-cols-[360px_1fr]"
       >
+        {Object.entries(address).map(([key,value]) => <input key={key} type="hidden" name={key} value={value} />)}
         <input type="hidden" name="restaurant_id" value={restaurant.id} />
         <input type="hidden" name="slug" value={restaurant.slug} />
         <input type="hidden" name="cart" value={JSON.stringify(cart)} />
@@ -386,8 +309,6 @@ export function PublicCheckout({ restaurant, deliveryRules }: { restaurant: Rest
                 <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input className="field-light pl-11" name="customer_email" type="email" placeholder="E-mail" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} required />
               </div>
-              <input className="field-light" name="customer_cpf" placeholder="CPF" value={customerDraft.cpf} onChange={(event) => setCustomerDraft({ ...customerDraft, cpf: event.target.value })} required />
-              <input className="field-light" name="customer_birth_date" type="date" value={customerDraft.birthDate} onChange={(event) => setCustomerDraft({ ...customerDraft, birthDate: event.target.value })} required />
             </div>
             <button
               type="button"

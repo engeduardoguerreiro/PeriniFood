@@ -19,6 +19,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const { supabase, restaurant } = auth.context;
   const body = await jsonBody<Record<string, unknown>>(request);
-  const { data, error } = await supabase.from("orders").update(body).eq("restaurant_id", restaurant.id).eq("id", id).select("*").single();
+  const { data, error } = await supabase.from("orders").update({ notes: typeof body.notes === "string" ? body.notes.slice(0,1000) : null }).eq("restaurant_id", restaurant.id).eq("id", id).select("*").single();
   return NextResponse.json({ ok: !error, data, error: error?.message }, { status: error ? 400 : 200 });
 }

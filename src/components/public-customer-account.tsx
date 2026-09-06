@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Gift, Mail, MapPin, PackageCheck, Search, UserCircle2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { money } from "@/lib/utils";
 import type { Restaurant } from "@/lib/types";
 
@@ -139,20 +139,8 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
   const loyalty = account?.loyalty ?? emptyLoyalty;
   const orders = account?.orders ?? [];
 
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(accountStorageKey(restaurant.slug));
-      if (!saved) return;
-      const customer = JSON.parse(saved) as CustomerProfile;
-      saveProfile(customer, false);
-      void loadAccount(customer);
-    } catch {
-      window.localStorage.removeItem(accountStorageKey(restaurant.slug));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurant.slug]);
 
-  function fillDraft(customer: CustomerProfile) {
+  const fillDraft = useCallback((customer: CustomerProfile) => {
     setDraft((current) => ({
       ...current,
       name: customer.name ?? "",
@@ -170,13 +158,23 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
       zipCode: customer.zipCode ?? "",
       password: "",
     }));
-  }
+  }, []);
 
-  function saveProfile(customer: CustomerProfile, persist = true) {
+  const saveProfile = useCallback((customer: CustomerProfile) => {
     setProfile(customer);
     fillDraft(customer);
-    if (persist) window.localStorage.setItem(accountStorageKey(restaurant.slug), JSON.stringify(customer));
-  }
+  }, [fillDraft]);
+
+  useEffect(() => {
+    window.localStorage.removeItem(accountStorageKey(restaurant.slug));
+    const controller = new AbortController();
+    fetch('/api/customer-auth/profile?restaurantId=' + restaurant.id, { signal: controller.signal })
+      .then(async response => response.ok ? response.json() : null)
+      .then(data => { if (data?.ok) { setAccount(data); saveProfile(data.customer); } })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [restaurant.id, restaurant.slug, saveProfile]);
+
 
   async function loadAccount(customer = profile) {
     if (!customer?.id) return;
@@ -268,7 +266,9 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
     }
   }
 
-  function logout() {
+  async function logout() {
+    const response = await fetch("/api/customer-auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ restaurantId: restaurant.id }) });
+    if (!response.ok) { setStatus("Não foi possível sair. Tente novamente."); return; }
     window.localStorage.removeItem(accountStorageKey(restaurant.slug));
     setProfile(null);
     setAccount(null);
@@ -327,13 +327,11 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                 )}
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input className="field-light pl-11" type="email" placeholder="E-mail" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+                  <input className="field-light pl-11" type="email" placeholder="E-mail" readOnly={Boolean(profile)} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
                 </div>
-                <input className="field-light" type="password" placeholder="Senha" value={draft.password} onChange={(event) => setDraft({ ...draft, password: event.target.value })} />
+                <input className="field-light" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} minLength={mode === "register" ? 12 : undefined} maxLength={128} placeholder={mode === "register" ? "Senha com pelo menos 12 caracteres" : "Senha"} value={draft.password} onChange={(event) => setDraft({ ...draft, password: event.target.value })} />
                 {mode === "register" && (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <input className="field-light" placeholder="CPF" value={draft.cpf} onChange={(event) => setDraft({ ...draft, cpf: event.target.value })} />
-                    <input className="field-light" type="date" value={draft.birthDate} onChange={(event) => setDraft({ ...draft, birthDate: event.target.value })} />
                   </div>
                 )}
                 <button type="button" onClick={submitAuth} disabled={loading} className="rounded-lg bg-red-600 px-4 py-4 font-black uppercase text-white transition hover:bg-red-700 disabled:bg-slate-300">
@@ -400,9 +398,7 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <input className="field-light" placeholder="Nome completo" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
                     <input className="field-light" placeholder="Celular/WhatsApp" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
-                    <input className="field-light" type="email" placeholder="E-mail" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
-                    <input className="field-light" placeholder="CPF" value={draft.cpf} onChange={(event) => setDraft({ ...draft, cpf: event.target.value })} />
-                    <input className="field-light" type="date" value={draft.birthDate} onChange={(event) => setDraft({ ...draft, birthDate: event.target.value })} />
+                    <input className="field-light" type="email" placeholder="E-mail" readOnly={Boolean(profile)} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <input className="field-light" placeholder="CEP" value={draft.zipCode} onChange={(event) => setDraft({ ...draft, zipCode: event.target.value })} />
                       <button type="button" onClick={lookupCep} className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-red-300" aria-label="Buscar CEP"><Search className="h-4 w-4" /></button>

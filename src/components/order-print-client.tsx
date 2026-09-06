@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffectEvent, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { AlertTriangle, CheckCircle2, Printer, RefreshCw } from "lucide-react";
 
@@ -171,7 +171,7 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
     window.setTimeout(finish, 20000);
   }
 
-  useEffect(() => {
+  const startPrint = useEffectEvent(() => {
     if (printedRef.current) return;
     printedRef.current = true;
     if (auto) {
@@ -209,6 +209,10 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
         setAgentOnline(false);
         setStatus(error instanceof Error ? error.message : "Agente local de impressão offline.");
       });
+  });
+  useEffect(() => {
+    const initial = window.setTimeout(() => startPrint(), 0);
+    return () => window.clearTimeout(initial);
   }, []);
 
   if (auto) {

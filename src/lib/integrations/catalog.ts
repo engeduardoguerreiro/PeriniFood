@@ -53,7 +53,7 @@ export function providerPath(provider: string) {
   return `/integracoes/${provider}`;
 }
 
-export function statusLabel(status: string | null, enabled: boolean | null) {
+export function statusLabel(status: string | null | undefined, enabled: boolean | null | undefined) {
   if (!status && !enabled) return "Não configurado";
   if (status === "active" || status === "connected") return "Ativo";
   if (status === "pending") return "Pendente";
@@ -62,7 +62,7 @@ export function statusLabel(status: string | null, enabled: boolean | null) {
   return "Não configurado";
 }
 
-export function statusClass(status: string | null, enabled: boolean | null) {
+export function statusClass(status: string | null | undefined, enabled: boolean | null | undefined) {
   const label = statusLabel(status, enabled);
   if (label === "Ativo") return "bg-emerald-50 text-emerald-700";
   if (label === "Pendente") return "bg-amber-50 text-amber-700";

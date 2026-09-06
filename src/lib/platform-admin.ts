@@ -18,7 +18,7 @@ export const getPlatformAdmin = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const email = user?.email?.toLowerCase() ?? null;
-  return { user, email, isAdmin: isPlatformAdminEmail(email) };
+  return { user, email, isAdmin: Boolean(user?.email_confirmed_at) && isPlatformAdminEmail(email) };
 });
 
 // Bloqueia a rota para quem não é admin da plataforma e entrega um service

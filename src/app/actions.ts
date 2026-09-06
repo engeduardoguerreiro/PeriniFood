@@ -4,15 +4,16 @@ import { mkdir, writeFile } from "fs/promises";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import path from "path";
+import { saveValidatedOrder } from "@/lib/order-service";
+import { PublicError, boundedText } from "@/lib/security";
 import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireRestaurant } from "@/lib/auth";
 import { mergeDeliveryRulesIntoOpeningHours } from "@/lib/delivery-fee-rules";
-import { hashCustomerPassword } from "@/lib/customer-auth";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
 import { syncOrderStatusToIFood } from "@/lib/integrations/ifood/status-sync";
-import { isRestaurantOpen, openingHourDays } from "@/lib/opening-hours";
+import { openingHourDays } from "@/lib/opening-hours";
 import { digits, slugify } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
 
@@ -41,9 +42,6 @@ function uniqueValues(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function orderCodeValue() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
 
 function openingHoursPayload(formData: FormData, existing: Record<string, unknown> | null) {
   const deliveryRules = existing?._delivery_fee_rules;
@@ -107,7 +105,7 @@ function deliveryFeeRulesPayload(formData: FormData, restaurantId: string) {
     throw new Error("Confira as faixas de entrega. KM e taxa não podem ser negativos, e o KM final deve ser maior que o inicial.");
   }
 
-  return rules.map(({ removed, ...rule }) => rule);
+  return rules.map((entry) => ({ name: entry.name, restaurant_id: entry.restaurant_id, min_km: entry.min_km, max_km: entry.max_km, fee: entry.fee, free_delivery: entry.free_delivery, active: entry.active }));
 }
 
 async function replaceDeliveryFeeRules(restaurantId: string, rules: ReturnType<typeof deliveryFeeRulesPayload>) {
@@ -152,7 +150,8 @@ function pizzaOptionGroupName(kind: string) {
 }
 
 function redirectWithFeedback(formData: FormData, fallbackPath: string, status: "saved" | "deleted" | "updated", error?: string) {
-  const returnTo = text(formData, "return_to", fallbackPath);
+  const requested = text(formData, "return_to", fallbackPath);
+  const returnTo = requested.startsWith("/") && !requested.startsWith("//") && !requested.includes("\\") ? requested : fallbackPath;
   const separator = returnTo.includes("?") ? "&" : "?";
   const params = error ? `error=${encodeURIComponent(error)}` : `status=${status}`;
   redirect(`${returnTo}${separator}${params}`);
@@ -259,69 +258,6 @@ type ProductPayload = Record<string, string | number | boolean | null>;
 
 function missingSchemaColumn(error: { message: string } | null) {
   return error?.message.match(/Could not find the '([^']+)' column/)?.[1] ?? null;
-}
-
-async function ensureCustomerForOrder(formData: FormData, restaurantId: string) {
-  const service = createServiceClient();
-  const customerIdFromForm = text(formData, "customer_id") || null;
-  const phone = text(formData, "customer_phone");
-  const name = text(formData, "customer_name");
-
-  if (customerIdFromForm) {
-    const { data: existingCustomer, error } = await service
-      .from("customers")
-      .select("id")
-      .eq("id", customerIdFromForm)
-      .eq("restaurant_id", restaurantId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (existingCustomer?.id) return existingCustomer.id as string;
-  }
-
-  if (!phone || !name) return null;
-
-  const customerPayload: Record<string, string | null> = {
-    restaurant_id: restaurantId,
-    name,
-    phone,
-    whatsapp: digits(phone) || phone,
-    email: text(formData, "customer_email") || null,
-    cpf: text(formData, "customer_cpf") || null,
-    birth_date: text(formData, "customer_birth_date") || null,
-    address: text(formData, "street") || null,
-    address_number: text(formData, "address_number") || null,
-    neighborhood: text(formData, "neighborhood") || null,
-    complement: text(formData, "complement") || null,
-    reference: text(formData, "reference") || null,
-    city: text(formData, "city") || null,
-    state: text(formData, "state") || null,
-    zip_code: text(formData, "zip_code") || null,
-    notes: text(formData, "customer_notes") || null,
-  };
-
-  const { data: existingCustomer, error: existingError } = await service
-    .from("customers")
-    .select("id")
-    .eq("restaurant_id", restaurantId)
-    .eq("phone", phone)
-    .maybeSingle();
-  if (existingError) throw new Error(existingError.message);
-
-  const saveCustomerData = async (payload: Record<string, string | null>) => (
-    existingCustomer?.id
-      ? service.from("customers").update(payload).eq("id", existingCustomer.id).eq("restaurant_id", restaurantId).select("id").single()
-      : service.from("customers").insert(payload).select("id").single()
-  );
-
-  let saveCustomer = await saveCustomerData(customerPayload);
-  for (let attempt = 0; saveCustomer.error && attempt < 5; attempt++) {
-    const missingColumn = missingSchemaColumn(saveCustomer.error);
-    if (!missingColumn || !(missingColumn in customerPayload)) break;
-    delete customerPayload[missingColumn];
-    saveCustomer = await saveCustomerData(customerPayload);
-  }
-  if (saveCustomer.error) throw new Error(saveCustomer.error.message);
-  return saveCustomer.data?.id as string | null;
 }
 
 async function saveProductRecord(
@@ -995,331 +931,46 @@ export async function deleteOrder(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
-type CartPayload = Array<{
-  id: string;
-  variantId: string | null;
-  addonIds: string[];
-  dough: { name: string; price: number } | null;
-  crust: { name: string; price: number } | null;
-  additions: Array<{ name: string; price: number }>;
-  flavorCount: number;
-  flavors: string[];
-  variantName: string | null;
-  name: string;
-  price: number;
-  quantity: number;
-  notes: string;
-}>;
-
-async function normalizeCartForOrder(cart: CartPayload, restaurantId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
-  const addonIds = [...new Set(cart.flatMap((item) => item.addonIds ?? []).filter(Boolean))];
-  const { data: products, error: productsError } = await supabase.from("products").select("id, name, price, active").eq("restaurant_id", restaurantId).eq("active", true);
-  if (productsError) throw new Error(productsError.message);
-
-  const allProductIds = (products ?? []).map((product) => product.id);
-  const variantsResult = allProductIds.length ?
-     await supabase.from("product_variants").select("id, product_id, name, price, active").eq("active", true).in("product_id", allProductIds)
-    : { data: [] };
-  const addonsResult = addonIds.length ?
-     await supabase.from("product_addons").select("id, name, price, active").eq("restaurant_id", restaurantId).in("id", addonIds)
-    : { data: [] };
-  const variants = "error" in variantsResult && variantsResult.error ? [] : variantsResult.data;
-  const addons = "error" in addonsResult && addonsResult.error ? [] : addonsResult.data;
-  const productMap = new Map((products ?? []).map((product) => [product.id, product]));
-  const productByName = new Map((products ?? []).map((product) => [product.name, product]));
-  const variantMap = new Map((variants ?? []).map((variant) => [variant.id, variant]));
-  const addonMap = new Map((addons ?? []).map((addon) => [addon.id, addon]));
-  const flavorUnitPrice = (flavorName: string, variantName: string | null | undefined, fallback: number) => {
-    const flavorProduct = productByName.get(flavorName);
-    if (!flavorProduct) return fallback;
-    const flavorVariants = (variants ?? []).filter((variant) => variant.product_id === flavorProduct.id && variant.active);
-    const sameSize = flavorVariants.find((flavorVariant) => flavorVariant.name === variantName);
-    if (sameSize) return Number(sameSize.price);
-    if (flavorVariants.length) return Math.min(...flavorVariants.map((flavorVariant) => Number(flavorVariant.price)));
-    return Number(flavorProduct.price ?? fallback);
-  };
-
-  return cart.map((item) => {
-    const product = productMap.get(item.id);
-    if (!product || !product.active) throw new Error("Produto indisponível");
-    const variant = item.variantId ? variantMap.get(item.variantId) : null;
-    const itemAddons = (item.addonIds ?? []).map((id) => addonMap.get(id)).filter((addon) => addon && addon.active);
-    const inlineAdditions = (item.additions ?? []).map((addon) => ({ id: null, name: addon.name, price: Number(addon.price ?? 0), active: true }));
-    const crust = item.crust?.name ? { id: null, name: item.crust.name, price: Number(item.crust.price ?? 0), active: true } : null;
-    const selectedAddons = [...itemAddons, ...inlineAdditions];
-    const selectedExtras = [...selectedAddons, ...(crust ? [crust] : [])];
-    const baseUnitPrice = Number(variant?.price ?? product.price);
-    const flavorPrices = (item.flavors ?? []).map((flavor) => flavorUnitPrice(flavor, variant?.name ?? item.variantName, baseUnitPrice));
-    const unitPrice = flavorPrices.length ? Math.max(baseUnitPrice, ...flavorPrices) : baseUnitPrice;
-    const addonsTotal = selectedExtras.reduce((sum, addon) => sum + Number(addon?.price ?? 0), 0) + Number(item.dough?.price ?? 0);
-    const quantity = Math.max(1, Number(item.quantity || 1));
-    return {
-      ...item,
-      name: variant ? `${product.name} - ${variant.name}` : product.name,
-      price: unitPrice,
-      quantity,
-      addons: selectedAddons,
-      total: (unitPrice + addonsTotal) * quantity,
-    };
-  });
-}
-
-async function createOrderFromCart(formData: FormData, source: "pdv" | "site" | "delivery" | "mesa", restaurantId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
-  const cart = JSON.parse(text(formData, "cart", "[]")) as CartPayload;
-  if (!cart.length) throw new Error("Carrinho vazio");
-  if (source === "site") {
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from("restaurants")
-      .select("is_open, opening_hours, manual_open_status")
-      .eq("id", restaurantId)
-      .maybeSingle();
-    if (restaurantError) throw new Error(restaurantError.message);
-    if (!restaurant || !isRestaurantOpen({ is_open: Boolean(restaurant.is_open), opening_hours: restaurant.opening_hours, manual_open_status: restaurant.manual_open_status })) {
-      throw new Error("A loja está fechada no momento.");
-    }
-  }
-  const addonIds = [...new Set(cart.flatMap((item) => item.addonIds ?? []).filter(Boolean))];
-  const { data: products, error: productsError } = await supabase.from("products").select("id, name, price, active").eq("restaurant_id", restaurantId).eq("active", true);
-  if (productsError) throw new Error(productsError.message);
-
-  const allProductIds = (products ?? []).map((product) => product.id);
-  const variantsResult = allProductIds.length
-    ? await supabase.from("product_variants").select("id, product_id, name, price, active").eq("active", true).in("product_id", allProductIds)
-    : { data: [] };
-  const addonsResult = addonIds.length
-    ? await supabase.from("product_addons").select("id, name, price, active").eq("restaurant_id", restaurantId).in("id", addonIds)
-    : { data: [] };
-  const variants = "error" in variantsResult && variantsResult.error ? [] : variantsResult.data;
-  const addons = "error" in addonsResult && addonsResult.error ? [] : addonsResult.data;
-  const productMap = new Map((products ?? []).map((product) => [product.id, product]));
-  const productByName = new Map((products ?? []).map((product) => [product.name, product]));
-  const variantMap = new Map((variants ?? []).map((variant) => [variant.id, variant]));
-  const addonMap = new Map((addons ?? []).map((addon) => [addon.id, addon]));
-  const flavorUnitPrice = (flavorName: string, variantName: string | null | undefined, fallback: number) => {
-    const flavorProduct = productByName.get(flavorName);
-    if (!flavorProduct) return fallback;
-    const flavorVariants = (variants ?? []).filter((variant) => variant.product_id === flavorProduct.id && variant.active);
-    const sameSize = flavorVariants.find((flavorVariant) => flavorVariant.name === variantName);
-    if (sameSize) return Number(sameSize.price);
-    if (flavorVariants.length) return Math.min(...flavorVariants.map((flavorVariant) => Number(flavorVariant.price)));
-    return Number(flavorProduct.price ?? fallback);
-  };
-  const normalizedCart = cart.map((item) => {
-    const product = productMap.get(item.id);
-    if (!product || !product.active) throw new Error("Produto indisponível");
-    const variant = item.variantId ? variantMap.get(item.variantId) : null;
-    const itemAddons = (item.addonIds ?? []).map((id) => addonMap.get(id)).filter((addon) => addon && addon.active);
-    const inlineAdditions = (item.additions ?? []).map((addon) => ({ id: null, name: addon.name, price: Number(addon.price ?? 0), active: true }));
-    const crust = item.crust?.name ? { id: null, name: item.crust.name, price: Number(item.crust.price ?? 0), active: true } : null;
-    const selectedAddons = [...itemAddons, ...inlineAdditions];
-    const selectedExtras = [...selectedAddons, ...(crust ? [crust] : [])];
-    const baseUnitPrice = Number(variant?.price ?? product.price);
-    const flavorPrices = (item.flavors ?? []).map((flavor) => flavorUnitPrice(flavor, variant?.name ?? item.variantName, baseUnitPrice));
-    const unitPrice = flavorPrices.length ? Math.max(baseUnitPrice, ...flavorPrices) : baseUnitPrice;
-    const addonsTotal = selectedExtras.reduce((sum, addon) => sum + Number(addon?.price ?? 0), 0) + Number(item.dough?.price ?? 0);
-    const quantity = Math.max(1, Number(item.quantity || 1));
-    return {
-      ...item,
-      name: variant ? `${product.name} - ${variant.name}` : product.name,
-      price: unitPrice,
-      quantity,
-      addons: selectedAddons,
-      total: (unitPrice + addonsTotal) * quantity,
-    };
-  });
-  const subtotal = normalizedCart.reduce((sum, item) => sum + item.total, 0);
-  const deliveryFee = num(formData, "delivery_fee");
-  const discount = num(formData, "discount");
-  const total = subtotal + deliveryFee - discount;
-  const phone = text(formData, "customer_phone");
-  const customerId = await ensureCustomerForOrder(formData, restaurantId);
-
-  const orderPayload = {
-    restaurant_id: restaurantId,
-    customer_id: customerId,
-    code: orderCodeValue(),
-    source,
-    type: text(formData, "type", "pickup"),
-    status: "pending",
-    payment_status: source === "pdv" ? "paid" : "pending",
-    payment_method: text(formData, "payment_method", "pix"),
-    subtotal,
-    delivery_fee: deliveryFee,
-    discount,
-    total,
-    customer_name: text(formData, "customer_name") || "Cliente balcão",
-    customer_phone: phone || null,
-    delivery_address: text(formData, "delivery_address") || null,
-    notes: text(formData, "customer_notes") || text(formData, "notes") || null,
-  };
-
-  const { data: order, error } = await supabase.from("orders").insert(orderPayload).select("id").single();
-  if (error) throw new Error(error.message);
-
-  const { data: insertedItems, error: itemsError } = await supabase.from("order_items").insert(normalizedCart.map((item) => ({
-    restaurant_id: restaurantId,
-    order_id: order.id,
-    product_id: item.id,
-    product_name: item.name,
-    quantity: item.quantity,
-    unit_price: item.price,
-    total_price: item.total,
-    notes: item.notes ?? null,
-    selected_options: {
-      variantId: item.variantId || null,
-      flavorCount: item.flavorCount || 1,
-      flavors: item.flavors ?? [],
-      dough: item.dough ?? null,
-      crust: item.crust ?? null,
-      addons: item.addons.filter(Boolean).map((addon) => ({ id: addon?.id ?? null, name: addon?.name ?? "Adicional", price: addon?.price ?? 0 })),
-      changeFor: num(formData, "change_for") || null,
-    },
-  }))).select("id");
-  if (itemsError) throw new Error(itemsError.message);
-  const addonRows = normalizedCart.flatMap((item, index) => (
-    item.addons.map((addon) => ({
-      order_item_id: insertedItems?.[index]?.id,
-      addon_id: addon?.id ?? null,
-      name: addon?.name ?? "Adicional",
-      price: Number(addon?.price ?? 0),
-    })).filter((addon) => addon.order_item_id)
-  ));
-  if (addonRows.length) {
-    const { error: addonInsertError } = await createServiceClient().from("order_item_addons").insert(addonRows);
-    if (addonInsertError) throw new Error(addonInsertError.message);
-  }
-
-  return order.id as string;
-}
-
 export async function createPdvOrder(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
-  const id = await createOrderFromCart(formData, "pdv", restaurant.id, supabase);
-  revalidatePath("/dashboard/orders");
+  const { restaurant, role } = await requireRestaurant();
+  if (role === "kitchen") throw new Error("Operação não permitida.");
+  const { id } = await saveValidatedOrder(formData, restaurant.id, "pdv");
   revalidatePath("/pedidos");
-  if (text(formData, "intent") === "print") redirect(`/pedidos/${id}/print?auto=1`);
+  revalidatePath("/dashboard/orders");
+  if (text(formData, "intent") === "print") redirect('/pedidos/' + id + '/print?auto=1');
   redirect("/pedidos");
 }
 
 export async function updatePdvOrder(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
-  const service = createServiceClient();
-  const id = text(formData, "order_id");
-  const cart = JSON.parse(text(formData, "cart", "[]")) as CartPayload;
-  if (!id) throw new Error("Pedido inválido.");
-  if (!cart.length) throw new Error("Carrinho vazio.");
-
-  const { data: existingOrder, error: existingError } = await supabase
-    .from("orders")
-    .select("id")
-    .eq("restaurant_id", restaurant.id)
-    .eq("id", id)
-    .maybeSingle();
-  if (existingError) throw new Error(existingError.message);
-  if (!existingOrder) throw new Error("Pedido não encontrado.");
-
-  const normalizedCart = await normalizeCartForOrder(cart, restaurant.id, supabase);
-  const subtotal = normalizedCart.reduce((sum, item) => sum + item.total, 0);
-  const deliveryFee = num(formData, "delivery_fee");
-  const discount = num(formData, "discount");
-  const total = subtotal + deliveryFee - discount;
-
-  const { data: oldItems, error: oldItemsError } = await supabase
-    .from("order_items")
-    .select("id")
-    .eq("restaurant_id", restaurant.id)
-    .eq("order_id", id);
-  if (oldItemsError) throw new Error(oldItemsError.message);
-  const oldItemIds = (oldItems ?? []).map((item) => item.id);
-  if (oldItemIds.length) {
-    const { error: addonsDeleteError } = await service.from("order_item_addons").delete().in("order_item_id", oldItemIds);
-    if (addonsDeleteError) throw new Error(addonsDeleteError.message);
-    const { error: itemsDeleteError } = await service.from("order_items").delete().eq("restaurant_id", restaurant.id).in("id", oldItemIds);
-    if (itemsDeleteError) throw new Error(itemsDeleteError.message);
-  }
-
-  const { error: updateError } = await supabase
-    .from("orders")
-    .update({
-      customer_id: text(formData, "customer_id") || null,
-      type: text(formData, "type", "pickup"),
-      payment_method: text(formData, "payment_method", "pix"),
-      change_for: num(formData, "change_for") || null,
-      subtotal,
-      delivery_fee: deliveryFee,
-      discount,
-      total,
-      customer_name: text(formData, "customer_name") || "Cliente balcão",
-      customer_phone: text(formData, "customer_phone") || null,
-      delivery_address: text(formData, "delivery_address") || null,
-      notes: text(formData, "customer_notes") || text(formData, "notes") || null,
-    })
-    .eq("restaurant_id", restaurant.id)
-    .eq("id", id);
-  if (updateError) throw new Error(updateError.message);
-
-  const { data: insertedItems, error: itemsError } = await service.from("order_items").insert(normalizedCart.map((item) => ({
-    restaurant_id: restaurant.id,
-    order_id: id,
-    product_id: item.id,
-    product_name: item.name,
-    quantity: item.quantity,
-    unit_price: item.price,
-    total_price: item.total,
-    notes: item.notes ?? null,
-    selected_options: {
-      variantId: item.variantId || null,
-      flavorCount: item.flavorCount || 1,
-      flavors: item.flavors ?? [],
-      dough: item.dough ?? null,
-      crust: item.crust ?? null,
-      addons: item.addons.filter(Boolean).map((addon) => ({ id: addon?.id ?? null, name: addon?.name ?? "Adicional", price: addon?.price ?? 0 })),
-      changeFor: num(formData, "change_for") || null,
-    },
-  }))).select("id");
-  if (itemsError) throw new Error(itemsError.message);
-
-  const addonRows = normalizedCart.flatMap((item, index) => (
-    item.addons.map((addon) => ({
-      order_item_id: insertedItems?.[index]?.id,
-      addon_id: addon?.id ?? null,
-      name: addon?.name ?? "Adicional",
-      price: Number(addon?.price ?? 0),
-    })).filter((addon) => addon.order_item_id)
-  ));
-  if (addonRows.length) {
-    const { error: addonInsertError } = await service.from("order_item_addons").insert(addonRows);
-    if (addonInsertError) throw new Error(addonInsertError.message);
-  }
-
-  revalidatePath("/dashboard/orders");
+  const { restaurant, role } = await requireRestaurant();
+  if (role === "kitchen") throw new Error("Operação não permitida.");
+  const { id } = await saveValidatedOrder(formData, restaurant.id, "pdv", text(formData, "order_id"));
   revalidatePath("/pedidos");
-  revalidatePath(`/dashboard/orders/${id}`);
-  revalidatePath(`/pedidos/${id}`);
-  if (text(formData, "intent") === "print") redirect(`/pedidos/${id}/print?auto=1`);
-  redirect(`/pedidos/${id}`);
+  revalidatePath("/dashboard/orders");
+  revalidatePath('/pedidos/' + id);
+  if (text(formData, "intent") === "print") redirect('/pedidos/' + id + '/print?auto=1');
+  redirect('/pedidos/' + id);
 }
 
-export async function createOnlineOrder(formData: FormData) {
-  const supabase = await createClient();
-  const restaurantId = text(formData, "restaurant_id");
-  await createOrderFromCart(formData, "site", restaurantId, supabase);
-  redirect(`/cardapio/${text(formData, "slug")}?success=1`);
-}
+export async function createOnlineOrder(formData: FormData) { return createPublicOrder(formData); }
 
 export async function createPublicOrder(formData: FormData) {
-  const supabase = await createClient();
-  const restaurantId = text(formData, "restaurant_id");
-  const id = await createOrderFromCart(formData, "site", restaurantId, supabase);
-  const { data: order } = await supabase.from("orders").select("order_number").eq("id", id).maybeSingle();
-  redirect(`/pedido/${order?.order_number ?? id}`);
+  let destination: string;
+  try {
+    const order = await saveValidatedOrder(formData, text(formData, "restaurant_id"), "site");
+    destination = '/pedido/' + order.code;
+  } catch (error) {
+    const slug = encodeURIComponent(boundedText(formData.get("slug"),100,true));
+    const message = error instanceof PublicError ? error.message : "Não foi possível finalizar. Tente novamente.";
+    destination = '/cardapio/' + slug + '/checkout?error=' + encodeURIComponent(message);
+  }
+  redirect(destination);
 }
 
 export async function saveCustomer(formData: FormData) {
   const { supabase, restaurant } = await requireRestaurant();
   const id = text(formData, "id");
   const returnTo = text(formData, "return_to", id ? `/clientes/${id}` : "/clientes");
-  const newPassword = text(formData, "new_password");
   const payload: Record<string, string | null> = {
     restaurant_id: restaurant.id,
     name: text(formData, "name"),
@@ -1338,7 +989,6 @@ export async function saveCustomer(formData: FormData) {
     zip_code: text(formData, "zip_code") || null,
     notes: text(formData, "notes") || null,
   };
-  if (newPassword) payload.password_hash = hashCustomerPassword(newPassword);
   const result = id ?
      await supabase.from("customers").update(payload).eq("id", id).eq("restaurant_id", restaurant.id)
     : await supabase.from("customers").insert(payload);

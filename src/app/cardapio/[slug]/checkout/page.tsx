@@ -1,12 +1,13 @@
 ﻿import { PublicCheckout } from "@/components/public-checkout";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
 import { isRestaurantOpen } from "@/lib/opening-hours";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { publicRestaurant } from "@/lib/public-data";
 import type { DeliveryFeeRule, Restaurant } from "@/lib/types";
 
-export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CheckoutPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ error?: string }> }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data: restaurant } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
 
   if (!restaurant) {
@@ -24,8 +25,9 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     .eq("active", true)
     .order("min_km");
 
-  const current = restaurant as Restaurant;
+  const current = publicRestaurant(restaurant as Restaurant);
   const rules = ((deliveryRules ?? []).length ? deliveryRules : deliveryRulesFromRestaurant(current)) as DeliveryFeeRule[];
 
-  return <PublicCheckout restaurant={{ ...current, is_open: isRestaurantOpen(current) }} deliveryRules={rules} />;
+  const { error: checkoutError } = await searchParams;
+  return <PublicCheckout checkoutError={checkoutError} restaurant={{ ...current, is_open: isRestaurantOpen(current) }} deliveryRules={rules} />;
 }
