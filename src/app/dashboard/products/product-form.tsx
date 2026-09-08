@@ -6,8 +6,9 @@ import { CheckCircle2, Eye, ImagePlus, Pizza, Save, Settings2, ShoppingBag, X } 
 import { useMemo, useState } from "react";
 import { ImagePicker } from "@/components/image-picker";
 import { SubmitButton } from "@/components/submit-button";
+import { MoneyInput } from "@/components/money-input";
 import { saveProduct } from "@/app/actions";
-import { money } from "@/lib/utils";
+import { decimalInputValue, money, parseDecimal } from "@/lib/utils";
 import type { Category, PizzaOption, Product, ProductOption, ProductType, ProductVariant } from "@/lib/types";
 
 const preparationOptions = [20, 30, 40, 50, 60, 70, 80];
@@ -96,7 +97,8 @@ type SizeRow = {
   key: string;
   name: string;
   active: boolean;
-  price: number;
+  // texto exatamente como o usuário digita ("45,90"); convertido só no envio
+  price: string;
   slices: number | null;
   sort_order: number;
 };
@@ -140,7 +142,7 @@ export function ProductForm({
       key: option.id,
       name: option.name,
       active: saved?.active ?? true,
-      price: Number(saved?.price ?? 0),
+      price: saved ? decimalInputValue(saved.price) : "",
       slices: Number(option.price ?? saved?.slices ?? 0) || null,
       sort_order: saved?.sort_order ?? index,
     };
@@ -193,10 +195,10 @@ export function ProductForm({
               </Field>
               {!isPizza && (
                 <Field label="Preço único">
-                  <input className="field-light" name="price" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={product.price ?? ""} required />
+                  <MoneyInput name="price" defaultValue={product.price ?? null} required />
                 </Field>
               )}
-              {isPizza && <input type="hidden" name="price" value={sizeRows.find((size) => size.active)?.price ?? 0} />}
+              {isPizza && <input type="hidden" name="price" value={parseDecimal(sizeRows.find((size) => size.active && parseDecimal(size.price) > 0)?.price ?? 0)} />}
               <Field label="Tempo médio de preparo">
                 <select className="field-light" name="preparation_time" defaultValue={product.preparation_time ?? 40}>
                   {preparationOptions.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutos</option>)}
@@ -239,7 +241,7 @@ export function ProductForm({
                           <input type="hidden" name="size_name" value={size.name} />
                           <strong>{size.name}</strong>
                         </td>
-                        <td><input className="field-light h-10" name="size_price" type="number" min="0" step="0.01" value={size.price} onChange={(event) => updateSizeRow(index, { price: Number(event.target.value || 0) })} /></td>
+                        <td><MoneyInput className="field-light h-10" name="size_price" value={size.price} onValueChange={(value) => updateSizeRow(index, { price: value })} /></td>
                         <td>
                           <input type="hidden" name="size_slices" value={size.slices ?? ""} />
                           <input type="hidden" name="size_notes" value="" />

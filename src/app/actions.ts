@@ -2,6 +2,7 @@
 
 import { mkdir, writeFile } from "fs/promises";
 import { revalidatePath } from "next/cache";
+import { parseDecimal } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import path from "path";
 import { saveValidatedOrder } from "@/lib/order-service";
@@ -22,8 +23,7 @@ function text(formData: FormData, key: string, fallback = "") {
 }
 
 function num(formData: FormData, key: string, fallback = 0) {
-  const value = Number(String(formData.get(key) ?? "").replace(",", "."));
-  return Number.isFinite(value) ? value : fallback;
+  return parseDecimal(formData.get(key), fallback);
 }
 
 function optionLines(formData: FormData, key: string) {
@@ -33,7 +33,7 @@ function optionLines(formData: FormData, key: string) {
     .filter(Boolean)
     .map((line) => {
       const [name, price = "0"] = line.split("|").map((part) => part.trim());
-      return { name, additional_price: Number(price.replace(",", ".")) || 0 };
+      return { name, additional_price: parseDecimal(price) };
     })
     .filter((item) => item.name);
 }
@@ -85,15 +85,15 @@ function deliveryFeeRulesPayload(formData: FormData, restaurantId: string) {
 
   const rules = ruleNames
     .map((name, index) => {
-      const minKm = Number(String(ruleMinKms[index] ?? "0").replace(",", ".")) || 0;
-      const maxKm = String(ruleMaxKms[index] ?? "").trim() ? Number(String(ruleMaxKms[index]).replace(",", ".")) : null;
+      const minKm = parseDecimal(ruleMinKms[index]);
+      const maxKm = String(ruleMaxKms[index] ?? "").trim() ? parseDecimal(ruleMaxKms[index]) : null;
       return {
         id: randomUUID(),
         restaurant_id: restaurantId,
         name: name.trim() || (maxKm === null ? `A partir de ${minKm} km` : `Até ${maxKm} km`),
         min_km: minKm,
         max_km: maxKm,
-        fee: Number(String(ruleFees[index] ?? "0").replace(",", ".")) || 0,
+        fee: parseDecimal(ruleFees[index]),
         free_delivery: freeRuleIndexes.has(String(index)),
         active: activeRuleIndexes.has(String(index)),
         removed: removedRuleIndexes.has(String(index)),
@@ -611,7 +611,7 @@ export async function saveProduct(formData: FormData) {
   const activeSizeNames = new Set(formData.getAll("size_active").map(String));
   const sizes = sizeNames.map((sizeName, index) => ({
     name: sizeName.trim(),
-    price: Number(String(sizePrices[index] ?? "0").replace(",", ".")) || 0,
+    price: parseDecimal(sizePrices[index]),
     active: activeSizeNames.has(sizeName),
     slices: Number(String(sizeSlices[index] ?? "")) || null,
     notes: String(sizeNotes[index] ?? "").trim() || null,

@@ -5,6 +5,36 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
+// O Brasil escreve 12,50 — e um <input type="number"> descarta a vírgula em
+// silêncio, transformando "12,50" em 1250. Todo valor monetário/decimal que
+// chega de formulário passa por aqui: aceita vírgula, ponto e milhar.
+export function parseDecimal(value: unknown, fallback = 0) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return fallback;
+  let text = raw.replace(/[^\d.,-]/g, "");
+  const comma = text.lastIndexOf(",");
+  const dot = text.lastIndexOf(".");
+  if (comma >= 0 && dot >= 0) {
+    text = comma > dot ? text.replace(/\./g, "").replace(",", ".") : text.replace(/,/g, "");
+  } else if (comma >= 0) {
+    text = text.replace(/,/g, ".");
+  } else if (dot >= 0) {
+    const parts = text.split(".");
+    // "1.234" e "1.234.567" são milhares; "12.50" é decimal.
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3 && parts[0] !== "")) text = parts.join("");
+  }
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+// Valor inicial de um campo decimal, na escrita que o usuário espera ler.
+export function decimalInputValue(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return "";
+  const number = typeof value === "number" ? value : parseDecimal(value, Number.NaN);
+  if (!Number.isFinite(number)) return "";
+  return String(number).replace(".", ",");
+}
+
 export function money(value: number | string | null | undefined) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0));
 }

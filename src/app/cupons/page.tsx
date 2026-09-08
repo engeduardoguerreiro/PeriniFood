@@ -1,5 +1,6 @@
 ﻿import { deleteCoupon, saveCoupon, saveLoyaltyProgram } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
+import { MoneyInput } from "@/components/money-input";
 import { requireRestaurant } from "@/lib/auth";
 import { loyaltyCampaignFromOpeningHours } from "@/lib/loyalty";
 import { money } from "@/lib/utils";
@@ -57,10 +58,10 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
                       <option value="percent">Percentual</option>
                       <option value="fixed">Valor fixo</option>
                     </select>
-                    <input className="field-light" name="discount_value" type="number" min="0" step="0.01" placeholder="Desconto" required />
+                    <MoneyInput name="discount_value" placeholder="Desconto" required />
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <input className="field-light" name="minimum_order" type="number" min="0" step="0.01" placeholder="Pedido mínimo" defaultValue="0" />
+                    <MoneyInput name="minimum_order" placeholder="Pedido mínimo" defaultValue={0} />
                     <input className="field-light" name="max_uses" type="number" min="1" step="1" placeholder="Limite de usos" />
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -140,7 +141,7 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
             <option value="percent">Desconto percentual</option>
             <option value="fixed">Desconto fixo</option>
           </select>
-          <input className="field-light" name="reward_value" type="number" min="0" step="0.01" placeholder="Valor do benefício" defaultValue={currentLoyalty.reward_value ?? 5} disabled={!canEdit} />
+          <MoneyInput name="reward_value" placeholder="Valor do benefício" defaultValue={currentLoyalty.reward_value ?? 5} disabled={!canEdit} />
           <label className="space-y-1 lg:col-span-2">
             <span className="text-xs font-black uppercase text-[#9c988f]">Início da campanha</span>
             <input className="field-light" name="campaign_starts_at" type="date" defaultValue={loyaltyCampaign.campaign_starts_at ?? ""} disabled={!canEdit} />

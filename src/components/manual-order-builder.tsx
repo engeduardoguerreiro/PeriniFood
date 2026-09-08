@@ -4,7 +4,8 @@ import { MapPin, Minus, Pencil, Plus, Printer, Search, ShoppingCart, Trash2, X }
 import { useEffectEvent, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { createPdvOrder } from "@/app/actions";
-import { money } from "@/lib/utils";
+import { MoneyInput } from "@/components/money-input";
+import { decimalInputValue, money, parseDecimal } from "@/lib/utils";
 import type { Category, Customer, DeliveryFeeRule, PizzaOption, Product, ProductOption, ProductOptionItem, ProductType, ProductVariant, Restaurant } from "@/lib/types";
 
 type SelectedOption = { name: string; price: number };
@@ -248,7 +249,8 @@ export function ManualOrderBuilder({
   const [orderType, setOrderType] = useState(initialData.type === "dine_in" ? "pickup" : initialData.type ?? "pickup");
   const [deliveryRuleId, setDeliveryRuleId] = useState(deliveryRules[0].id ?? "");
   const [deliveryCalculating, setDeliveryCalculating] = useState(false);
-  const [discount, setDiscount] = useState(Number(initialData.discount ?? 0));
+  const [discountText, setDiscountText] = useState(initialData.discount ? decimalInputValue(initialData.discount) : "");
+  const discount = parseDecimal(discountText);
   const [address, setAddress] = useState<Address>({ ...emptyAddress, ...(initialData.address ?? {}) });
   const [addressStatus, setAddressStatus] = useState("");
   const [customerId, setCustomerId] = useState(initialData.customerId ?? "");
@@ -631,7 +633,7 @@ export function ManualOrderBuilder({
           </label>
           <label className="space-y-1">
             <span className="text-xs font-bold uppercase text-[#9c988f]">Desconto</span>
-            <input className="field-light" type="number" step="0.01" min="0" value={discount || ""} onChange={(event) => setDiscount(Number(event.target.value || 0))} placeholder="0,00" />
+            <MoneyInput value={discountText} onValueChange={(value) => setDiscountText(value)} placeholder="0,00" />
           </label>
           <label className="space-y-1 md:col-span-2">
             <span className="text-xs font-bold uppercase text-[#9c988f]">Frete automático</span>
@@ -649,7 +651,7 @@ export function ManualOrderBuilder({
           </label>
           <label className="space-y-1">
             <span className="text-xs font-bold uppercase text-[#9c988f]">Troco para</span>
-            <input className="field-light" name="change_for" type="number" step="0.01" defaultValue={initialData.changeFor ?? ""} placeholder="Opcional" />
+            <MoneyInput name="change_for" defaultValue={initialData.changeFor ?? null} placeholder="Opcional" />
           </label>
           <label className="space-y-1 md:col-span-2">
             <span className="text-xs font-bold uppercase text-[#9c988f]">Observação do cliente</span>

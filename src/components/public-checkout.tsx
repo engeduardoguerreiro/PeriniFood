@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bike, CheckCircle2, CreditCard, Mail, MapPin, Search, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPublicOrder } from "@/app/actions";
+import { MoneyInput } from "@/components/money-input";
 import { money } from "@/lib/utils";
 import type { DeliveryFeeRule, Restaurant } from "@/lib/types";
 
@@ -396,7 +397,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
                     Não
                   </label>
                 </div>
-                {needsChange === "yes" && <input className="field-light mt-3" name="change_for" type="number" step="0.01" min={total} placeholder="Para quanto" required />}
+                {needsChange === "yes" && <MoneyInput className="field-light mt-3" name="change_for" placeholder="Para quanto" required />}
               </div>
             )}
             <textarea className="field-light mt-3" name="notes" placeholder="Observações do pedido" />

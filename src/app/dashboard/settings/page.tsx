@@ -3,6 +3,7 @@ import { saveDeliveryFeeRules, updatePassword, updateRestaurant } from "@/app/ac
 import { ActionFeedback } from "@/components/action-feedback";
 import { DeliveryFeeRulesEditor } from "@/components/delivery-fee-rules-editor";
 import { FileInput } from "@/components/file-input";
+import { MoneyInput } from "@/components/money-input";
 import { OpeningHoursEditor } from "@/components/opening-hours-editor";
 import { PrinterDiscovery } from "@/components/printer-discovery";
 import { SettingsCepLookup } from "@/components/settings-cep-lookup";
@@ -224,10 +225,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <ConfigSection title="Regras do cardápio">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <Field label="Pedido mínimo">
-              <input className={inputClass} name="minimum_order" type="number" step="0.01" defaultValue={restaurant.minimum_order ?? 0} />
+              <MoneyInput className={inputClass} name="minimum_order" defaultValue={restaurant.minimum_order ?? 0} />
             </Field>
             <Field label="Taxa de entrega padrão">
-              <input className={inputClass} name="delivery_fee" type="number" step="0.01" defaultValue={restaurant.delivery_fee ?? 0} />
+              <MoneyInput className={inputClass} name="delivery_fee" defaultValue={restaurant.delivery_fee ?? 0} />
             </Field>
             <Field label="Tempo estimado">
               <input className={inputClass} name="estimated_delivery_time" defaultValue={restaurant.estimated_delivery_time ?? ""} placeholder="50 min" />

@@ -1,4 +1,5 @@
 ﻿import { saveAddon, toggleAddon } from "@/app/actions";
+import { MoneyInput } from "@/components/money-input";
 import { requireRestaurant } from "@/lib/auth";
 import type { ProductAddon } from "@/lib/types";
 
@@ -12,7 +13,7 @@ async function AddonsPage() {
         <h2 className="text-xl font-black">Novo adicional</h2>
         <div className="mt-4 space-y-3">
           <input className="field-light" name="name" placeholder="Nome" required />
-          <input className="field-light" name="price" type="number" step="0.01" placeholder="Preço" required />
+          <MoneyInput name="price" placeholder="Preço" required />
           <label className="flex items-center gap-2 text-sm font-bold"><input name="active" type="checkbox" defaultChecked /> Ativo</label>
           <button className="btn-primary w-full">Salvar adicional</button>
         </div>
@@ -38,7 +39,7 @@ async function AddonsPage() {
                 </label>
                 <label className="space-y-1 lg:space-y-0">
                   <span className="text-xs font-black uppercase text-[#9c988f] lg:hidden">Preço</span>
-                  <input className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm outline-none focus:border-red-300" name="price" type="number" step="0.01" defaultValue={addon.price} />
+                  <MoneyInput className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm outline-none focus:border-red-300" name="price" defaultValue={addon.price} />
                 </label>
                 <label className="flex items-center gap-2 text-xs font-black"><input name="active" type="checkbox" defaultChecked={addon.active} /> Ativo</label>
                 <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-[#2b2925] transition hover:border-red-300 hover:bg-[#f6ece9]">Salvar</button>
