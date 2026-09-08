@@ -1,3 +1,4 @@
+import { notFound, redirect } from "next/navigation";
 import { CUSTOMER_FIELDS } from "@/lib/public-data";
 import { updatePdvOrder } from "@/app/actions";
 import { ManualOrderBuilder } from "@/components/manual-order-builder";
@@ -51,7 +52,10 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
     supabase.from("delivery_fee_rules").select("*").eq("restaurant_id", restaurant.id).eq("active", true).order("min_km"),
     supabase.from("pizza_options").select("*").eq("restaurant_id", restaurant.id).eq("active", true),
   ]);
-  const current = order as Order;
+  const current = order as Order | null;
+  if (!current) notFound();
+  // Pedidos importados (iFood etc.) são geridos pela integração; a RPC recusa editá-los.
+  if (current.external_order_id) redirect(`/pedidos/${id}`);
   const { data: customer } = current.customer_id ?
      await supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).eq("id", current.customer_id).maybeSingle()
     : { data: null };

@@ -49,6 +49,8 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     const {data} = await service.from("customers").select("id").eq("id",uuid(claimed)).eq("restaurant_id",restaurantId).maybeSingle();
     if (!data) throw new PublicError("Cliente inválido.");
     customerId=data.id;
+  } else {
+    customerId=await ensurePdvCustomer(service,restaurantId,form);
   }
   let deliveryFee=type==="delivery" ? amount(form.get("delivery_fee") ?? 0) : 0;
   let deliveryAddress=boundedText(form.get("delivery_address"),1000) || null;
@@ -75,6 +77,38 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
   const items=cart.map(item=>({ product_id:item.id,product_name:item.name,quantity:item.quantity,unit_price:item.price,total_price:item.total,notes:item.notes,
     selected_options:{variantId:item.variantId,flavorCount:item.flavorCount,flavors:item.flavors,dough:item.dough,crust:item.crust,addons:item.addons,changeFor:order.change_for},addons:item.addons }));
   const {data:id,error:saveError}=await service.rpc("save_order_atomic",{order_data:order,item_data:items,existing_id:existingId ? uuid(existingId) : null});
-  if (saveError || !id) throw new PublicError("Não foi possível salvar o pedido. Nenhum item foi confirmado.",503);
-  return { id:String(id),code:order.code,slug:store.slug };
+  if (saveError || !id) {
+    if (/Order unavailable for edit/.test(saveError?.message ?? "")) throw new PublicError("Pedidos importados de integrações (iFood) não podem ser editados pelo PDV.",409);
+    throw new PublicError("Não foi possível salvar o pedido. Nenhum item foi confirmado.",503);
+  }
+  // Na edição a RPC não troca o code do pedido; devolver o gerado aqui apontaria para um /pedido/<code> inexistente.
+  return { id:String(id),code:existingId ? null : order.code,slug:store.slug };
+}
+
+// O PDV cadastra o cliente a partir de nome + telefone (comportamento de antes do refactor):
+// procura pelo telefone dentro do restaurante e atualiza só o que foi informado, ou insere.
+// Só o balcão faz isso — no site a conta é criada pelo consumidor em /api/customer-auth/register.
+async function ensurePdvCustomer(service: ReturnType<typeof createServiceClient>, restaurantId: string, form: FormData) {
+  const name=boundedText(form.get("customer_name"),120);
+  const phone=boundedText(form.get("customer_phone"),25);
+  if (!name || !phone) return null;
+  const field=(key: string, max: number) => boundedText(form.get(key),max) || null;
+  const birth=field("customer_birth_date",10);
+  const payload: Record<string,string|null> = {
+    restaurant_id:restaurantId,name,phone,whatsapp:phone.replace(/\D/g,"") || phone,
+    email:field("customer_email",160)?.toLowerCase() ?? null,cpf:field("customer_cpf",20),birth_date:birth && /^\d{4}-\d{2}-\d{2}$/.test(birth) ? birth : null,
+    address:field("street",200),address_number:field("address_number",20),neighborhood:field("neighborhood",120),complement:field("complement",120),
+    reference:field("reference",200),city:field("city",120),state:field("state",40),zip_code:field("zip_code",12),notes:field("customer_notes",1000),
+  };
+  const {data:existing,error:lookupError}=await service.from("customers").select("id").eq("restaurant_id",restaurantId).eq("phone",phone).maybeSingle();
+  if (lookupError) throw new PublicError("Não foi possível consultar o cliente.",503);
+  const save=(data: Record<string,string|null>) => existing?.id
+    ? service.from("customers").update(data).eq("id",existing.id).eq("restaurant_id",restaurantId).select("id").single()
+    : service.from("customers").insert(data).select("id").single();
+  const patch=existing?.id ? Object.fromEntries(Object.entries(payload).filter(([,value])=>value!==null)) : payload;
+  let saved=await save(patch);
+  // E-mail já usado por outro cliente da loja (índice único): salva sem o e-mail em vez de perder o pedido.
+  if (saved.error?.code==="23505" && patch.email) saved=await save({ ...patch,email:null });
+  if (saved.error || !saved.data) throw new PublicError("Não foi possível salvar os dados do cliente.",503);
+  return saved.data.id as string;
 }

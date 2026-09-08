@@ -18,8 +18,10 @@ const rl = await service.rpc("consume_security_rate_limit", { bucket_key: "f".re
 check(!rl.error && rl.data === true, "rpc consume_security_rate_limit responde", rl.error?.message);
 const so = await service.rpc("save_order_atomic", { order_data: {}, item_data: [] });
 check(!!so.error && !/Could not find the function/.test(so.error.message), "rpc save_order_atomic existe (rejeita payload vazio)", so.error?.message.slice(0,60));
-check(!!(await anon.from("products").select("id").limit(1)).error, "anon NAO lê products direto", "(revogado)");
-check(!!(await anon.from("restaurants").select("id").limit(1)).error, "anon NAO lê restaurants direto", "(revogado)");
+const anonBlocked = !!(await anon.from("products").select("id").limit(1)).error && !!(await anon.from("restaurants").select("id").limit(1)).error;
+if (anonBlocked) check(true, "anon NAO lê products/restaurants direto", "(Parte 2 aplicada)");
+else if (process.argv.includes("--final")) check(false, "anon ainda lê tabelas direto", "rode a Parte 2: 20260906000200_security_lockdown.sql");
+else console.log("  aviso: anon ainda lê tabelas direto -> Parte 2 (20260906000200_security_lockdown.sql) pendente; rode com --final depois dela");
 const { data: restaurant } = await service.from("restaurants").select("id").eq("slug", slug).maybeSingle();
 
 console.log("=== site ===");

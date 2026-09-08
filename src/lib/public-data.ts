@@ -16,6 +16,9 @@ export function publicRestaurant(row: Restaurant): Restaurant {
   } as Restaurant;
 }
 
-export const PUBLIC_PRODUCT_FIELDS = "id,restaurant_id,category_id,product_type_id,name,description,price,image_url,active,featured,max_flavors,preparation_time,delivery_available,pickup_available,dine_in_available,sort_order";
+// delivery_available/pickup_available/dine_in_available ficam de fora de propósito: o banco de
+// produção pulou a migration 20260522000200 e não tem essas colunas — pedi-las faria o PostgREST
+// responder 42703 e o cardápio inteiro ficaria vazio. Sem elas o preço trata o produto como disponível.
+export const PUBLIC_PRODUCT_FIELDS = "id,restaurant_id,category_id,product_type_id,name,description,price,image_url,active,featured,max_flavors,preparation_time,sort_order";
 export function publicProducts(rows: unknown): Product[] { return (rows ?? []) as Product[]; }
 export const CUSTOMER_FIELDS = "id,restaurant_id,name,phone,whatsapp,email,cpf,birth_date,address,address_number,neighborhood,complement,reference,city,state,zip_code,notes,created_at,updated_at";

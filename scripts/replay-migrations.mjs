@@ -41,7 +41,7 @@ for (const s of stubs) { try { await db.exec(s); } catch (e) { console.log("stub
 
 const target = process.argv[2] ?? readdirSync("supabase/migrations").filter(f=>f.endsWith(".sql")).sort().at(-1);
 console.log("alvo:", target);
-const base = ["../schema.sql", ...readdirSync("supabase/migrations").filter(f => f.endsWith(".sql") && f !== target).sort()];
+const base = ["../schema.sql", ...readdirSync("supabase/migrations").filter(f => f.endsWith(".sql") && f < target).sort()];
 let baseOk = 0, baseFail = 0; const grouped = new Map();
 for (const f of base) {
   const path = f.startsWith("../") ? "supabase/schema.sql" : `supabase/migrations/${f}`;
