@@ -58,3 +58,6 @@ next-env.d.ts
 
 # claude code (mantém launch.json compartilhado, ignora config local)
 .claude/settings.local.json
+
+# codemods descartaveis do refactor de seguranca (ja aplicados)
+scripts/security-*refactor.cjs
