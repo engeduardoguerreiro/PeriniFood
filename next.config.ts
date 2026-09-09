@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: "8mb",
+      // Quem abre o painel por www leva um 308 para o domínio canônico. O POST da
+      // Server Action segue o redirecionamento, mas o header Origin continua sendo
+      // o de origem: sem esta lista o Next recusa com "Invalid Server Actions
+      // request" e o formulário parece travado em "Salvando...".
+      allowedOrigins: [CANONICAL_HOST, `www.${CANONICAL_HOST}`, "perinifood.vercel.app"],
     },
   },
   async headers() {
