@@ -4,11 +4,20 @@ import { createServiceClient } from "./supabase/service";
 import { customerSession, rateLimit } from "./customer-session";
 import { priceCart, amount, type PricingCatalog } from "./order-pricing";
 import { boundedText, PublicError, uuid } from "./security";
+import { parseDecimal } from "./utils";
 import { getAccessState } from "./platform-billing";
 import { isRestaurantOpen } from "./opening-hours";
 import { deliveryRulesFromRestaurant, isMissingRelationError } from "./delivery-fee-rules";
 import { addressText, shippingAddress, shippingFee } from "./shipping";
 import type { DeliveryFeeRule, Restaurant } from "./types";
+
+// Os campos de dinheiro chegam como o usuário digitou ("89,90"): Number() daria NaN
+// e o pedido seria recusado com "Valor inválido.". parseDecimal entende vírgula e
+// separador de milhar; amount continua validando faixa e arredondamento.
+function money(form: FormData, key: string) {
+  const raw = boundedText(form.get(key),20);
+  return raw ? amount(parseDecimal(raw)) : 0;
+}
 
 export async function saveValidatedOrder(form: FormData, restaurantId: string, source: "site" | "pdv", existingId?: string) {
   uuid(restaurantId);
@@ -52,7 +61,7 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
   } else {
     customerId=await ensurePdvCustomer(service,restaurantId,form);
   }
-  let deliveryFee=type==="delivery" ? amount(form.get("delivery_fee") ?? 0) : 0;
+  let deliveryFee=type==="delivery" ? money(form,"delivery_fee") : 0;
   let deliveryAddress=boundedText(form.get("delivery_address"),1000) || null;
   if (source==="site" && type==="delivery") {
     const address=shippingAddress(Object.fromEntries(form));
@@ -64,7 +73,7 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     deliveryFee=quote.fee;
   }
   // Public checkout has no server-validated coupon redemption yet.
-  const discount=source==="site" ? 0 : amount(form.get("discount") ?? 0);
+  const discount=source==="site" ? 0 : money(form,"discount");
   if (discount>subtotal) throw new PublicError("Desconto maior que o subtotal.");
   const order = {
     restaurant_id:restaurantId,customer_id:customerId,code:randomBytes(24).toString("hex"),source,type,payment_status:source==="pdv" ? "paid" : "pending",payment_method:payment,
@@ -72,7 +81,7 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     customer_name:boundedText(form.get("customer_name"),120,source==="site") || "Cliente balcão",
     customer_phone:boundedText(form.get("customer_phone"),25,source==="site") || null,
     delivery_address:deliveryAddress,notes:boundedText(form.get("customer_notes") ?? form.get("notes"),1000) || null,
-    change_for:form.get("change_for") ? amount(form.get("change_for")) : null,
+    change_for:boundedText(form.get("change_for"),20) ? money(form,"change_for") : null,
   };
   const items=cart.map(item=>({ product_id:item.id,product_name:item.name,quantity:item.quantity,unit_price:item.price,total_price:item.total,notes:item.notes,
     selected_options:{variantId:item.variantId,flavorCount:item.flavorCount,flavors:item.flavors,dough:item.dough,crust:item.crust,addons:item.addons,changeFor:order.change_for},addons:item.addons }));

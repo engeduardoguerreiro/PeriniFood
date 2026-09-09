@@ -162,7 +162,7 @@ export function ProductForm({
       <header className="flex flex-wrap items-center justify-between gap-4 rounded border border-[#e7e4dd] bg-white p-5 shadow-sm">
         <div>
           <p className="text-xs font-bold uppercase text-[#9c988f]">Cadastro de produto</p>
-          <h1 className="text-2xl font-black text-[#1b1a17]">{product ? "Editar Produto" : "Novo Produto"}</h1>
+          <h1 className="text-2xl font-black text-[#1b1a17]">{product.id ? "Editar Produto" : "Novo Produto"}</h1>
           <p className="mt-1 text-sm text-[#9c988f]">Configure preço, tamanhos, massas, bordas, adicionais e canais de venda.</p>
         </div>
         <div className="flex flex-wrap gap-2">
