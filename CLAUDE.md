@@ -85,7 +85,7 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 - `IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`, `IFOOD_API_BASE_URL`, `IFOOD_POLL_SECRET`
 - `CRON_SECRET`
 - WhatsApp of the store (Evolution API server in `deploy/whatsapp-server`, runs on the owner's Ubuntu box, not Vercel): `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `WHATSAPP_WEBHOOK_SECRET`; optional `NEXT_PUBLIC_APP_URL` (links in messages, default `https://perinifood.com.br`)
-- AI attendant module (`atendimento_ia`, paid add-on enabled per store in `/admin`): `ANTHROPIC_API_KEY`; optional `AI_MODEL` (default `claude-opus-5-5`)
+- AI attendant module (`atendimento_ia`, paid add-on enabled per store in `/admin`): `ANTHROPIC_API_KEY`; optional `AI_MODEL` (default `claude-opus-5-5`) and `ANTHROPIC_WORKSPACE_ID` (only for org-level keys not scoped to a workspace)
 - desktop/agent only: `PERINIFOOD_APP_URL` and `PRINT_BRIDGE_*`
 
 `vercel.json` schedules only `/api/keep-alive`, daily. iFood polling at `/api/integrations/ifood/poll` needs an external cron.

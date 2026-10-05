@@ -22,7 +22,12 @@ const HISTORY_TURNS = 12;
 let anthropic: Anthropic | null = null;
 // trim(): chave colada com quebra de linha vira "invalid header value" no x-api-key.
 const apiKey = () => process.env.ANTHROPIC_API_KEY?.trim() ?? "";
-const getClient = () => (anthropic ??= new Anthropic({ apiKey: apiKey() }));
+// Chave da organização (sem workspace) exige o header anthropic-workspace-id.
+const workspaceId = () => process.env.ANTHROPIC_WORKSPACE_ID?.trim() ?? "";
+const getClient = () => (anthropic ??= new Anthropic({
+  apiKey: apiKey(),
+  ...(workspaceId() ? { defaultHeaders: { "anthropic-workspace-id": workspaceId() } } : {}),
+}));
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || "https://perinifood.com.br").replace(/\/+$/, "");
 
 const paymentLabels: Record<string, string> = { cash: "dinheiro", pix: "Pix", credit_card: "cartão de crédito", debit_card: "cartão de débito", online: "pagamento online", other: "outros" };
