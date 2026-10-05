@@ -155,6 +155,10 @@ b {
   box-shadow: 0 1px 2px rgba(27, 26, 23, 0.04);
 }
 
+/* Em @layer components: assim utilitários do Tailwind (pl-11, px-3, w-full…)
+   conseguem ajustar campos e botões. Fora da layer, o padding daqui vencia e o
+   ícone dos campos de e-mail ficava por cima do texto. */
+@layer components {
 .field {
   width: 100%;
   border-radius: 0.75rem;
@@ -229,6 +233,7 @@ b {
 
 .btn-muted:hover {
   border-color: var(--ink-faint);
+}
 }
 
 .brand-kicker {

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Bike, CheckCircle2, CreditCard, Mail, MapPin, Search, UserRound } from "lucide-react";
+import { Banknote, Bike, CheckCircle2, ChevronDown, CreditCard, Mail, QrCode, Search, ShoppingBag, Smartphone, Store, UserRound, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createPublicOrder } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
+import { StoreTopBar } from "@/components/storefront/store-top-bar";
+import { Icon3D } from "@/components/ui/icon-3d";
 import { money } from "@/lib/utils";
 import type { DeliveryFeeRule, Restaurant } from "@/lib/types";
 
@@ -90,6 +92,8 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
   const [authPassword, setAuthPassword] = useState("");
   const [authStatus, setAuthStatus] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [saveAccount, setSaveAccount] = useState(false);
   const paymentMethods = restaurant.payment_methods?.length ? restaurant.payment_methods : ["pix", "cash", "credit_card", "debit_card"];
   const [payment, setPayment] = useState(paymentMethods[0] ?? "pix");
   const [needsChange, setNeedsChange] = useState<"no" | "yes">("no");
@@ -232,18 +236,21 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
     }
   }
 
+  const field = "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-[0.95rem] text-ink shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-brand/10";
+  const label = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500";
+  const card = "rounded-3xl bg-white p-5 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.04] sm:p-6";
+  const choice = (active: boolean) => `flex items-center gap-2.5 rounded-2xl border-2 p-3 text-left text-sm transition sm:gap-3 sm:p-4 sm:text-base ${active ? "border-brand bg-brand-soft" : "border-slate-200 bg-white hover:border-slate-300"}`;
+  const authError = authStatus.includes("Não") || authStatus.includes("inválid") || authStatus.includes("senha");
+  const paymentIcons: Record<string, typeof CreditCard> = { pix: QrCode, cash: Banknote, credit_card: CreditCard, debit_card: CreditCard, online: Smartphone, other: Wallet };
+
   return (
-    <main className="min-h-screen bg-[#f1f1f1] px-5 py-8 text-ink">
-      {checkoutError && <p role="alert" className="mx-auto mb-5 max-w-[1280px] rounded-lg bg-red-50 p-4 text-red-700">{checkoutError}</p>}
-      {!restaurant.is_open && (
-        <div className="mx-auto mb-6 max-w-[1280px] rounded-lg border border-brand-line bg-brand-soft p-4 font-bold text-brand-strong">
-          A loja está fechada no momento. Volte ao cardápio para consultar os produtos disponíveis.
-        </div>
-      )}
-      <form
-        action={createPublicOrder}
-        className="mx-auto grid max-w-[1280px] gap-8 lg:grid-cols-[360px_1fr]"
-      >
+    <main className="min-h-screen bg-[#f6f5f2] text-ink">
+      <StoreTopBar slug={restaurant.slug} name={restaurant.name} logo={restaurant.logo_url} title="Finalizar pedido" />
+      <div className="mx-auto max-w-5xl px-4 pt-4">
+        {checkoutError && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{checkoutError}</p>}
+        {!restaurant.is_open && <p className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">A loja está fechada agora. Você pode revisar o pedido, mas ele só pode ser enviado quando a loja abrir.</p>}
+      </div>
+      <form action={createPublicOrder} className="mx-auto grid max-w-5xl gap-5 px-4 pb-10 lg:grid-cols-[1fr_360px] lg:items-start">
         {Object.entries(address).map(([key,value]) => <input key={key} type="hidden" name={key} value={value} />)}
         <input type="hidden" name="restaurant_id" value={restaurant.id} />
         <input type="hidden" name="slug" value={restaurant.slug} />
@@ -254,181 +261,159 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
         <input type="hidden" name="payment_method" value={payment} />
         <input type="hidden" name="type" value={type} />
 
-        <aside>
-          <h1 className="text-2xl font-black">Seus dados</h1>
-          <div className="mt-6 space-y-4">
-            {[
-              ["1", "Identifique-se", UserRound],
-              ["2", "Modo de entrega", Bike],
-              ["3", "Forma de pagamento", CreditCard],
-              ["4", "Confira seu pedido", CheckCircle2],
-            ].map(([number, label, Icon]) => (
-              <div key={String(number)} className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-sm font-black text-white">{String(number)}</span>
-                <Icon className="h-4 w-4 text-brand" />
-                <span className="font-semibold">{String(label)}</span>
-              </div>
-            ))}
-          </div>
-          <Link href={`/cardapio/${restaurant.slug}`} className="mt-6 inline-flex font-black text-brand">Voltar para a loja</Link>
-        </aside>
+        <div className="min-w-0 space-y-5">
+          <section className={card} aria-labelledby="etapa-dados">
+            <h2 id="etapa-dados" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={UserRound} tone="orange" size="sm" /> 1. Seus dados</h2>
 
-        <section className="space-y-5">
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <div className="mx-auto mb-5 grid h-16 w-16 place-items-center overflow-hidden rounded-xl bg-white shadow">
-              {restaurant.logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={restaurant.logo_url} alt="" className="h-full w-full object-cover" />
-              ) : restaurant.name.slice(0, 2)}
-            </div>
-            <h2 className="text-center text-2xl font-black">Entre ou crie sua conta</h2>
-            <p className="mx-auto mt-2 max-w-xl text-center text-sm text-slate-500">Use e-mail e senha para recuperar seus dados nos próximos pedidos.</p>
-
-            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                <input className="field-light" type="email" autoComplete="email" aria-label="E-mail da conta" placeholder="E-mail da conta" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} />
-                <input className="field-light" type="password" autoComplete="current-password" aria-label="Senha" placeholder="Senha" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
-                <button
-                  type="button"
-                  onClick={() => submitCustomerAuth("login")}
-                  disabled={authLoading}
-                  className="rounded-lg bg-ink px-5 py-3 font-black text-white transition hover:bg-black disabled:opacity-60"
-                >
-                  Entrar
+            {customerId ? (
+              <p className="mt-4 flex items-center gap-2 rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-5 w-5 shrink-0" /> Você está conectado. Seus dados já foram preenchidos.</p>
+            ) : (
+              <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+                <button type="button" onClick={() => setShowLogin((v) => !v)} aria-expanded={showLogin} className="flex w-full items-center justify-between text-sm font-semibold text-ink">
+                  <span>Já tem conta? <span className="text-brand">Entrar</span> para preencher tudo</span>
+                  <ChevronDown className={`h-4 w-4 text-slate-400 transition ${showLogin ? "rotate-180" : ""}`} />
                 </button>
+                {showLogin && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                    <label className="block"><span className={label}>E-mail</span><input className={field} type="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="voce@email.com" /></label>
+                    <label className="block"><span className={label}>Senha</span><input className={field} type="password" autoComplete="current-password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Sua senha" /></label>
+                    <button type="button" onClick={() => submitCustomerAuth("login")} disabled={authLoading} className="h-12 rounded-xl bg-ink px-5 font-bold text-white transition hover:bg-black disabled:opacity-60">{authLoading ? "…" : "Entrar"}</button>
+                  </div>
+                )}
               </div>
-              {authStatus && (
-                <p className={authStatus.includes("Não") || authStatus.includes("inválid") ? "mt-3 text-sm font-bold text-red-600" : "mt-3 text-sm font-bold text-emerald-700"}>
-                  {authStatus}
-                </p>
-              )}
+            )}
+
+            {authStatus && <p role={authError ? "alert" : "status"} className={`mt-3 rounded-xl p-3 text-sm font-semibold ${authError ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{authStatus}</p>}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block"><span className={label}>Nome completo</span><input className={field} name="customer_name" autoComplete="name" placeholder="Como devemos te chamar" value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} required /></label>
+              <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} name="customer_phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: event.target.value })} required /></label>
+              <label className="block sm:col-span-2">
+                <span className={label}>E-mail</span>
+                <span className="relative block">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input className={`${field} pl-11`} name="customer_email" type="email" autoComplete="email" placeholder="voce@email.com" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} required />
+                </span>
+              </label>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              <input className="field-light" name="customer_name" autoComplete="name" aria-label="Nome completo" placeholder="Nome completo" value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} required />
-              <input className="field-light" name="customer_phone" type="tel" inputMode="tel" autoComplete="tel" aria-label="Celular ou WhatsApp" placeholder="Celular/WhatsApp" value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: event.target.value })} required />
-              <div className="relative md:col-span-2">
-                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input className="field-light pl-11" name="customer_email" type="email" autoComplete="email" aria-label="E-mail" placeholder="E-mail" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} required />
+            {!customerId && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setSaveAccount((v) => !v)} aria-expanded={saveAccount} className="flex items-center gap-2 text-left text-sm font-semibold text-ink">
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 ${saveAccount ? "border-brand bg-brand text-white" : "border-slate-300"}`}>{saveAccount && <CheckCircle2 className="h-3.5 w-3.5" />}</span>
+                  Salvar meus dados com senha para os próximos pedidos
+                </button>
+                {saveAccount && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <label className="block"><span className={label}>Crie uma senha</span><input className={field} type="password" autoComplete="new-password" minLength={12} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Mínimo de 12 caracteres" /></label>
+                    <button type="button" onClick={() => submitCustomerAuth("register")} disabled={authLoading} className="h-12 rounded-xl border-2 border-brand px-5 font-bold text-brand transition hover:bg-brand-soft disabled:opacity-60">Criar conta</button>
+                  </div>
+                )}
               </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => submitCustomerAuth("register")}
-              disabled={authLoading}
-              className="mt-4 w-full rounded-lg border border-brand-line bg-white px-4 py-3 font-black text-brand transition hover:bg-brand-soft disabled:opacity-60"
-            >
-              Salvar cadastro com senha
-            </button>
-          </div>
+            )}
+          </section>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-black">Modo de entrega</h2>
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <button type="button" aria-pressed={type === "delivery"} onClick={() => setType("delivery")} className={type === "delivery" ? "rounded-lg border border-brand bg-brand-soft p-4 text-left" : "rounded-lg border border-slate-200 bg-white p-4 text-left"}>
-                <strong>Entrega</strong>
-                <span className="block text-sm text-slate-500">Nós levamos o pedido até você</span>
+          <section className={card} aria-labelledby="etapa-entrega">
+            <h2 id="etapa-entrega" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={Bike} tone="blue" size="sm" /> 2. Entrega</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button type="button" aria-pressed={type === "delivery"} onClick={() => setType("delivery")} className={choice(type === "delivery")}>
+                <Bike className={`h-6 w-6 shrink-0 ${type === "delivery" ? "text-brand" : "text-slate-400"}`} />
+                <span><strong className="block">Entrega</strong><span className="text-sm text-slate-500">Levamos até você</span></span>
               </button>
-              <button type="button" aria-pressed={type === "pickup"} onClick={() => setType("pickup")} className={type === "pickup" ? "rounded-lg border border-brand bg-brand-soft p-4 text-left" : "rounded-lg border border-slate-200 bg-slate-50 p-4 text-left"}>
-                <strong>Retirada</strong>
-                <span className="block text-sm text-slate-500">Você retira o pedido na loja</span>
+              <button type="button" aria-pressed={type === "pickup"} onClick={() => setType("pickup")} className={choice(type === "pickup")}>
+                <Store className={`h-6 w-6 shrink-0 ${type === "pickup" ? "text-brand" : "text-slate-400"}`} />
+                <span><strong className="block">Retirada</strong><span className="text-sm text-slate-500">Você busca na loja</span></span>
               </button>
             </div>
 
             {type === "delivery" && (
-              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 flex items-center gap-2 font-black">
-                  <MapPin className="h-4 w-4 text-brand" />
-                  Endereço de entrega
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <label className="col-span-2 block">
+                  <span className={label}>CEP</span>
+                  <span className="grid grid-cols-[1fr_auto] gap-2">
+                    <input className={field} inputMode="numeric" autoComplete="postal-code" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} placeholder="00000-000" required />
+                    <button type="button" onClick={lookupCep} aria-label="Buscar endereço pelo CEP" className="flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold hover:border-brand"><Search className="h-4 w-4" /> Buscar</button>
+                  </span>
+                </label>
+                <label className="col-span-2 block"><span className={label}>Endereço</span><input className={field} autoComplete="address-line1" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} placeholder="Rua, avenida…" required /></label>
+                <label className="block"><span className={label}>Número</span><input className={field} inputMode="numeric" value={address.number} onChange={(event) => setAddress({ ...address, number: event.target.value })} required /></label>
+                <label className="block"><span className={label}>Bairro</span><input className={field} value={address.neighborhood} onChange={(event) => setAddress({ ...address, neighborhood: event.target.value })} required /></label>
+                <label className="block"><span className={label}>Cidade</span><input className={field} autoComplete="address-level2" value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} required /></label>
+                <label className="block"><span className={label}>UF</span><input className={field} autoComplete="address-level1" value={address.state} onChange={(event) => setAddress({ ...address, state: event.target.value.toUpperCase() })} maxLength={2} required /></label>
+                <label className="block"><span className={label}>Complemento</span><input className={field} autoComplete="address-line2" value={address.complement} onChange={(event) => setAddress({ ...address, complement: event.target.value })} placeholder="Apto, bloco…" /></label>
+                <label className="block"><span className={label}>Ponto de referência</span><input className={field} value={address.reference} onChange={(event) => setAddress({ ...address, reference: event.target.value })} /></label>
+                <div className="col-span-2 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                  <span className="text-sm text-slate-600">Taxa de entrega</span>
+                  <strong className="text-right">
+                    {deliveryCalculating ? "Calculando…" : addressIsComplete
+                      ? selectedDeliveryRule ? (selectedDeliveryRule.free_delivery ? "Grátis" : money(selectedDeliveryRule.fee)) : money(restaurant.delivery_fee ?? 0)
+                      : "Informe o endereço"}
+                  </strong>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="grid grid-cols-[1fr_auto] gap-2 md:col-span-2">
-                    <input className="field-light" inputMode="numeric" autoComplete="postal-code" aria-label="CEP" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} placeholder="CEP" required />
-                    <button type="button" onClick={lookupCep} aria-label="Buscar endereço pelo CEP" title="Buscar CEP" className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-brand-line"><Search className="h-4 w-4" /></button>
-                  </div>
-                  <input className="field-light md:col-span-2" aria-label="Endereço" autoComplete="address-line1" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} placeholder="Endereço" required />
-                  <input className="field-light" aria-label="Número" inputMode="numeric" value={address.number} onChange={(event) => setAddress({ ...address, number: event.target.value })} placeholder="Número" required />
-                  <input className="field-light" aria-label="Bairro" value={address.neighborhood} onChange={(event) => setAddress({ ...address, neighborhood: event.target.value })} placeholder="Bairro" required />
-                  <input className="field-light" aria-label="Cidade" autoComplete="address-level2" value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} placeholder="Cidade" required />
-                  <input className="field-light" aria-label="UF" autoComplete="address-level1" value={address.state} onChange={(event) => setAddress({ ...address, state: event.target.value.toUpperCase() })} placeholder="UF" maxLength={2} required />
-                  <input className="field-light" aria-label="Complemento" autoComplete="address-line2" value={address.complement} onChange={(event) => setAddress({ ...address, complement: event.target.value })} placeholder="Complemento" />
-                  <input className="field-light" aria-label="Ponto de referência" value={address.reference} onChange={(event) => setAddress({ ...address, reference: event.target.value })} placeholder="Ponto de referência" />
-                  <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 md:col-span-2">
-                    <span className="block text-xs font-black uppercase text-slate-500">Frete automático</span>
-                    <strong className="mt-1 block text-slate-900">
-                      {deliveryCalculating
-                        ? "Calculando..."
-                        : addressIsComplete
-                          ? selectedDeliveryRule
-                            ? `${selectedDeliveryRule.name || "Faixa cadastrada"} - ${selectedDeliveryRule.free_delivery ? "grátis" : money(selectedDeliveryRule.fee)}`
-                            : `Taxa padrão - ${money(restaurant.delivery_fee ?? 0)}`
-                          : "Preencha o endereço completo"}
-                    </strong>
-                  </div>
-                </div>
-                {addressStatus && <p className="mt-2 text-sm font-semibold text-slate-600">{addressStatus}</p>}
-                {addressIsComplete && <p className="mt-3 rounded-lg bg-white p-3 text-sm font-bold text-slate-700">Frete calculado: {money(deliveryFee)}</p>}
+                {addressStatus && <p className="col-span-2 text-sm text-slate-600">{addressStatus}</p>}
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-black">Forma de pagamento</h2>
-            <div role="radiogroup" aria-label="Forma de pagamento" className="mt-4 grid gap-3 md:grid-cols-2">
-              {paymentMethods.map((method) => (
-                <label key={method} className={payment === method ? "rounded-lg border border-brand bg-brand-soft p-4 font-black" : "rounded-lg border border-slate-200 p-4 font-bold"}>
-                  <input className="mr-2" type="radio" name="payment_ui" checked={payment === method} onChange={() => {
-                    setPayment(method);
-                    if (method !== "cash") setNeedsChange("no");
-                  }} />
-                  {paymentLabels[method] ?? method}
-                </label>
-              ))}
+          <section className={card} aria-labelledby="etapa-pagamento">
+            <h2 id="etapa-pagamento" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={CreditCard} tone="green" size="sm" /> 3. Pagamento</h2>
+            <p className="mt-1 text-sm text-slate-500">Pagamento na entrega ou retirada.</p>
+            <div role="radiogroup" aria-label="Forma de pagamento" className="mt-4 grid grid-cols-2 gap-3">
+              {paymentMethods.map((method) => {
+                const Icon = paymentIcons[method] ?? Wallet;
+                return (
+                  <label key={method} className={`${choice(payment === method)} cursor-pointer`}>
+                    <input className="sr-only" type="radio" name="payment_ui" checked={payment === method} onChange={() => { setPayment(method); if (method !== "cash") setNeedsChange("no"); }} />
+                    <Icon className={`h-6 w-6 shrink-0 ${payment === method ? "text-brand" : "text-slate-400"}`} />
+                    <strong>{paymentLabels[method] ?? method}</strong>
+                  </label>
+                );
+              })}
             </div>
             {payment === "cash" && (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <span className="block text-sm font-black text-slate-800">Precisa de troco</span>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  <label className={needsChange === "yes" ? "rounded-lg border border-brand bg-brand-soft p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
-                    <input className="mr-2" type="radio" name="change_ui" checked={needsChange === "yes"} onChange={() => setNeedsChange("yes")} />
-                    Sim
-                  </label>
-                  <label className={needsChange === "no" ? "rounded-lg border border-brand bg-brand-soft p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
-                    <input className="mr-2" type="radio" name="change_ui" checked={needsChange === "no"} onChange={() => setNeedsChange("no")} />
-                    Não
-                  </label>
+              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                <span className="text-sm font-semibold text-ink">Vai precisar de troco?</span>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {(["yes", "no"] as const).map((option) => (
+                    <label key={option} className={`${choice(needsChange === option)} cursor-pointer justify-center py-3`}>
+                      <input className="sr-only" type="radio" name="change_ui" checked={needsChange === option} onChange={() => setNeedsChange(option)} />
+                      <strong>{option === "yes" ? "Sim" : "Não"}</strong>
+                    </label>
+                  ))}
                 </div>
-                {needsChange === "yes" && <MoneyInput className="field-light mt-3" name="change_for" placeholder="Para quanto" required />}
+                {needsChange === "yes" && <label className="mt-3 block"><span className={label}>Troco para quanto?</span><MoneyInput className={field} name="change_for" placeholder="R$ 0,00" required /></label>}
               </div>
             )}
-            <textarea className="field-light mt-3" name="notes" aria-label="Observações do pedido" placeholder="Observações do pedido" />
-          </div>
+            <label className="mt-4 block"><span className={label}>Observações do pedido</span><textarea className={`${field} h-24 py-3`} name="notes" placeholder="Ex.: interfone com defeito, sem cebola…" /></label>
+          </section>
+        </div>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-black">Confira seu pedido</h2>
-            <div className="mt-4 divide-y divide-slate-100">
+        <aside className="lg:sticky lg:top-20">
+          <section className={card} aria-labelledby="resumo">
+            <h2 id="resumo" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={ShoppingBag} tone="red" size="sm" /> Resumo do pedido</h2>
+            <ul className="mt-4 divide-y divide-slate-100">
               {cart.map((item, index) => (
-                <div key={`${item.id}-${index}`} className="flex justify-between gap-4 py-3">
-                  <div>
-                    <strong>{item.quantity}x {item.name}{item.variantName ? ` - ${item.variantName}` : ""}</strong>
-                    {item.flavors && item.flavors.length > 1 && <p className="text-sm text-slate-500">Sabores: {item.flavors.join(" / ")}</p>}
-                    {item.crust?.name && <p className="text-sm text-slate-500">Borda: {item.crust.name}</p>}
-                    {item.additions.length > 0 && <p className="text-sm text-slate-500">Adicionais: {item.additions.map((addition) => addition.name).join(", ")}</p>}
+                <li key={`${item.id}-${index}`} className="flex justify-between gap-3 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{item.quantity}x {item.name}{item.variantName ? ` · ${item.variantName}` : ""}</p>
+                    {item.flavors && item.flavors.length > 1 && <p className="text-xs text-slate-500">Sabores: {item.flavors.join(" / ")}</p>}
+                    {item.crust?.name && <p className="text-xs text-slate-500">Borda: {item.crust.name}</p>}
+                    {item.additions.length > 0 && <p className="text-xs text-slate-500">Adicionais: {item.additions.map((addition) => addition.name).join(", ")}</p>}
                   </div>
-                  <strong>{money(lineTotal(item))}</strong>
-                </div>
+                  <strong className="shrink-0">{money(lineTotal(item))}</strong>
+                </li>
               ))}
-              {!cart.length && <p className="rounded bg-slate-50 p-4 text-sm text-slate-500">Seu carrinho está vazio.</p>}
+              {!cart.length && <li className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Seu carrinho está vazio. <Link href={`/cardapio/${restaurant.slug}`} className="font-semibold text-brand">Voltar ao cardápio</Link></li>}
+            </ul>
+            <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-sm">
+              <p className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(subtotal)}</span></p>
+              <p className="flex justify-between text-slate-600"><span>Entrega</span><span>{type === "pickup" ? "Retirada" : money(deliveryFee)}</span></p>
+              <p className="flex justify-between pt-1 text-xl font-black"><span>Total</span><span>{money(total)}</span></p>
             </div>
-            <div className="mt-5 space-y-2 border-t border-slate-100 pt-4">
-              <div className="flex justify-between"><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
-              <div className="flex justify-between"><span>Entrega</span><strong>{money(deliveryFee)}</strong></div>
-              <div className="flex justify-between text-2xl font-black"><span>Total</span><strong>{money(total)}</strong></div>
-            </div>
-            {checkoutBlockReason && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">{checkoutBlockReason}</p>}
-            <FinalizeButton disabled={!canSubmit} label={restaurant.is_open ? "Finalizar pedido" : "Loja fechada"} />
-          </div>
-        </section>
+            {checkoutBlockReason && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">{checkoutBlockReason}</p>}
+            <FinalizeButton disabled={!canSubmit} label={restaurant.is_open ? `Enviar pedido · ${money(total)}` : "Loja fechada"} />
+          </section>
+        </aside>
       </form>
     </main>
   );
@@ -439,7 +424,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
 function FinalizeButton({ disabled, label }: { disabled: boolean; label: string }) {
   const { pending } = useFormStatus();
   return (
-    <button className="mt-5 w-full rounded-lg bg-brand px-4 py-4 font-black uppercase text-white transition hover:bg-brand-strong disabled:bg-slate-300" disabled={disabled || pending}>
+    <button className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-b from-brand-bright to-brand text-base font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_30px_-12px_rgba(207,74,10,0.85)] transition hover:to-brand-strong disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none" disabled={disabled || pending}>
       {pending ? "Enviando pedido…" : label}
     </button>
   );
