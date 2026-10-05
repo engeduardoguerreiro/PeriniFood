@@ -1,27 +1,43 @@
-import { requireIntegrationToken } from "@/lib/integrations/ingress";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { IFOOD_CLIENT_SECRET } from "@/lib/integrations/ifood/config";
 import { createServiceClient } from "@/lib/supabase/service";
 import { processIFoodEvent } from "@/lib/integrations/ifood/event-processor";
 
 // Webhook do iFood (modo WEBHOOK / "Per Application").
 // - KEEPALIVE / eventos sem pedido: responde 202 (marca a loja ONLINE).
 // - Eventos de pedido: cria/cancela o pedido interno (mesma lógica do polling).
-// Responde 202 rápido; falhas nunca derrubam a presença.
+// O iFood assina cada chamada: X-IFood-Signature = hex(HMAC-SHA256(corpo bruto,
+// client secret)). Assinatura inválida → 401 (critério de homologação).
+// Falha ao processar um pedido → 500, para o iFood reenviar o evento (a criação
+// é idempotente por external_order_id).
 
 type IFoodEvent = { id?: string; code?: string; fullCode?: string; orderId?: string; merchantId?: string };
 
 const ACCEPTED = () => new NextResponse(null, { status: 202 });
 
+function signatureMatches(raw: Buffer, supplied: string | null) {
+  const signature = supplied?.trim().toLowerCase() ?? "";
+  if (!/^[0-9a-f]{64}$/.test(signature)) return false;
+  const expected = createHmac("sha256", IFOOD_CLIENT_SECRET).update(raw).digest();
+  return timingSafeEqual(expected, Buffer.from(signature, "hex"));
+}
+
 export async function POST(request: Request) {
-  const denied = requireIntegrationToken(request, process.env.IFOOD_WEBHOOK_SECRET);
-  if (denied) return denied;
+  if (!IFOOD_CLIENT_SECRET) return NextResponse.json({ ok: false, message: "iFood não configurado." }, { status: 503 });
+  const raw = Buffer.from(await request.arrayBuffer());
+  if (!signatureMatches(raw, request.headers.get("x-ifood-signature"))) {
+    return NextResponse.json({ ok: false, message: "Assinatura inválida." }, { status: 401 });
+  }
   let events: IFoodEvent[] = [];
   try {
-    const body = await request.json();
+    const body = JSON.parse(raw.toString("utf8"));
     events = Array.isArray(body) ? body : [body];
   } catch {
-    return ACCEPTED();
+    return NextResponse.json({ ok: false, message: "JSON inválido." }, { status: 400 });
   }
+
+  let failed = false;
 
   for (const event of events) {
     const code = event.fullCode ?? event.code ?? "UNKNOWN";
@@ -30,12 +46,12 @@ export async function POST(request: Request) {
       const supabase = createServiceClient();
       await processIFoodEvent(supabase, event);
     } catch (error) {
-      // nunca bloqueia o ack (presença da loja); registra para reprocessar via polling
+      failed = true;
       console.error("[ifood webhook] evento não processado", event.id, error instanceof Error ? error.message : error);
     }
   }
 
-  return ACCEPTED();
+  return failed ? NextResponse.json({ ok: false }, { status: 500 }) : ACCEPTED();
 }
 
 export async function GET() {
