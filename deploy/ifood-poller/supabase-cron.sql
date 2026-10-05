@@ -3,12 +3,21 @@
 -- Colar no SQL Editor do Supabase, trocando COLE_AQUI pelo IFOOD_POLL_SECRET da Vercel.
 -- Pode rodar de novo: recria o segredo e o agendamento.
 
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_cron with schema pg_catalog;
+create extension if not exists pg_net with schema extensions;
 
 -- Segredo guardado criptografado no Vault (não fica no texto do agendamento).
-delete from vault.secrets where name = 'ifood_poll_secret';
-select vault.create_secret('COLE_AQUI', 'ifood_poll_secret');
+do $vault$
+declare existing uuid;
+begin
+  select id into existing from vault.secrets where name = 'ifood_poll_secret';
+  if existing is null then
+    perform vault.create_secret('COLE_AQUI', 'ifood_poll_secret');
+  else
+    perform vault.update_secret(existing, 'COLE_AQUI');
+  end if;
+end
+$vault$;
 
 select cron.unschedule('perinifood-ifood-poll') where exists (select 1 from cron.job where jobname = 'perinifood-ifood-poll');
 
