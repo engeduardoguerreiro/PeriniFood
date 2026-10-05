@@ -7,8 +7,22 @@ import { digits } from "@/lib/utils";
 
 export type WhatsAppState = "open" | "connecting" | "close" | "missing" | "disabled";
 
+// Valores colados no painel da Vercel podem vir com espaço ou quebra de linha no
+// fim; num header isso faz o fetch falhar com "invalid header value".
+function evolutionUrl() {
+  return process.env.EVOLUTION_API_URL?.trim().replace(/\/+$/, "") || "";
+}
+
+function evolutionKey() {
+  return process.env.EVOLUTION_API_KEY?.replace(/\s+/g, "").trim() || "";
+}
+
+export function webhookSecret() {
+  return process.env.WHATSAPP_WEBHOOK_SECRET?.trim() ?? "";
+}
+
 export function whatsappConfigured() {
-  return Boolean(process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY);
+  return Boolean(evolutionUrl() && evolutionKey());
 }
 
 export function instanceName(restaurantId: string) {
@@ -21,9 +35,13 @@ export function restaurantIdFromInstance(name: unknown) {
 }
 
 async function evolution<T>(method: string, path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: T | null }> {
-  const base = process.env.EVOLUTION_API_URL?.replace(/\/+$/, "");
-  const key = process.env.EVOLUTION_API_KEY;
+  const base = evolutionUrl();
+  const key = evolutionKey();
   if (!base || !key) return { ok: false, status: 503, data: null };
+  // A chave é gerada com "openssl rand -hex 32". Só o tamanho vai na mensagem, nunca a chave.
+  if (!/^[0-9a-f]{64}$/i.test(key)) {
+    throw new Error(`EVOLUTION_API_KEY inválida: esperado 64 caracteres hexadecimais, recebido ${key.length}.`);
+  }
   const response = await fetch(`${base}${path}`, {
     method,
     headers: { apikey: key, "Content-Type": "application/json" },
@@ -43,7 +61,7 @@ function webhookConfig() {
     byEvents: false,
     base64: false,
     events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
-    headers: { "x-webhook-secret": process.env.WHATSAPP_WEBHOOK_SECRET ?? "" },
+    headers: { "x-webhook-secret": webhookSecret() },
   };
 }
 

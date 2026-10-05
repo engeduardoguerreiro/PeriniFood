@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { privateJson, secretMatches } from "@/lib/security";
 import { rateLimit } from "@/lib/customer-session";
 import { aiReply, noteStoreMessage } from "@/lib/ai/attendant";
-import { restaurantIdFromInstance, sendText } from "@/lib/whatsapp/evolution";
+import { restaurantIdFromInstance, sendText, webhookSecret } from "@/lib/whatsapp/evolution";
 
 // Mensagens que chegam no WhatsApp das lojas (servidor Evolution API).
 // Responde rápido ao servidor e processa a IA depois da resposta.
@@ -10,7 +10,7 @@ type Key = { remoteJid?: string; fromMe?: boolean; senderPn?: string; remoteJidA
 type Upsert = { key?: Key; message?: { conversation?: string; extendedTextMessage?: { text?: string } } };
 
 export async function POST(request: Request) {
-  if (!secretMatches(process.env.WHATSAPP_WEBHOOK_SECRET, request.headers.get("x-webhook-secret"))) {
+  if (!secretMatches(webhookSecret(), request.headers.get("x-webhook-secret")?.trim())) {
     return privateJson({ ok: false }, 401);
   }
   const body = (await request.json().catch(() => null)) as { event?: string; instance?: string; data?: Upsert | Upsert[] } | null;

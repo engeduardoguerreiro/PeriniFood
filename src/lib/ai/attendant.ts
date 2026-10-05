@@ -20,7 +20,9 @@ const HISTORY_TURNS = 12;
 // Criado no primeiro uso: sem ANTHROPIC_API_KEY o construtor lança erro, e isso
 // não pode derrubar o build nem as outras rotas.
 let anthropic: Anthropic | null = null;
-const getClient = () => (anthropic ??= new Anthropic());
+// trim(): chave colada com quebra de linha vira "invalid header value" no x-api-key.
+const apiKey = () => process.env.ANTHROPIC_API_KEY?.trim() ?? "";
+const getClient = () => (anthropic ??= new Anthropic({ apiKey: apiKey() }));
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || "https://perinifood.com.br").replace(/\/+$/, "");
 
 const paymentLabels: Record<string, string> = { cash: "dinheiro", pix: "Pix", credit_card: "cartão de crédito", debit_card: "cartão de débito", online: "pagamento online", other: "outros" };
@@ -158,7 +160,7 @@ export async function aiReply({ restaurantId, channel, contact, text }: { restau
   const usesFallbacks = /^claude-(opus-5|sonnet-5-5|fable-5)/.test(MODEL);
   let reply = "";
   try {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurada");
+    if (!apiKey()) throw new Error("ANTHROPIC_API_KEY não configurada");
     const response = await getClient().beta.messages.create({
       model: MODEL,
       max_tokens: 1024,

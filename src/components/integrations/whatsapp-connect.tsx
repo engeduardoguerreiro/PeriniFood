@@ -20,6 +20,9 @@ export function WhatsAppConnect({ canEdit }: { canEdit: boolean }) {
     if (json?.state) {
       setState(json.state);
       if (json.state === "open") setQr(null);
+    } else if (json?.message) {
+      setState("close");
+      setError(json.message);
     }
   }, []);
 
@@ -50,10 +53,15 @@ export function WhatsAppConnect({ canEdit }: { canEdit: boolean }) {
   async function disconnectNow() {
     if (!window.confirm("Desconectar o WhatsApp da loja? As mensagens automáticas param até conectar de novo.")) return;
     setBusy(true);
-    await fetch("/api/whatsapp/session", { method: "DELETE" }).catch(() => null);
+    const response = await fetch("/api/whatsapp/session", { method: "DELETE" }).catch(() => null);
+    const json = await response?.json().catch(() => null);
+    setBusy(false);
+    if (!response?.ok) {
+      setError(json?.message || "Não foi possível desconectar agora. Tente de novo.");
+      return;
+    }
     setQr(null);
     setState("missing");
-    setBusy(false);
   }
 
   if (state === "disabled") {

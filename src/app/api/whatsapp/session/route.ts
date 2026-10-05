@@ -11,10 +11,17 @@ async function guard() {
   return { restaurantId: auth.context.restaurant.id };
 }
 
+// Erros do cliente Evolution trazem só texto seguro (nunca a chave).
+const failure = (error: unknown) => (error instanceof Error ? error.message : "Falha ao falar com o servidor de WhatsApp.");
+
 export async function GET() {
   const g = await guard();
   if (g.error) return g.error;
-  return privateJson({ ok: true, state: await connectionState(g.restaurantId) });
+  try {
+    return privateJson({ ok: true, state: await connectionState(g.restaurantId) });
+  } catch (error) {
+    return privateJson({ ok: false, message: failure(error) }, 502);
+  }
 }
 
 export async function POST() {
@@ -23,13 +30,17 @@ export async function POST() {
   try {
     return privateJson({ ok: true, ...(await startConnection(g.restaurantId)) });
   } catch (error) {
-    return privateJson({ ok: false, message: error instanceof Error ? error.message : "Falha ao conectar." }, 502);
+    return privateJson({ ok: false, message: failure(error) }, 502);
   }
 }
 
 export async function DELETE() {
   const g = await guard();
   if (g.error) return g.error;
-  await disconnect(g.restaurantId);
+  try {
+    await disconnect(g.restaurantId);
+  } catch (error) {
+    return privateJson({ ok: false, message: failure(error) }, 502);
+  }
   return privateJson({ ok: true, state: "missing" });
 }
