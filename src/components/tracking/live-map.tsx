@@ -41,7 +41,14 @@ export function LiveMap({ endpoint, intervalMs = 10000, className = "h-72", onDa
       const L = (await import("leaflet")).default;
       if (cancelled || !holder.current || map.current) return;
       map.current = L.map(holder.current, { zoomControl: true, attributionControl: true }).setView([-23.55, -46.63], 12);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map.current);
+      // O site usa Referrer-Policy: no-referrer, e o OpenStreetMap bloqueia (403)
+      // imagens sem Referer. Só os tiles enviam a ORIGEM (sem caminho, então o
+      // código do pedido/token do link não vaza).
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap",
+        referrerPolicy: "strict-origin-when-cross-origin",
+      }).addTo(map.current);
     })();
     return () => { cancelled = true; map.current?.remove(); map.current = null; layers.current = {}; fitted.current = false; };
   }, []);
