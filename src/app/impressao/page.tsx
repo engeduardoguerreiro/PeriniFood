@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Printer, Zap } from "lucide-react";
+import { Download, Printer, Terminal, Zap } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
 import { Icon3D } from "@/components/ui/icon-3d";
 
@@ -11,6 +11,8 @@ export const metadata = { title: "Configurar impressão · PeriniFood" };
 export default async function PrintSetupPage() {
   await requireRestaurant();
 
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://perinifood.com.br").replace(/\/+$/, "");
+  const linuxInstall = `curl -fsSL ${appUrl}/downloads/install-print-agent-linux.sh | bash`;
   const step = "rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]";
   const badge = "grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-brand-bright to-brand text-sm font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-5px_rgba(207,74,10,0.7)]";
 
@@ -87,12 +89,21 @@ export default async function PrintSetupPage() {
               Arquivo grande (~92 MB). O Windows pode avisar que o programa é de origem desconhecida — clique em &quot;Mais informações&quot; e
               &quot;Executar assim mesmo&quot;.
             </p>
+            <div className="mt-4 rounded-xl border border-line bg-[#f6f5f2] p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Terminal size={15} /> No Linux (Ubuntu, Mint, Debian)</p>
+              <p className="mt-1 text-xs text-ink-soft">Abra o Terminal, cole o comando abaixo e tecle Enter. O agente usa as impressoras já instaladas no sistema e liga sozinho junto com o computador.</p>
+              <code className="mt-2 block select-all overflow-x-auto whitespace-nowrap rounded-lg bg-ink px-3 py-2 font-mono text-xs text-white">{linuxInstall}</code>
+              <p className="mt-2 text-xs text-ink-faint">
+                Precisa do Node.js (<code>sudo apt install -y nodejs</code>). Para remover:{" "}
+                <code className="select-all">curl -fsSL {appUrl}/downloads/uninstall-print-agent-linux.sh | bash</code>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       <p className="text-center text-xs text-ink-faint">
-        A comanda não saiu? Confira se a impressora está ligada, com papel e aparecendo na lista de impressoras do Windows.
+        A comanda não saiu? Confira se a impressora está ligada, com papel e aparecendo na lista de impressoras do computador.
       </p>
     </main>
     </div>

@@ -5,14 +5,16 @@ const os = require("os");
 const path = require("path");
 
 const appName = "PeriniFood Print Agent";
-const version = "1.0.0";
+const version = "1.1.0";
+// Windows usa PowerShell + spooler; Linux/macOS usam o CUPS (lpstat/lp).
+const isWindows = process.platform === "win32";
 const host = process.env.PRINT_BRIDGE_HOST || "127.0.0.1";
 const port = Number(process.env.PRINT_BRIDGE_PORT || 4127);
 const appDataRoot =
   process.env.PRINT_BRIDGE_DATA_DIR ||
-  process.env.LOCALAPPDATA ||
-  process.env.PROGRAMDATA ||
-  path.join(os.homedir(), "AppData", "Local");
+  (isWindows
+    ? process.env.LOCALAPPDATA || process.env.PROGRAMDATA || path.join(os.homedir(), "AppData", "Local")
+    : process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"));
 const dataDir = process.env.PRINT_BRIDGE_DATA_DIR
   ? appDataRoot
   : path.join(appDataRoot, "PeriniFood", "PrintAgent");
@@ -169,6 +171,54 @@ function powershell(command, env = {}) {
   });
 }
 
+function run(command, args, input) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      command,
+      args,
+      { maxBuffer: 1024 * 1024 * 4, env: { ...process.env, LANG: "C", LC_ALL: "C" } },
+      (error, stdout, stderr) => (error ? reject(new Error(stderr || error.message)) : resolve(stdout)),
+    );
+    if (input) child.stdin.end(input);
+  });
+}
+
+// CUPS: "printer NOME is idle.  enabled since ..." / "printer NOME disabled since ..."
+async function listCupsPrinters() {
+  const [printersOut, defaultOut, devicesOut] = await Promise.all([
+    run("lpstat", ["-p"]).catch(() => ""),
+    run("lpstat", ["-d"]).catch(() => ""),
+    run("lpstat", ["-v"]).catch(() => ""),
+  ]);
+  const defaultName = /system default destination:\s*(\S+)/.exec(defaultOut)?.[1] || null;
+  const devices = new Map(
+    devicesOut.split("\n").map((line) => /^device for (\S+?):\s*(.+)$/.exec(line.trim())).filter(Boolean).map((m) => [m[1], m[2]]),
+  );
+  return printersOut
+    .split("\n")
+    .map((line) => /^printer (\S+)\s+(.*)$/.exec(line.trim()))
+    .filter(Boolean)
+    .map(([, name, rest]) => ({
+      name,
+      driver: "CUPS",
+      port: devices.get(name) || "",
+      isDefault: name === defaultName,
+      isOffline: /disabled/i.test(rest),
+      status: rest.split(".")[0] || null,
+    }));
+}
+
+async function listPrinters() {
+  return isWindows ? listWindowsPrinters() : listCupsPrinters();
+}
+
+async function lpPrint(printerName, filePath, copies, options = []) {
+  const args = [];
+  if (printerName) args.push("-d", printerName);
+  args.push("-n", String(copies), "-t", "PeriniFood Pedido", ...options, filePath);
+  await run("lp", args);
+}
+
 async function listWindowsPrinters() {
   const command = [
     "$ErrorActionPreference='Stop';",
@@ -220,10 +270,10 @@ function buildEscPosReceipt(content, options = {}) {
 }
 
 async function assertPrinterReady(printerName) {
-  const printers = await listWindowsPrinters();
+  const printers = await listPrinters();
   const printer = printers.find((item) => item.name.toLowerCase() === String(printerName).toLowerCase());
   if (!printer) {
-    throw new Error(`Impressora "${printerName}" não encontrada neste Windows.`);
+    throw new Error(`Impressora "${printerName}" não encontrada neste computador.`);
   }
   if (printer.isOffline) {
     throw new Error(`Impressora "${printerName}" está offline.`);
@@ -241,6 +291,18 @@ async function sendRawToPrinter({ printerName, content, copies, cutPaper }) {
 
   const copyCount = Math.min(5, Math.max(1, Number(copies || 1)));
   const raw = buildEscPosReceipt(safeContent, { cutPaper });
+
+  if (!isWindows) {
+    const tempFile = path.join(os.tmpdir(), `perinifood-print-${Date.now()}.bin`);
+    await fs.writeFile(tempFile, raw);
+    try {
+      await lpPrint(printer, tempFile, copyCount, ["-o", "raw"]);
+    } finally {
+      fs.unlink(tempFile).catch(() => {});
+    }
+    return;
+  }
+
   const base64 = raw.toString("base64");
 
   const helper = String.raw`
@@ -317,6 +379,15 @@ async function printText({ printerName, content, copies }) {
   const tempFile = path.join(os.tmpdir(), `perinifood-print-${Date.now()}.txt`);
   await fs.writeFile(tempFile, safeContent, "utf8");
 
+  if (!isWindows) {
+    try {
+      await lpPrint(printer, tempFile, copyCount);
+    } finally {
+      fs.unlink(tempFile).catch(() => {});
+    }
+    return;
+  }
+
   const command = [
     "$ErrorActionPreference='Stop';",
     "$content = Get-Content -LiteralPath $env:PF_PRINT_FILE -Raw;",
@@ -348,6 +419,17 @@ async function printImage({ printerName, image, copies }) {
   const copyCount = Math.min(5, Math.max(1, Number(copies || 1)));
   const tempFile = path.join(os.tmpdir(), `perinifood-print-${Date.now()}.png`);
   await fs.writeFile(tempFile, Buffer.from(base64, "base64"));
+
+  if (!isWindows) {
+    // 203 dpi = resolução das térmicas de 80 mm (a comanda vem com 576 px de largura).
+    const ppi = String(Number(process.env.PRINT_BRIDGE_IMAGE_PPI) || 203);
+    try {
+      await lpPrint(printer, tempFile, copyCount, ["-o", `ppi=${ppi}`]);
+    } finally {
+      fs.unlink(tempFile).catch(() => {});
+    }
+    return;
+  }
 
   const command = [
     "$ErrorActionPreference='Stop';",
@@ -386,13 +468,14 @@ async function printImage({ printerName, image, copies }) {
 }
 
 async function getStatus() {
-  const [config, printers] = await Promise.all([readConfig(), listWindowsPrinters()]);
+  const [config, printers] = await Promise.all([readConfig(), listPrinters()]);
   const defaultPrinter = config.defaultPrinter || printers.find((printer) => printer.isDefault)?.name || null;
   const selected = defaultPrinter ? printers.find((printer) => printer.name === defaultPrinter) : null;
   return {
     ok: true,
     app: appName,
     version,
+    platform: process.platform,
     host,
     port,
     uptimeSeconds: Math.round((Date.now() - startedAt.getTime()) / 1000),
@@ -487,7 +570,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (requestUrl.pathname === "/printers") {
-      const printers = await listWindowsPrinters();
+      const printers = await listPrinters();
       await log("printers_detected", { count: printers.length });
       sendJson(req, res, 200, { ok: true, printers });
       return;

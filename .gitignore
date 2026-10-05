@@ -61,3 +61,6 @@ next-env.d.ts
 
 # codemods descartaveis do refactor de seguranca (ja aplicados)
 scripts/security-*refactor.cjs
+public/downloads/perinifood-print-bridge.js
+public/downloads/install-print-agent-linux.sh
+public/downloads/uninstall-print-agent-linux.sh

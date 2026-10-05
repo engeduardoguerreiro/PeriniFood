@@ -187,7 +187,7 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
           Baixar instalador
         </a>
       </div>
-      <p className="text-xs text-ink-faint">Sem impressão? Baixe o instalador, execute o arquivo e pronto — o agente liga sozinho junto com o Windows.</p>
+      <p className="text-xs text-ink-faint">Sem impressão? Baixe o instalador, execute o arquivo e pronto — o agente liga sozinho junto com o Windows. No Linux, veja o comando em <a href="/impressao" className="font-semibold text-brand underline">Configurar impressão</a>.</p>
     </div>
   );
 }
