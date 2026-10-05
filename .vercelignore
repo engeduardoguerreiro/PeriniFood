@@ -11,3 +11,6 @@ supabase/.temp
 # O instalador do agente de impressão precisa ir para o deploy: é o download
 # oferecido ao cliente em /impressao. Sem esta exceção o link dá 404.
 !public/downloads/*.exe
+
+# Pacote do servidor de WhatsApp (roda no Ubuntu, não na Vercel)
+deploy
