@@ -1,6 +1,6 @@
 "use client";
 
-import { Bike, Check, ChefHat, ClipboardCheck, Home } from "lucide-react";
+import { Bike, Check, ChefHat, ClipboardCheck, Home, KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LiveMap } from "./live-map";
 import type { OrderStatus } from "@/lib/types";
@@ -20,10 +20,10 @@ const pickupSteps = [
   { label: "Retirado", Icon: Home, statuses: ["completed"] as OrderStatus[] },
 ];
 
-type Poll = { status: OrderStatus; courierName: string | null; started: boolean; delivered: boolean };
+type Poll = { status: OrderStatus; courierName: string | null; started: boolean; delivered: boolean; deliveryCode: string | null };
 
 export function CustomerTracking({ code, initialStatus, delivery }: { code: string; initialStatus: OrderStatus; delivery: boolean }) {
-  const [poll, setPoll] = useState<Poll>({ status: initialStatus, courierName: null, started: false, delivered: false });
+  const [poll, setPoll] = useState<Poll>({ status: initialStatus, courierName: null, started: false, delivered: false, deliveryCode: null });
 
   // Status (e se o motoboy já saiu) a cada 10s; o mapa, quando aberto, busca a posição por conta própria.
   useEffect(() => {
@@ -32,7 +32,7 @@ export function CustomerTracking({ code, initialStatus, delivery }: { code: stri
       .then((r) => r.json())
       .then((j) => {
         if (stop || !j.status) return;
-        setPoll({ status: j.status, courierName: j.tracking?.courierName ?? null, started: Boolean(j.tracking?.last), delivered: j.tracking?.state === "delivered" });
+        setPoll({ status: j.status, courierName: j.tracking?.courierName ?? null, started: Boolean(j.tracking?.last), delivered: j.tracking?.state === "delivered", deliveryCode: j.tracking?.deliveryCode ?? null });
       })
       .catch(() => {});
     load();
@@ -62,6 +62,19 @@ export function CustomerTracking({ code, initialStatus, delivery }: { code: stri
           );
         })}
       </ol>
+
+      {delivery && poll.deliveryCode && !poll.delivered && status !== "completed" && (
+        <section aria-label="Código de entrega" className="flex items-center justify-between gap-4 rounded-2xl bg-ink p-4 text-white shadow-[0_14px_30px_-16px_rgba(0,0,0,0.7)]">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-brand-bright to-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"><KeyRound className="h-5 w-5" /></span>
+            <div>
+              <p className="font-black">Código de entrega</p>
+              <p className="text-sm text-white/70">Informe ao entregador ao receber o pedido.</p>
+            </div>
+          </div>
+          <p className="text-3xl font-black tracking-[0.3em] [font-variant-numeric:tabular-nums]">{poll.deliveryCode}</p>
+        </section>
+      )}
 
       {showMap && (
         <section aria-label="Motoboy no mapa">

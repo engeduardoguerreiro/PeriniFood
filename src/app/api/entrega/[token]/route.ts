@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { assertSameOrigin, privateJson, publicFailure, PublicError, readObject } from "@/lib/security";
 import { rateLimit } from "@/lib/customer-session";
 import { createServiceClient } from "@/lib/supabase/service";
-import { recordLocations, trackingByToken, trackingState } from "@/lib/delivery-tracking";
+import { deliveryCodeMatches, recordLocations, trackingByToken, trackingState } from "@/lib/delivery-tracking";
 
 // Link do motoboy: o token na URL é a credencial (um por pedido, sem cadastro).
 // Ações: "start" (saiu para entrega), "location" (posição GPS) e "finish" (entregue).
@@ -40,6 +40,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       return privateJson({ ok: true });
     }
     if (action === "finish") {
+      // Contrassenha do cliente (pedidos do iFood usam o código do próprio iFood).
+      if (ownsStatus && row.delivery_code) {
+        await rateLimit("courier-code", row.id, 5, 600);
+        if (!deliveryCodeMatches(row, body.code)) throw new PublicError("Código de entrega incorreto. Confira com o cliente.", 422);
+      }
       const now = new Date().toISOString();
       await service.from("delivery_tracking").update({ delivered_at: now, started_at: row.started_at ?? now }).eq("id", row.id);
       if (ownsStatus) await service.from("orders").update({ status: "completed" }).eq("id", order.id);

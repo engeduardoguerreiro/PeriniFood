@@ -12,6 +12,7 @@ export function CourierPanel({ origin, orderId, token, courierName, customerPhon
 }) {
   const [copied, setCopied] = useState(false);
   const [state, setState] = useState<LiveTracking["state"] | null>(null);
+  const [deliveryCode, setDeliveryCode] = useState<string | null>(null);
 
   const link = token && origin ? `${origin}/entrega/${token}` : "";
   const customerLink = trackingCode && origin ? `${origin}/pedido/${trackingCode}` : "";
@@ -28,8 +29,11 @@ export function CourierPanel({ origin, orderId, token, courierName, customerPhon
 
       {token ? (
         <div className="mt-4 space-y-3">
-          {courierName && <p className="text-sm text-ink-soft">Entregador: <strong className="text-ink">{courierName}</strong></p>}
-          <LiveMap endpoint={`/api/pedidos/${orderId}/rastreio`} className="h-64" onData={(data) => setState(data?.state ?? null)} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {courierName ? <p className="text-sm text-ink-soft">Entregador: <strong className="text-ink">{courierName}</strong></p> : <span />}
+            {deliveryCode && <p className="rounded-xl bg-ink px-3 py-1.5 text-sm text-white">Código do cliente: <strong className="tracking-[0.2em]">{deliveryCode}</strong></p>}
+          </div>
+          <LiveMap endpoint={`/api/pedidos/${orderId}/rastreio`} className="h-64" onData={(data) => { setState(data?.state ?? null); setDeliveryCode(data?.deliveryCode ?? null); }} />
           <div className="flex gap-2">
             <input readOnly value={link} aria-label="Link do motoboy" className="field-light min-w-0 flex-1 text-xs" onFocus={(e) => e.currentTarget.select()} />
             <button type="button" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="btn-muted shrink-0 px-3 text-sm" aria-label="Copiar link do motoboy">
@@ -40,7 +44,7 @@ export function CourierPanel({ origin, orderId, token, courierName, customerPhon
             <Send className="h-4 w-4" /> Enviar link ao motoboy (WhatsApp)
           </a>
           {customerLink && customerWa && (
-            <a href={`https://wa.me/${customerWa}?text=${encodeURIComponent(`Seu pedido saiu para entrega! Acompanhe o motoboy no mapa:\n${customerLink}`)}`} target="_blank" rel="noreferrer" className="btn-muted w-full text-sm">
+            <a href={`https://wa.me/${customerWa}?text=${encodeURIComponent(`Seu pedido saiu para entrega! Acompanhe o motoboy no mapa:\n${customerLink}${deliveryCode ? `\n\nCódigo de entrega: *${deliveryCode}* — informe ao entregador ao receber.` : ""}`)}`} target="_blank" rel="noreferrer" className="btn-muted w-full text-sm">
               <MessageCircle className="h-4 w-4" /> Enviar acompanhamento ao cliente
             </a>
           )}

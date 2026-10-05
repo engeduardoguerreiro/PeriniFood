@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { createServiceClient } from "./supabase/service";
 import { geocode } from "./shipping";
 import { PublicError } from "./security";
@@ -15,11 +15,14 @@ export type TrackingRow = {
   dest_lat: number | null; dest_lng: number | null; last_lat: number | null; last_lng: number | null;
   last_accuracy: number | null; last_heading: number | null; last_seen_at: string | null;
   started_at: string | null; delivered_at: string | null; expires_at: string; created_at: string;
+  delivery_code: string | null;
 };
 
 export type TrackingSnapshot = {
   state: "waiting" | "on_route" | "delivered" | "expired";
   courierName: string | null;
+  // Contrassenha que o cliente informa ao motoboy (nunca vai para a página do motoboy).
+  deliveryCode: string | null;
   last: { lat: number; lng: number; accuracy: number | null; heading: number | null; at: string } | null;
   dest: { lat: number; lng: number } | null;
   trail: Array<[number, number]>;
@@ -41,11 +44,15 @@ export async function createTrackingLink(restaurantId: string, orderId: string, 
   if (order.delivery_address) dest = await geocode(String(order.delivery_address)).catch(() => null);
 
   const token = randomBytes(18).toString("base64url");
+  // Trocar de motoboy mantém o código que o cliente já recebeu.
+  const { data: previous } = await service.from("delivery_tracking").select("delivery_code").eq("order_id", orderId).maybeSingle();
+  const deliveryCode = (previous?.delivery_code as string | null) ?? String(randomInt(1000, 10000));
   const { error } = await service.from("delivery_tracking").upsert({
     restaurant_id: restaurantId,
     order_id: orderId,
     token,
     courier_name: courierName,
+    delivery_code: deliveryCode,
     dest_lat: dest?.lat ?? null,
     dest_lng: dest?.lon ?? null,
     last_lat: null, last_lng: null, last_accuracy: null, last_heading: null, last_speed: null, last_seen_at: null,
@@ -88,6 +95,7 @@ export async function trackingSnapshot(row: TrackingRow, withTrail = true): Prom
   return {
     state: trackingState(row),
     courierName: row.courier_name,
+    deliveryCode: row.delivery_code,
     last: row.last_lat !== null && row.last_lng !== null && row.last_seen_at
       ? { lat: row.last_lat, lng: row.last_lng, accuracy: row.last_accuracy, heading: row.last_heading, at: row.last_seen_at }
       : null,
@@ -138,4 +146,12 @@ export async function recordLocations(row: TrackingRow, raw: Array<Record<string
     service.from("delivery_locations").insert(points.map((p) => ({ tracking_id: row.id, lat: p.lat, lng: p.lng, accuracy: p.accuracy, recorded_at: p.recordedAt }))),
   ]);
   if (update.error || insert.error) throw new PublicError("Não foi possível salvar a localização.", 503);
+}
+
+// Confere a contrassenha informada pelo motoboy (comparação em tempo constante).
+export function deliveryCodeMatches(row: TrackingRow, supplied: unknown) {
+  const expected = row.delivery_code ?? "";
+  const given = String(supplied ?? "").replace(/\D/g, "");
+  if (!expected || given.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(given), Buffer.from(expected));
 }

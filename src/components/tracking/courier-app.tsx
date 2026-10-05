@@ -37,7 +37,7 @@ async function post(token: string, body: Record<string, unknown>) {
 
 const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-export function CourierApp({ token, started, delivered }: { token: string; started: boolean; delivered: boolean }) {
+export function CourierApp({ token, started, delivered, codeRequired }: { token: string; started: boolean; delivered: boolean; codeRequired: boolean }) {
   const activeKey = `pf_courier_active_${token}`;
   const queueKey = `pf_courier_queue_${token}`;
   const [phase, setPhase] = useState<Phase>(delivered ? "done" : "idle");
@@ -46,6 +46,8 @@ export function CourierApp({ token, started, delivered }: { token: string; start
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [pending, setPending] = useState(0);
   const [stalled, setStalled] = useState(false);
+  const [askCode, setAskCode] = useState(false);
+  const [code, setCode] = useState("");
   const watchId = useRef<number | null>(null);
   const lastPoint = useRef<QueuedPoint | null>(null);
   const lastFixAt = useRef(0);
@@ -138,11 +140,14 @@ export function CourierApp({ token, started, delivered }: { token: string; start
   }
 
   async function finish() {
-    if (!window.confirm("Confirmar que o pedido foi entregue ao cliente?")) return;
+    // Com contrassenha: o motoboy digita o código que o cliente informa.
+    if (codeRequired && !askCode) { setAskCode(true); setError(null); return; }
+    if (codeRequired && code.length !== 4) { setError("Digite o código de 4 números que o cliente informar."); return; }
+    if (!codeRequired && !window.confirm("Confirmar que o pedido foi entregue ao cliente?")) return;
     setPhase("finishing");
     try {
       await flush();
-      await post(token, { action: "finish" });
+      await post(token, { action: "finish", code });
       stopWatching();
       wakeLock.current?.release().catch(() => {});
       storage.remove(activeKey);
@@ -224,9 +229,28 @@ export function CourierApp({ token, started, delivered }: { token: string; start
 
       {error && <p role="alert" className="flex gap-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900"><TriangleAlert className="h-5 w-5 shrink-0" /> {error}</p>}
 
+      {askCode && (
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.06]">
+          <label htmlFor="codigo-entrega" className="block text-center font-black text-ink">Código de entrega</label>
+          <p className="mt-1 text-center text-sm text-slate-600">Peça ao cliente o código de 4 números que aparece no acompanhamento do pedido.</p>
+          <input
+            id="codigo-entrega"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
+            className="mx-auto mt-3 block h-16 w-48 rounded-2xl border-2 border-slate-200 text-center text-3xl font-black tracking-[0.5em] text-ink outline-none focus:border-brand"
+            placeholder="••••"
+            autoFocus
+          />
+          <button type="button" onClick={() => { setAskCode(false); setCode(""); setError(null); }} className="mt-3 block w-full text-center text-sm font-semibold text-slate-500">Cancelar</button>
+        </div>
+      )}
+
       {(phase === "tracking" || phase === "finishing" || started) && (
         <button type="button" onClick={finish} disabled={phase === "finishing"} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-base font-black text-white shadow-[0_12px_26px_-10px_rgba(5,150,105,0.8)] disabled:opacity-70">
-          {phase === "finishing" ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />} Pedido entregue
+          {phase === "finishing" ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />} {askCode ? "Confirmar entrega" : "Pedido entregue"}
         </button>
       )}
     </div>

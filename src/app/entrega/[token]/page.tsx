@@ -23,7 +23,7 @@ export default async function CourierPage({ params }: { params: Promise<{ token:
   }
   const service = createServiceClient();
   const [{ data: order }, { data: restaurant }, { count: items }] = await Promise.all([
-    service.from("orders").select("id, code, order_number, status, customer_name, customer_phone, delivery_address, notes, total, payment_method, payment_status, change_for").eq("id", row.order_id).maybeSingle(),
+    service.from("orders").select("id, code, order_number, status, customer_name, customer_phone, delivery_address, notes, total, payment_method, payment_status, change_for, external_platform").eq("id", row.order_id).maybeSingle(),
     service.from("restaurants").select("name, phone, whatsapp").eq("id", row.restaurant_id).maybeSingle(),
     service.from("order_items").select("id", { count: "exact", head: true }).eq("order_id", row.order_id),
   ]);
@@ -74,7 +74,7 @@ export default async function CourierPage({ params }: { params: Promise<{ token:
         {current.notes && <p className="flex gap-2 rounded-xl bg-slate-50 p-3 text-sm"><MessageSquareText className="h-4 w-4 shrink-0 text-slate-500" /> {current.notes}</p>}
       </section>
 
-      <CourierApp token={token} started={Boolean(row.started_at)} delivered={state === "delivered"} />
+      <CourierApp token={token} started={Boolean(row.started_at)} delivered={state === "delivered"} codeRequired={Boolean(row.delivery_code) && current.external_platform !== "ifood"} />
     </Shell>
   );
 }

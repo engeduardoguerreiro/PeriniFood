@@ -10,6 +10,7 @@ import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
 export type LiveTracking = {
   state: "waiting" | "on_route" | "delivered" | "expired";
   courierName: string | null;
+  deliveryCode?: string | null;
   last: { lat: number; lng: number; accuracy: number | null; heading: number | null; at: string } | null;
   dest: { lat: number; lng: number } | null;
   trail: Array<[number, number]>;
