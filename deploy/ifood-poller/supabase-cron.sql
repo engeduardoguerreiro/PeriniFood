@@ -1,25 +1,12 @@
 -- Agendador do iFood dentro do Supabase (sem servidor próprio).
 -- Chama o polling do PeriniFood a cada 30 s: pedidos novos + loja aberta no iFood.
 -- Colar no SQL Editor do Supabase, trocando COLE_AQUI pelo IFOOD_POLL_SECRET da Vercel.
--- Pode rodar de novo: recria o segredo e o agendamento.
+-- Pode rodar de novo: remove os agendamentos antigos e recria.
 
 create extension if not exists pg_cron with schema pg_catalog;
 create extension if not exists pg_net with schema extensions;
 
--- Segredo guardado criptografado no Vault (não fica no texto do agendamento).
-do $vault$
-declare existing uuid;
-begin
-  select id into existing from vault.secrets where name = 'ifood_poll_secret';
-  if existing is null then
-    perform vault.create_secret('COLE_AQUI', 'ifood_poll_secret');
-  else
-    perform vault.update_secret(existing, 'COLE_AQUI');
-  end if;
-end
-$vault$;
-
-select cron.unschedule('perinifood-ifood-poll') where exists (select 1 from cron.job where jobname = 'perinifood-ifood-poll');
+select cron.unschedule(jobid) from cron.job where jobname = 'perinifood-ifood-poll';
 
 select cron.schedule(
   'perinifood-ifood-poll',
@@ -27,12 +14,12 @@ select cron.schedule(
   $$
   select net.http_get(
     url := 'https://perinifood.com.br/api/integrations/ifood/poll',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'ifood_poll_secret')),
+    headers := '{"Authorization": "Bearer COLE_AQUI"}'::jsonb,
     timeout_milliseconds := 25000
   );
   $$
 );
 
--- Conferir depois de 1 minuto (status 200 e corpo {"ok":true,...}):
--- select status_code, left(content, 120), created from net._http_response order by created desc limit 5;
--- Parar: select cron.unschedule('perinifood-ifood-poll');
+-- Deve mostrar 1 linha "perinifood-ifood-poll" e tamanho_do_segredo = 64.
+select jobname, schedule, length(substring(command from 'Bearer ([0-9a-f]+)')) as tamanho_do_segredo
+from cron.job where jobname = 'perinifood-ifood-poll';
