@@ -8,7 +8,7 @@ async function AddonsPage() {
   const { data } = await supabase.from("product_addons").select("*").eq("restaurant_id", restaurant.id).order("name");
   const addons = (data ?? []) as ProductAddon[];
   return (
-    <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+    <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
       <form action={saveAddon} className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-black">Novo adicional</h2>
         <div className="mt-4 space-y-3">

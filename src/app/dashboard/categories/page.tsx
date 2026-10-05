@@ -16,7 +16,7 @@ export default async function CategoriesPage({ searchParams, returnTo = "/dashbo
   const categories = (data ?? []) as Category[];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status} error={sp.error} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">

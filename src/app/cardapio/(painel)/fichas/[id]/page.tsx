@@ -36,7 +36,7 @@ export default async function RecipeEditPage({
   const tableMissing = isMissingRecipesTable(recipeResult.error);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status ?? ""} error={sp.error ?? ""} />
 
       <div className="flex flex-wrap items-start justify-between gap-3">

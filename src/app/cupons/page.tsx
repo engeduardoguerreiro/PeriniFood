@@ -33,7 +33,7 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
   const loyaltyCampaign = loyaltyCampaignFromOpeningHours(restaurant.opening_hours as Record<string, unknown> | null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status} error={sp.error ?? couponsError?.message} />
 
       <section className="rounded-2xl bg-white p-6 shadow-sm">

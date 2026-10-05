@@ -15,7 +15,7 @@ export default async function ProductsPage({ status = "", error = "" }: { status
   const products = (data ?? []) as Product[];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={status} error={error} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">

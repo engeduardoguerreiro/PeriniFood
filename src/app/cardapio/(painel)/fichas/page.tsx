@@ -29,7 +29,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
   const preenchidas = products.filter((p) => isRecipeFilled(recipeByProduct.get(p.id) ?? null)).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status ?? ""} error={sp.error ?? ""} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">

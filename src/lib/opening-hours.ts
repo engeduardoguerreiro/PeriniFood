@@ -109,3 +109,33 @@ export function currentOpeningLabel(restaurant: Pick<Restaurant, "opening_hours"
   if (!day?.active || !day.open || !day.close) return "Fechado hoje";
   return `Hoje: ${day.open} às ${day.close}`;
 }
+
+const dayNames: Record<string, string> = Object.fromEntries(openingHourDays.map(([key, label]) => [key, label.replace("-feira", "").toLowerCase()]));
+const nextWeekday: Record<string, string> = Object.fromEntries(Object.entries(previousWeekday).map(([day, previous]) => [previous, day]));
+
+// Frase curta de status para o cardápio: diz QUANDO abre/fecha em vez de só
+// "Fechado". Ex.: "Aberto · fecha às 23:00", "Abre hoje às 18:00", "Abre sábado às 18:00".
+export function storeStatusLabel(restaurant: Pick<Restaurant, "is_open" | "opening_hours" | "manual_open_status">, date = new Date()) {
+  if (!restaurant.is_open) return { open: false, text: "Pedidos pausados no momento" };
+  const open = isRestaurantOpen(restaurant, date);
+  if (restaurant.manual_open_status === "open") return { open: true, text: "Aberto agora" };
+  if (restaurant.manual_open_status === "closed") return { open: false, text: "Fechado no momento" };
+  if (!hasOpeningHours(restaurant.opening_hours)) return { open, text: open ? "Aberto agora" : "Fechado" };
+
+  const hours = restaurant.opening_hours as OpeningHours;
+  const current = currentSaoPauloParts(date);
+  const today = hours[current.weekday];
+  if (open) {
+    const yesterday = hours[previousWeekday[current.weekday] ?? "sunday"];
+    const closing = today?.active && (minutesFromTime(today.open) ?? 0) <= current.minutes ? today.close : yesterday?.close;
+    return { open: true, text: closing ? `Aberto · fecha às ${closing}` : "Aberto agora" };
+  }
+  if (today?.active && (minutesFromTime(today.open) ?? 0) > current.minutes) return { open: false, text: `Fechado · abre hoje às ${today.open}` };
+  let day = current.weekday;
+  for (let i = 1; i <= 7; i++) {
+    day = nextWeekday[day] ?? "monday";
+    const shift = hours[day];
+    if (shift?.active && shift.open) return { open: false, text: `Fechado · abre ${i === 1 ? "amanhã" : dayNames[day]} às ${shift.open}` };
+  }
+  return { open: false, text: "Fechado" };
+}

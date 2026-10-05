@@ -14,7 +14,7 @@ export type IntegrationRecord = Record<string, unknown> & {
 
 export function IntegrationOverview({ integrations }: { integrations: IntegrationRecord[] }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">Canais externos</p>
         <h1 className="mt-1 text-3xl font-black text-ink">Integrações</h1>
@@ -89,7 +89,7 @@ export function MarketplaceIntegrationSettings({
   const enabled = Boolean(integration?.is_enabled ?? integration?.enabled);
   const sensitive = ["clientSecret", "accessToken", "refreshToken", "apiKey", "webhookSecret"];
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={status} error={error} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">

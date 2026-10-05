@@ -52,7 +52,7 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
   const endpoint = `${origin}/api/integrations/custom-webhook/orders`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status} error={sp.error} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">API externa</p>

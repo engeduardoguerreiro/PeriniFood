@@ -1,7 +1,8 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { ChevronDown, Minus, Plus, Search, ShoppingCart, TicketPercent, Trash2, UserCircle2, X } from "lucide-react";
+import { Minus, Plus, Search, TicketPercent, UserCircle2, X } from "lucide-react";
+import { CartPanel, CategoryTabs, FeaturedCard, ProductRow, type CartView } from "@/components/storefront/menu-parts";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { money } from "@/lib/utils";
@@ -118,7 +119,6 @@ export function PublicMenuOrder({
   const closeDraftRef = useRef<HTMLButtonElement>(null);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
-  const finalTotal = subtotal;
   const itemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
   const draftProduct = draft ? products.find((product) => product.id === draft.id) : null;
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
@@ -214,7 +214,7 @@ export function PublicMenuOrder({
     if (!draft) return;
     setCart((current) => [...current, draft]);
     setDraft(null);
-    setCartOpen(true);
+    notifyAdded(draft.name);
   }
 
   // Produto sem nada para escolher (bebida, sobremesa) vai direto para o
@@ -238,7 +238,17 @@ export function PublicMenuOrder({
         notes: "",
       },
     ]);
-    setCartOpen(true);
+    notifyAdded(product.name);
+  }
+
+  // Confirmação discreta ao adicionar (antes o carrinho abria por cima a cada item).
+  const [addedName, setAddedName] = useState<string | null>(null);
+  const justAdded = Boolean(addedName);
+  const addedTimer = useRef<number | null>(null);
+  function notifyAdded(name: string) {
+    setAddedName(name);
+    if (addedTimer.current) window.clearTimeout(addedTimer.current);
+    addedTimer.current = window.setTimeout(() => setAddedName(null), 1800);
   }
 
   function goToCheckout() {
@@ -251,218 +261,169 @@ export function PublicMenuOrder({
     setCart((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item).filter((item) => item.quantity > 0));
   }
 
+  const cartLines: CartView[] = cart.map((item, index) => ({
+    key: `${item.id}-${index}`,
+    title: `${item.name}${item.variantName ? ` · ${item.variantName}` : ""}`,
+    details: [
+      item.flavors && item.flavors.length > 1 ? `Sabores: ${item.flavors.join(" / ")}` : "",
+      item.dough?.name ? `Massa: ${item.dough.name}` : "",
+      item.crust?.name ? `Borda: ${item.crust.name}` : "",
+      item.additions.length ? `Adicionais: ${item.additions.map((a) => a.name).join(", ")}` : "",
+      item.notes ? `Obs.: ${item.notes}` : "",
+    ].filter(Boolean),
+    quantity: item.quantity,
+    total: lineTotal(item),
+  }));
+  const featured = products.filter((product) => product.featured);
+  const selectProduct = (product: Product) => (catalog.info.get(product.id)?.hasOptions ? openProduct(product) : addSimpleToCart(product));
+  const anyResult = !searchTerm || [...catalog.byCategory.values()].some((list) => list.some((product) => catalog.info.get(product.id)?.searchText.includes(searchTerm)));
+  const cartPanel = (onClose?: () => void) => (
+    <CartPanel
+      lines={cartLines}
+      subtotal={subtotal}
+      open={restaurant.is_open}
+      minimum={Number(restaurant.minimum_order ?? 0)}
+      onQuantity={(index, quantity) => updateCart(index, { quantity })}
+      onCheckout={goToCheckout}
+      onClose={onClose}
+    />
+  );
+
   return (
     <>
-      <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
-        <div className="relative mx-auto grid max-w-[1320px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-3 sm:gap-4 sm:px-4 md:grid-cols-[150px_1fr_auto]">
-          <a href="#categorias" className="hidden items-center gap-3 font-black uppercase md:flex">
-            Categorias <ChevronDown className="h-4 w-4 text-brand" />
-          </a>
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 sm:left-4" />
-            <input
-              type="search"
-              aria-label="Buscar no cardápio"
-              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand sm:pl-12 sm:pr-4"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Busque por um item"
-            />
-          </div>
-          <div className="flex justify-end gap-1.5 sm:gap-2">
-            <a
-              href={`/cardapio/${restaurant.slug}/conta`}
-              className="grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-sm font-bold text-slate-700 transition hover:bg-brand-soft hover:text-brand sm:flex sm:w-auto sm:items-center sm:gap-2 sm:px-3"
-              title={customerName ? `Conta de ${customerName}` : "Entrar ou cadastrar-se"}
-              aria-label={customerName ? `Minha conta (${customerName})` : "Entrar ou cadastrar-se"}
-            >
-              <UserCircle2 className="h-5 w-5" />
-              <span className="hidden max-w-28 truncate sm:inline">{customerName ? `Olá, ${customerName}` : "Conta"}</span>
-            </a>
-            <button
-              type="button"
-              onClick={() => setCouponsOpen((current) => !current)}
-              className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-brand transition hover:bg-brand-soft focus:outline-none focus:ring-2 focus:ring-brand"
-              aria-label="Ver cupons"
-              aria-expanded={couponsOpen}
-              title="Cupons de desconto"
-            >
-              <TicketPercent className="h-5 w-5" />
-              {coupons.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-black text-white">{coupons.length}</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCartOpen((current) => !current)}
-              className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-brand transition hover:bg-brand-soft focus:outline-none focus:ring-2 focus:ring-brand"
-              aria-label={itemCount ? `Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}` : "Abrir carrinho"}
-              aria-expanded={cartOpen}
-            >
-              <ShoppingCart className="h-5 w-5 text-brand" />
-              {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-black text-white">
-                  {itemCount}
-                </span>
-              )}
-            </button>
-          </div>
-          {couponsOpen && (
-            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-20 rounded-lg bg-white text-ink shadow-2xl ring-1 ring-black/5">
-              <span className="absolute -top-3 right-5 h-6 w-6 rotate-45 bg-white" />
-              <div className="relative p-5">
-                <div className="flex items-center gap-2 text-lg font-black">
-                  <TicketPercent className="h-5 w-5 text-brand" />
-                  Cupons e vantagens
-                </div>
-                <div className="mt-4 space-y-3">
-                  {coupons.map((coupon) => (
-                    <div key={coupon.id} className="rounded-lg border border-brand-line bg-brand-soft p-3">
-                      <p className="font-black text-brand-strong">{coupon.code}</p>
-                      <p className="text-sm text-slate-600">{coupon.description || "Cupom disponível para esta loja."}</p>
-                      <p className="mt-1 text-xs font-bold text-slate-500">Pedido mínimo: {money(coupon.minimum_order ?? 0)}</p>
-                    </div>
-                  ))}
-                  {loyalty && (
-                    <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
-                      <p className="font-black text-emerald-700">Programa de fidelidade</p>
-                      <p className="text-sm text-slate-600">{loyalty.description || "Compre e acumule benefícios."}</p>
-                    </div>
-                  )}
-                  {!coupons.length && !loyalty && <p className="rounded bg-slate-50 p-3 text-sm text-slate-500">Nenhum cupom ativo no momento.</p>}
-                </div>
-              </div>
+      {/* Barra fixa: busca + abas de categoria sempre à mão, mesmo no fim de um cardápio longo. */}
+      <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-[0_6px_20px_-16px_rgba(0,0,0,0.4)] backdrop-blur">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-center gap-2 px-4 pt-2.5">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                aria-label="Buscar no cardápio"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition focus:border-brand focus:bg-white"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={`Buscar em ${restaurant.name}`}
+              />
             </div>
-          )}
-          {cartOpen && (
-            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-4 rounded-lg bg-white text-ink shadow-2xl ring-1 ring-black/5">
-              <span className="absolute -top-3 right-5 h-6 w-6 rotate-45 bg-white" />
-              <div className="relative p-5">
-                <div className="flex items-center gap-2 text-lg">
-                  <ShoppingCart className="h-5 w-5 text-brand" />
-                  <span>Meu carrinho</span>
-                </div>
-                <div className="mt-4 max-h-[220px] space-y-3 overflow-y-auto border-y border-slate-200 py-3 pr-2">
-                  {cart.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 text-sm">
-                      <div className="min-w-0">
-                        <div className="flex items-start gap-2">
-                          <button type="button" onClick={() => updateCart(index, { quantity: 0 })} className="-m-2 p-2 text-brand hover:text-brand-strong" aria-label={`Remover ${item.name}`}>
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                          <div>
-                            <p className="font-semibold">{item.quantity}x - {item.name}{item.variantName ? ` - ${item.variantName}` : ""}</p>
-                            {item.dough?.name && <p className="text-slate-500">Massa: {item.dough.name}</p>}
-                            {item.crust?.name && <p className="text-slate-500">Borda: {item.crust.name}</p>}
-                            {item.additions.map((addition) => <p key={addition.name} className="text-slate-500">{addition.name}</p>)}
-                            {item.flavors && item.flavors.length > 1 && <p className="text-slate-500">Sabores: {item.flavors.join(" / ")}</p>}
-                          </div>
-                        </div>
-                      </div>
-                      <strong className="whitespace-nowrap text-right">{money(lineTotal(item))}</strong>
-                    </div>
-                  ))}
-                  {!cart.length && <p className="rounded bg-slate-50 p-3 text-sm text-slate-500">Seu carrinho está vazio.</p>}
-                </div>
-                <div className="space-y-2 border-b border-slate-200 py-4 text-sm">
-                  <div className="flex justify-between"><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
-                  <div className="flex justify-between"><span>Taxa de entrega</span><strong>Calculada no checkout</strong></div>
-                  <div className="flex justify-between text-xl font-black"><span>Total</span><strong>{money(finalTotal)}</strong></div>
-                </div>
-                <button
-                  type="button"
-                  onClick={goToCheckout}
-                  disabled={!cart.length || !restaurant.is_open}
-                  className="mt-4 w-full rounded-lg bg-brand px-4 py-4 font-black uppercase text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {restaurant.is_open ? "Fechar pedido" : "Loja fechada"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      <div className={`mx-auto max-w-[1320px] px-4 py-6 sm:py-8 ${itemCount ? "pb-28 md:pb-8" : ""}`}>
-        <div className="min-w-0">
-          <section id="categorias" className="mb-8">
-            <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-lg font-black uppercase">Categorias <ChevronDown className="inline h-4 w-4 text-brand" /></h2>
-            </div>
-            <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
-              {categories.map((category) => (
-                <a key={category.id} href={`#${category.id}`} className="shrink-0 snap-start rounded-full bg-white px-4 py-2.5 text-sm font-bold shadow-sm hover:text-brand">
-                  {category.name}
-                </a>
-              ))}
-            </div>
-          </section>
-
-          <div className="space-y-14">
-            {categories.map((category) => {
-              const categoryProducts = (catalog.byCategory.get(category.id) ?? []).filter((product) => !searchTerm || catalog.info.get(product.id)?.searchText.includes(searchTerm));
-              if (!categoryProducts.length) return null;
-              return (
-                <section key={category.id} id={category.id} className="scroll-mt-24">
-                  <h2 className="mb-6 text-xl font-black uppercase text-ink">{category.name}</h2>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {categoryProducts.map((product) => {
-                      const info = catalog.info.get(product.id)!;
-                      const hasOptions = info.hasOptions;
-                      return (
-                        <button
-                          key={product.id}
-                          type="button"
-                          onClick={() => (hasOptions ? openProduct(product) : addSimpleToCart(product))}
-                          disabled={!restaurant.is_open}
-                          className="group relative grid min-h-[142px] grid-cols-[1fr_116px] gap-4 overflow-hidden rounded-lg bg-white p-4 pb-12 text-left shadow-sm ring-1 ring-transparent transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-brand-line focus:outline-none focus:ring-2 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
-                          aria-label={hasOptions ? `Personalizar ${product.name}` : `Adicionar ${product.name} ao carrinho`}
-                        >
-                          <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-orange-50/0 via-orange-50/0 to-orange-50/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-                          <div className="relative min-w-0">
-                            <h3 className="line-clamp-2 text-base font-black text-brand">{product.name}</h3>
-                            <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">{product.description || "Produto disponível para pedido."}</p>
-                            <p className="mt-6 text-sm text-slate-700">{info.hasVariants ? "A partir de " : ""}<strong>{money(info.basePrice)}</strong></p>
-                          </div>
-                          <div className="relative">
-                            <div className="h-28 w-28 overflow-hidden rounded-lg bg-slate-100">
-                              {product.image_url ? <img src={product.image_url} alt="" loading="lazy" decoding="async" width={112} height={112} onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-brand">Sem foto</div>}
-                            </div>
-                            {!restaurant.is_open && <span className="absolute bottom-1 right-1 rounded-full bg-slate-600 px-3 py-1 text-[11px] font-black uppercase text-white">Indisponível</span>}
-                          </div>
-                          {/* Ação sempre visível: sem ela o card de bebida parecia
-                              apenas informativo, sem jeito de comprar. */}
-                          {restaurant.is_open && (
-                            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-black text-white shadow-sm transition group-hover:bg-brand-strong">
-                              {hasOptions ? "Personalizar" : <><Plus className="h-3.5 w-3.5" /> Adicionar</>}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
-            {searchTerm && ![...catalog.byCategory.values()].some((list) => list.some((product) => catalog.info.get(product.id)?.searchText.includes(searchTerm))) && (
-              <p className="rounded-lg bg-white p-6 text-center text-sm text-slate-600 shadow-sm">Nenhum item encontrado para “{deferredSearch.trim()}”.</p>
+            {(coupons.length > 0 || loyalty) && (
+              <button type="button" onClick={() => setCouponsOpen(true)} aria-label="Ver cupons e vantagens" className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+                <TicketPercent className="h-5 w-5" />
+                {coupons.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-black text-white">{coupons.length}</span>}
+              </button>
             )}
+            <a href={`/cardapio/${restaurant.slug}/conta`} aria-label={customerName ? `Minha conta (${customerName})` : "Entrar ou cadastrar-se"} className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">
+              <UserCircle2 className="h-5 w-5" />
+              <span className="hidden max-w-28 truncate sm:inline">{customerName ? customerName.split(" ")[0] : "Entrar"}</span>
+            </a>
           </div>
+          {!searchTerm && <CategoryTabs categories={categories.filter((category) => catalog.byCategory.get(category.id)?.length)} />}
+          {searchTerm && <p className="px-4 pb-2.5 pt-1.5 text-sm text-slate-500">Resultados para “{deferredSearch.trim()}”</p>}
         </div>
       </div>
 
-      {/* Barra de carrinho fixa no celular: o ícone no topo some ao rolar o cardápio. */}
-      {itemCount > 0 && !draft && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+      {!restaurant.is_open && (
+        <div className="border-b border-amber-200 bg-amber-50">
+          <p className="mx-auto max-w-6xl px-4 py-2.5 text-sm font-semibold text-amber-900">A loja está fechada agora. Você pode ver o cardápio; os pedidos voltam quando ela abrir.</p>
+        </div>
+      )}
+
+      <div className={`mx-auto max-w-6xl gap-6 px-4 pt-4 lg:grid lg:grid-cols-[1fr_340px] ${itemCount ? "pb-28 lg:pb-10" : "pb-10"}`}>
+        <div className="min-w-0 space-y-7">
+          {!searchTerm && featured.length > 0 && (
+            <section aria-labelledby="destaques">
+              <h2 id="destaques" className="mb-3 text-lg font-black text-ink">Destaques</h2>
+              <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
+                {featured.map((product) => {
+                  const info = catalog.info.get(product.id)!;
+                  return <FeaturedCard key={product.id} product={product} price={info.basePrice} fromPrice={info.hasVariants} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
+                })}
+              </div>
+            </section>
+          )}
+
+          {categories.map((category) => {
+            const categoryProducts = (catalog.byCategory.get(category.id) ?? []).filter((product) => !searchTerm || catalog.info.get(product.id)?.searchText.includes(searchTerm));
+            if (!categoryProducts.length) return null;
+            return (
+              <section key={category.id} id={`cat-${category.id}`} aria-labelledby={`titulo-${category.id}`} className="scroll-mt-32">
+                <h2 id={`titulo-${category.id}`} className="mb-3 flex items-baseline gap-2 text-lg font-black text-ink">
+                  {category.name} <span className="text-sm font-medium text-slate-400">{categoryProducts.length}</span>
+                </h2>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {categoryProducts.map((product) => {
+                    const info = catalog.info.get(product.id)!;
+                    return <ProductRow key={product.id} product={product} price={info.basePrice} fromPrice={info.hasVariants} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
+                  })}
+                </div>
+              </section>
+            );
+          })}
+          {!anyResult && <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-600 shadow-sm">Nenhum item encontrado para “{deferredSearch.trim()}”.</p>}
+        </div>
+
+        {/* Desktop: carrinho sempre visível ao lado do cardápio. */}
+        <aside className="hidden lg:block" aria-label="Carrinho">
+          <div className="sticky top-32 max-h-[calc(100vh-9rem)] overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_-18px_rgba(0,0,0,0.4)] ring-1 ring-black/[0.05]">
+            {cartPanel()}
+          </div>
+        </aside>
+      </div>
+
+      {/* Celular: barra fixa do carrinho que abre o painel por baixo. */}
+      {itemCount > 0 && !draft && !cartOpen && (
+        <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 lg:hidden">
           <button
             type="button"
-            onClick={() => { setCartOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            className="flex h-12 w-full items-center justify-between rounded-lg bg-brand px-4 text-sm font-black text-white"
+            onClick={() => setCartOpen(true)}
+            className={`flex h-14 w-full items-center justify-between rounded-2xl bg-gradient-to-b from-brand-bright to-brand px-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_30px_-10px_rgba(207,74,10,0.85)] transition ${justAdded ? "scale-[1.02]" : ""}`}
           >
-            <span className="inline-flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Ver carrinho · {itemCount} {itemCount === 1 ? "item" : "itens"}</span>
-            <span>{money(subtotal)}</span>
+            <span className="flex items-center gap-2 text-sm font-bold"><span className="grid h-7 min-w-7 place-items-center rounded-full bg-white/25 px-1.5">{itemCount}</span> Ver carrinho</span>
+            <span className="text-base font-black">{money(subtotal)}</span>
           </button>
         </div>
       )}
 
+      {cartOpen && (
+        <div className="fixed inset-0 z-50 flex items-end lg:hidden" role="dialog" aria-modal="true" aria-label="Carrinho">
+          <button type="button" aria-label="Fechar carrinho" className="absolute inset-0 bg-black/50" onClick={() => setCartOpen(false)} />
+          <div className="relative flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl">
+            <span className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-300" aria-hidden="true" />
+            {cartPanel(() => setCartOpen(false))}
+          </div>
+        </div>
+      )}
+
+      {couponsOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" role="dialog" aria-modal="true" aria-label="Cupons e vantagens">
+          <button type="button" aria-label="Fechar" className="absolute inset-0 bg-black/50" onClick={() => setCouponsOpen(false)} />
+          <div className="relative w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-3xl">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-black text-ink"><TicketPercent className="h-5 w-5 text-brand" /> Cupons e vantagens</h2>
+              <button type="button" onClick={() => setCouponsOpen(false)} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {coupons.map((coupon) => (
+                <div key={coupon.id} className="rounded-xl border border-dashed border-brand/40 bg-brand-soft p-3">
+                  <p className="font-black tracking-wide text-brand-strong">{coupon.code}</p>
+                  <p className="text-sm text-slate-600">{coupon.description || "Cupom disponível para esta loja."}</p>
+                  {Number(coupon.minimum_order ?? 0) > 0 && <p className="mt-1 text-xs font-semibold text-slate-500">Pedido mínimo: {money(coupon.minimum_order ?? 0)}</p>}
+                </div>
+              ))}
+              {loyalty && (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="font-black text-emerald-700">Programa de fidelidade</p>
+                  <p className="text-sm text-slate-600">{loyalty.description || "Compre e acumule benefícios."}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addedName && (
+        <p role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink lg:bottom-auto lg:top-4 px-4 py-2 text-sm font-semibold text-white shadow-xl">✓ {addedName} adicionado</p>
+      )}
 
       {draft && draftProduct && (
         <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/65 md:items-center md:px-4 md:py-8" onClick={(event) => { if (event.target === event.currentTarget) setDraft(null); }}>

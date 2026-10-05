@@ -14,7 +14,7 @@ export default async function WhatsAppIntegrationPage({ searchParams }: { search
   const canEdit = isAdminRole(role);
   const phone = integration.external_store_id ?? integration.credentials.externalStoreId ?? restaurant.whatsapp ?? "";
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status} error={sp.error} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">Atendimento</p>

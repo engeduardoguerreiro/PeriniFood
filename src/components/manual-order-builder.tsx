@@ -907,10 +907,10 @@ export function ManualOrderBuilder({
           </div>
           <div className="mt-5 flex flex-col gap-4 border-t border-line-soft pt-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-1 lg:min-w-[240px]">
-              <div className="flex justify-between gap-8"><span className="text-ink-soft">Subtotal</span><strong>{money(subtotal)}</strong></div>
-              <div className="flex justify-between gap-8"><span className="text-ink-soft">Entrega</span><strong>{money(deliveryFee)}</strong></div>
-              <div className="flex justify-between gap-8"><span className="text-ink-soft">Desconto</span><strong>{money(discount)}</strong></div>
-              <div className="flex justify-between gap-8 text-lg font-black"><span>Total</span><span>{money(total)}</span></div>
+              <div className="flex justify-between gap-5"><span className="text-ink-soft">Subtotal</span><strong>{money(subtotal)}</strong></div>
+              <div className="flex justify-between gap-5"><span className="text-ink-soft">Entrega</span><strong>{money(deliveryFee)}</strong></div>
+              <div className="flex justify-between gap-5"><span className="text-ink-soft">Desconto</span><strong>{money(discount)}</strong></div>
+              <div className="flex justify-between gap-5 text-lg font-black"><span>Total</span><span>{money(total)}</span></div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[440px]">
               <button name="intent" value="finish" className="flex-1 rounded-xl border border-line bg-white px-4 py-3 text-sm font-black text-ink transition hover:border-brand hover:bg-brand-soft disabled:cursor-not-allowed disabled:bg-[#f1efea] disabled:text-ink-faint" disabled={!cart.length || hasOpenItems}>

@@ -37,7 +37,7 @@ const menuItems = [
 
 function CardapioHome() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Cardápio</h1>
         <p className="text-sm text-ink-faint">Gerencie produtos, categorias, tipos e opções de pizza.</p>

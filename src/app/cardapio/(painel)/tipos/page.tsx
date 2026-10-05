@@ -17,7 +17,7 @@ async function TypesPage({ searchParams }: { searchParams: Promise<{ status: str
   const types = (data ?? []) as ProductType[];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status} error={sp.error} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">

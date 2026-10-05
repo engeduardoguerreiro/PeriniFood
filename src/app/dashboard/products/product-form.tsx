@@ -155,7 +155,7 @@ export function ProductForm({
   }
 
   return (
-    <form action={saveProduct} className="space-y-6">
+    <form action={saveProduct} className="space-y-5">
       <input type="hidden" name="id" value={product.id ?? ""} />
       <input type="hidden" name="product_type_kind" value={isPizza ? "pizza" : productKind} />
 
@@ -174,8 +174,8 @@ export function ProductForm({
         </div>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.9fr]">
-        <div className="space-y-6">
+      <div className="grid gap-5 xl:grid-cols-[1.45fr_0.9fr]">
+        <div className="space-y-5">
           <Card title="Informações principais" subtitle="Dados que aparecem no cardápio digital." icon={ShoppingBag}>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Nome do produto">
@@ -294,7 +294,7 @@ export function ProductForm({
           )}
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-5">
           <Card title="Foto do produto" subtitle="Imagem usada no cardápio online." icon={ImagePlus}>
             <ImagePicker
               name="image_file"

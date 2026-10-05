@@ -1,117 +1,77 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Building2, Globe2, LockKeyhole, Mail, MessageCircle, Store } from "lucide-react";
+import { BadgeCheck, Building2, Globe2, LockKeyhole, Mail, MessageCircle, Store } from "lucide-react";
 import { register } from "../actions";
+import { AuthShell, authButton, authIcon, authInput, authInputPlain, authLabel } from "@/components/auth-shell";
 
-function Brand() {
-  return (
-    <span className="flex items-center gap-3">
-      <Image src="/brand/perinifood-logo.png" alt="" width={48} height={48} loading="eager" className="h-11 w-11 rounded-xl bg-white object-contain" />
-      <span className="leading-tight">
-        <span className="block text-xl font-black text-ink">Perini<span className="text-brand">Food</span></span>
-        <span className="hidden text-[0.62rem] font-black uppercase tracking-[0.22em] text-slate-500 sm:block">Gestão para restaurantes</span>
-      </span>
-    </span>
-  );
-}
+const highlights = ["Cardápio digital com a sua marca", "Pedidos do site, balcão e delivery numa fila só", "Ativação após confirmação da assinatura", "Preparado para iFood, 99Food e Keeta"];
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  return (
-    <main className="min-h-screen bg-[#f5f7fb] text-ink">
-      <header className="border-b border-slate-200 bg-white">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <Link href="/"><Brand /></Link>
-          <div className="flex items-center gap-2">
-            <Link href="/" className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:border-brand hover:text-brand sm:inline-flex">
-              <ArrowLeft className="h-4 w-4" /> Voltar
-            </Link>
-            <Link href="/login" className="h-10 rounded-lg bg-ink px-4 py-2 text-sm font-black text-white transition hover:bg-brand">Login</Link>
-          </div>
-        </nav>
-      </header>
 
-      <section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl items-center gap-10 px-5 py-12 lg:grid-cols-[0.9fr_1.1fr]">
+  return (
+    <AuthShell
+      aside={
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-brand">Saiba mais</p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight md:text-6xl">Crie sua estrutura de venda online com identidade própria.</h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            Cadastre o restaurante e comece com cardápio digital, pedido manual, clientes, WhatsApp e painel operacional.
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {["Plano Básico para operação manual", "Plano Completa para integrações", "Ativação após confirmação da assinatura", "Preparado para iFood, 99Food e Keeta"].map((item) => (
-              <span key={item} className="flex items-center gap-2 rounded-xl bg-white p-4 text-sm font-bold shadow-sm">
-                <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-500" /> {item}
-              </span>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-bright">Crie sua conta</p>
+          <h1 className="mt-3 max-w-xl text-5xl font-bold leading-[1.02] tracking-tight text-balance">
+            Sua venda online com <span className="text-brand-bright">identidade própria.</span>
+          </h1>
+          <p className="mt-5 max-w-lg text-lg text-white/75">Cadastre o restaurante e tenha cardápio digital, PDV, clientes, WhatsApp e painel operacional num só sistema.</p>
+          <ul className="mt-6 grid max-w-xl gap-2.5">
+            {highlights.map((item) => (
+              <li key={item} className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <BadgeCheck className="h-5 w-5 shrink-0 text-brand-bright" /> {item}
+              </li>
             ))}
-          </div>
-          <Link href="/planos" className="mt-6 inline-flex h-11 items-center rounded-lg border border-brand/30 bg-white px-4 text-sm font-black text-brand transition hover:bg-brand-soft">
+          </ul>
+          <Link href="/planos" className="mt-6 inline-flex h-11 items-center rounded-xl border border-brand-bright/40 bg-black/30 px-4 text-sm font-semibold text-brand-bright backdrop-blur transition hover:bg-white/10">
             Ver detalhes dos planos
           </Link>
         </div>
+      }
+    >
+      <form action={register}>
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-b from-brand-bright to-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_24px_-8px_rgba(242,100,25,0.8)]">
+          <Store className="h-6 w-6" />
+        </span>
+        <h2 className="mt-5 text-3xl font-bold tracking-tight">Criar conta e restaurante</h2>
+        <p className="mt-1.5 text-sm text-white/65">O primeiro usuário será o administrador principal do restaurante.</p>
 
-        <form action={register} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-          <div className="mb-7">
-            <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-soft text-brand">
-              <Store className="h-6 w-6" />
-            </span>
-            <h2 className="mt-5 text-3xl font-black">Criar conta e restaurante</h2>
-            <p className="mt-2 text-sm text-slate-500">O primeiro usuário será o administrador principal do restaurante.</p>
-          </div>
+        {error && <p role="alert" className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-medium text-red-200">{error}</p>}
 
-          {error && (
-            <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p>
-          )}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className={authLabel}>E-mail</span>
+            <span className="relative block"><Mail className={authIcon} /><input className={authInput} name="email" type="email" autoComplete="email" placeholder="voce@restaurante.com.br" required /></span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className={authLabel}>Senha</span>
+            <span className="relative block"><LockKeyhole className={authIcon} /><input className={authInput} name="password" type="password" autoComplete="new-password" placeholder="Mínimo de 6 caracteres" minLength={6} required /></span>
+          </label>
+          <label className="block space-y-1.5 sm:col-span-2">
+            <span className={authLabel}>Nome do restaurante</span>
+            <span className="relative block"><Building2 className={authIcon} /><input className={authInput} name="restaurant_name" placeholder="Ex.: Pizzaria Forno Nordestino" required /></span>
+          </label>
+          <label className="block space-y-1.5 sm:col-span-2">
+            <span className={authLabel}>WhatsApp para contato</span>
+            <span className="relative block"><MessageCircle className={authIcon} /><input className={authInput} name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" required /></span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className={authLabel}>Endereço do cardápio</span>
+            <span className="relative block"><Globe2 className={authIcon} /><input className={authInput} name="slug" placeholder="minha-pizzaria" /></span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className={authLabel}>Descrição curta</span>
+            <input className={authInputPlain} name="description" placeholder="Pizza, esfiha, lanches..." />
+          </label>
+        </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">E-mail</span>
-              <span className="relative block">
-                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-brand-soft" name="email" type="email" placeholder="voce@restaurante.com.br" required />
-              </span>
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">Senha</span>
-              <span className="relative block">
-                <LockKeyhole className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-brand-soft" name="password" type="password" placeholder="Mínimo de 6 caracteres" minLength={6} required />
-              </span>
-            </label>
-            <label className="block space-y-1 md:col-span-2">
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">Nome do restaurante</span>
-              <span className="relative block">
-                <Building2 className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-brand-soft" name="restaurant_name" placeholder="Ex.: Pizzaria Forno Nordestino" required />
-              </span>
-            </label>
-            <label className="block space-y-1 md:col-span-2">
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">WhatsApp para contato</span>
-              <span className="relative block">
-                <MessageCircle className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-brand-soft" name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" required />
-              </span>
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">Slug público</span>
-              <span className="relative block">
-                <Globe2 className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-brand-soft" name="slug" placeholder="minha-pizzaria" />
-              </span>
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">Descrição curta</span>
-              <input className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-brand-soft" name="description" placeholder="Pizza, esfiha, lanches..." />
-            </label>
-          </div>
-
-          <p className="mt-6 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Depois do cadastro, sua loja fica <strong>aguardando ativação</strong>: pague a assinatura ou fale com a nossa equipe para liberar o sistema.
-          </p>
-          <button className="mt-4 h-12 w-full rounded-lg bg-brand px-5 text-sm font-black text-white shadow-lg shadow-orange-950/20 transition hover:bg-brand-strong">Criar conta</button>
-          <p className="mt-6 text-center text-sm text-slate-500">Já tem conta? <Link className="font-black text-brand" href="/login">Entrar</Link></p>
-        </form>
-      </section>
-    </main>
+        <p className="mt-5 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white/75">
+          Depois do cadastro, sua loja fica <strong className="text-white">aguardando ativação</strong>: pague a assinatura ou fale com a nossa equipe para liberar o sistema.
+        </p>
+        <button className={`${authButton} mt-4`}>Criar conta</button>
+        <p className="mt-6 text-center text-sm text-white/60">Já tem conta? <Link className="font-semibold text-brand-bright hover:underline" href="/login">Entrar</Link></p>
+      </form>
+    </AuthShell>
   );
 }

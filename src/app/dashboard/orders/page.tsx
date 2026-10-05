@@ -203,7 +203,7 @@ export default async function OrdersPage() {
   const todayCanceled = history.filter((order) => order.status === "canceled");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Suspense fallback={null}><PrintToast /></Suspense>
       <OrdersAutoRefresh />
 

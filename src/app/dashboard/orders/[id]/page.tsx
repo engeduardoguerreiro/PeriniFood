@@ -47,7 +47,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const current = order as Order;
   const message = `Olá ${current.customer_name || "cliente"}, seu pedido #${orderCode(current)} está com status: ${statusLabel[current.status]}. Total: ${money(current.total)}.`;
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+    <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -32,7 +32,7 @@ export default async function IntegrationLogsPage({ searchParams }: { searchPara
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionFeedback status={sp.status} error={sp.error ?? error?.message} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">Auditoria</p>

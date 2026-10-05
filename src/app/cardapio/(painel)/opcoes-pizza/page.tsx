@@ -86,7 +86,7 @@ async function PizzaOptionsPage({ searchParams }: { searchParams: Promise<{ stat
   const options = (data ?? []) as PizzaOption[];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Opções de pizza</h1>
         <p className="text-sm text-ink-faint">Tamanhos, massas, bordas e adicionais usados nas pizzas.</p>
