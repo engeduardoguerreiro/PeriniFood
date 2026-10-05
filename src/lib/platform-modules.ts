@@ -8,7 +8,11 @@ export type PlatformModule = {
   description: string;
   stage: ModuleStage;
   group: "Operação" | "Canais de venda" | "Gestão" | "Fiscal";
+  // Módulo adicional pago à parte (R$/mês).
+  price?: number;
 };
+
+export const AI_MODULE_KEY = "atendimento_ia";
 
 export const PLATFORM_MODULES: PlatformModule[] = [
   { key: "pedidos", name: "Pedidos e cozinha", description: "Painel de pedidos por etapa, PDV e comandas.", stage: "live", group: "Operação" },
@@ -22,6 +26,7 @@ export const PLATFORM_MODULES: PlatformModule[] = [
   { key: "99food", name: "Integração 99Food", description: "Recebimento de pedidos do 99Food.", stage: "beta", group: "Canais de venda" },
   { key: "keeta", name: "Integração Keeta", description: "Recebimento de pedidos da Keeta.", stage: "soon", group: "Canais de venda" },
   { key: "whatsapp", name: "WhatsApp", description: "Atendimento e envio de pedidos por WhatsApp.", stage: "beta", group: "Canais de venda" },
+  { key: "atendimento_ia", name: "Atendente de IA", description: "Responde clientes no cardápio online e no WhatsApp (cardápio, preços, horários, entrega e status). Adicional R$ 49,90/mês.", stage: "beta", group: "Canais de venda", price: 49.9 },
 
   { key: "clientes", name: "Clientes e fidelidade", description: "Base de clientes, cupons e programa de pontos.", stage: "live", group: "Gestão" },
   { key: "relatorios", name: "Relatórios", description: "Relatórios de vendas e desempenho da loja.", stage: "live", group: "Gestão" },

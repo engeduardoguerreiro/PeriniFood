@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ClipboardList, Globe, MessageCircle, Plug, QrCode, Truck, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Check, ClipboardList, Globe, MessageCircle, Plug, QrCode, Truck, X, type LucideIcon } from "lucide-react";
 import { WhatsAppFloat } from "@/components/whatsapp-float";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const plans: Array<{
   name: string;
@@ -153,6 +154,22 @@ export default function PlansPage() {
               </article>
             );
           })}
+        </div>
+      </section>
+
+      {/* Módulo adicional pago à parte. */}
+      <section className="mx-auto max-w-5xl px-5 pb-10">
+        <div className="flex flex-col gap-5 rounded-3xl bg-gradient-to-br from-[#1f1f22] to-[#0b0b0c] p-6 text-white shadow-[0_24px_50px_-24px_rgba(0,0,0,0.7)] sm:flex-row sm:items-center">
+          <Icon3D icon={Bot} tone="violet" size="lg" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c4b5ff]">Módulo adicional</p>
+            <h2 className="mt-1 text-2xl font-bold">Atendente de IA</h2>
+            <p className="mt-1 text-sm text-white/70">Responde seus clientes 24h no cardápio online e no WhatsApp da loja: cardápio, preços, sabores, horários, entrega e status do pedido.</p>
+          </div>
+          <div className="text-left sm:text-right">
+            <p className="text-3xl font-bold">R$ 49,90<span className="text-sm font-normal text-white/60">/mês</span></p>
+            <p className="text-xs text-white/60">somado a qualquer plano</p>
+          </div>
         </div>
       </section>
 

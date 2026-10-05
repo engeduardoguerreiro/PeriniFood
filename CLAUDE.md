@@ -70,6 +70,8 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 
 **Integrations.** The real iFood implementation is in `src/lib/integrations/ifood/` (OAuth, polling, event processor, order mapper, status sync, catalog push including native pizza templates). The code in `src/lib/integrations/providers/*` and `src/integrations/*` is mostly mocks, mappers and facades for 99Food, Keeta and Rappi. Externally created orders go through `src/lib/integrations/external-order.ts`. Webhook and maintenance endpoints must authenticate with `requireIntegrationToken` (`ingress.ts`), which fails closed with 503 when the secret is missing or shorter than 32 characters.
 
+**Delivery tracking, WhatsApp and AI.** `src/lib/delivery-tracking.ts` (courier link per order, delivery code), `src/lib/whatsapp/` (Evolution client, status templates, `queueOrderNotification` via `after()`), `src/lib/ai/attendant.ts` (Claude, store menu in a cached system block, short history in `ai_conversations`). Inbound WhatsApp → `/api/whatsapp/webhook`; site chat → `/api/ai/chat`.
+
 **Printing and desktop.**
 - `OrderPrintClient` renders the ticket to a monochrome image and POSTs it to a local Windows print agent at `http://127.0.0.1:4127` (`scripts/perinifood-print-bridge.js`; details in `docs/PRINT_AGENT.md`). Browser printing (`docs/IMPRESSAO_NAVEGADOR.md`) is the fallback.
 - `desktop/` is an Electron shell that loads the remote site and supervises the agent.
@@ -82,6 +84,8 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 - `PLATFORM_PAYMENT_URL` (optional): subscription payment link shown on `/ativacao`
 - `IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`, `IFOOD_API_BASE_URL`, `IFOOD_POLL_SECRET`
 - `CRON_SECRET`
+- WhatsApp of the store (Evolution API server in `deploy/whatsapp-server`, runs on the owner's Ubuntu box, not Vercel): `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `WHATSAPP_WEBHOOK_SECRET`; optional `NEXT_PUBLIC_APP_URL` (links in messages, default `https://perinifood.com.br`)
+- AI attendant module (`atendimento_ia`, paid add-on enabled per store in `/admin`): `ANTHROPIC_API_KEY`; optional `AI_MODEL` (default `claude-opus-5-5`)
 - desktop/agent only: `PERINIFOOD_APP_URL` and `PRINT_BRIDGE_*`
 
 `vercel.json` schedules only `/api/keep-alive`, daily. iFood polling at `/api/integrations/ifood/poll` needs an external cron.

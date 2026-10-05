@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PublicMenuOrder } from "@/components/public-menu-order";
 import { StoreHeader } from "@/components/storefront/store-header";
+import { AiChat } from "@/components/storefront/ai-chat";
+import { aiModuleEnabled } from "@/lib/ai/attendant";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
 import { isRestaurantOpen } from "@/lib/opening-hours";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -54,6 +56,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
   ]);
 
   const storefront = { ...current, is_open: isRestaurantOpen(current) };
+  const aiChat = await aiModuleEnabled(current.id);
 
   // Só cupons dentro da validade: os vencidos apareciam na lista de vantagens.
   // Datas só com dia ("2026-10-05") valem o dia inteiro no fuso da loja.
@@ -78,6 +81,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
         coupons={activeCoupons}
         loyalty={loyalty as LoyaltyProgram | null}
       />
+      {aiChat && <AiChat restaurantId={current.id} slug={current.slug} name={current.name} />}
       <footer className="mx-auto max-w-6xl px-4 pb-28 pt-6 text-center text-xs text-slate-500 md:pb-10">
         {current.menu_footer_message && <p className="mb-2 text-sm">{current.menu_footer_message}</p>}
         <p>Cardápio digital por <Link href="/" className="font-semibold text-brand">PeriniFood</Link></p>

@@ -3,7 +3,8 @@ import { after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
 import { isTrackingToken, money, orderCode } from "@/lib/utils";
-import { sendText } from "./evolution";
+import { sendText, whatsappNumber } from "./evolution";
+import { appendConversation } from "@/lib/ai/attendant";
 import { DEFAULT_TEMPLATES, renderTemplate, type TemplateKey } from "./templates";
 
 // Avisos automáticos de status pelo WhatsApp da própria loja. Rodam depois da
@@ -74,6 +75,10 @@ export async function notifyOrderStatus(orderId: string) {
   if (!text) return;
 
   const result = await sendText(order.restaurant_id, order.customer_phone, text).catch((error: Error) => ({ ok: false, reason: error.message }));
+  // Registra o aviso na conversa: a IA usa como contexto e não confunde a
+  // própria mensagem com resposta manual da equipe.
+  const contact = whatsappNumber(order.customer_phone);
+  if (result.ok && contact) await appendConversation(order.restaurant_id, "whatsapp", contact, [{ role: "assistant", text, at: new Date().toISOString() }]).catch(() => {});
   await logIntegrationEvent({
     restaurantId: order.restaurant_id,
     integrationId: integration.id,
