@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { assertSameOrigin, privateJson, publicFailure, PublicError, readObject } from "@/lib/security";
 import { rateLimit } from "@/lib/customer-session";
 import { createServiceClient } from "@/lib/supabase/service";
-import { recordLocation, trackingByToken, trackingState } from "@/lib/delivery-tracking";
+import { recordLocations, trackingByToken, trackingState } from "@/lib/delivery-tracking";
 
 // Link do motoboy: o token na URL é a credencial (um por pedido, sem cadastro).
 // Ações: "start" (saiu para entrega), "location" (posição GPS) e "finish" (entregue).
@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (state === "delivered") throw new PublicError("Esta entrega já foi concluída.", 409);
     if (state === "expired") throw new PublicError("Este link expirou. Peça um novo para a loja.", 410);
 
-    const body = await readObject(request, 2048);
+    const body = await readObject(request, 16_384);
     const action = String(body.action ?? "");
     const service = createServiceClient();
     const { data: order } = await service.from("orders").select("id, status, external_platform").eq("id", row.order_id).maybeSingle();
@@ -24,9 +24,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     // Pedido do iFood: o status é controlado pela loja/iFood, o link só rastreia.
     const ownsStatus = order.external_platform !== "ifood";
 
-    if (action === "location") {
+    if (action === "location" || action === "batch") {
       await rateLimit("courier-location", row.id, 40, 60);
-      await recordLocation(row, body);
+      const points = action === "batch" && Array.isArray(body.points) ? (body.points as Array<Record<string, unknown>>) : [body];
+      await recordLocations(row, points);
       return privateJson({ ok: true });
     }
     if (action === "start") {

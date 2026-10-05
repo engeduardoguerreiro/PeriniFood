@@ -102,18 +102,40 @@ function coordinate(value: unknown, limit: number) {
   return n;
 }
 
-export async function recordLocation(row: TrackingRow, body: Record<string, unknown>) {
-  const lat = coordinate(body.lat, 90);
-  const lng = coordinate(body.lng, 180);
-  const optional = (v: unknown, max: number) => (Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= max ? Number(v) : null);
-  const now = new Date().toISOString();
+type Point = { lat: number; lng: number; accuracy: number | null; heading: number | null; speed: number | null; recordedAt: string };
+
+function parsePoint(body: Record<string, unknown>, now: number): Point {
+  const optional = (v: unknown, max: number) => (v !== null && v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= max ? Number(v) : null);
+  // Horário da leitura (fila offline): aceito até 12h atrás e no máximo 1 min no futuro.
+  const at = typeof body.at === "string" ? Date.parse(body.at) : NaN;
+  const recordedAt = Number.isFinite(at) && at <= now + 60_000 && at >= now - 12 * 3600_000 ? at : now;
+  return {
+    lat: coordinate(body.lat, 90),
+    lng: coordinate(body.lng, 180),
+    accuracy: optional(body.accuracy, 100000),
+    heading: optional(body.heading, 360),
+    speed: optional(body.speed, 100),
+    recordedAt: new Date(recordedAt).toISOString(),
+  };
+}
+
+// Grava uma ou várias posições (a página do motoboy reenvia em lote o que leu sem
+// internet). A última posição do lote vira a posição atual no mapa.
+export async function recordLocations(row: TrackingRow, raw: Array<Record<string, unknown>>) {
+  if (!raw.length || raw.length > 60) throw new PublicError("Lote de localização inválido.");
+  const now = Date.now();
+  const points = raw.map((p) => parsePoint(p, now)).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+  const latest = points[points.length - 1];
   const service = createServiceClient();
+  const stale = row.last_seen_at && row.last_seen_at > latest.recordedAt;
   const [update, insert] = await Promise.all([
-    service.from("delivery_tracking").update({
-      last_lat: lat, last_lng: lng, last_accuracy: optional(body.accuracy, 100000), last_heading: optional(body.heading, 360),
-      last_speed: optional(body.speed, 100), last_seen_at: now, started_at: row.started_at ?? now,
-    }).eq("id", row.id),
-    service.from("delivery_locations").insert({ tracking_id: row.id, lat, lng, accuracy: optional(body.accuracy, 100000) }),
+    stale
+      ? Promise.resolve({ error: null })
+      : service.from("delivery_tracking").update({
+          last_lat: latest.lat, last_lng: latest.lng, last_accuracy: latest.accuracy, last_heading: latest.heading,
+          last_speed: latest.speed, last_seen_at: latest.recordedAt, started_at: row.started_at ?? new Date(now).toISOString(),
+        }).eq("id", row.id),
+    service.from("delivery_locations").insert(points.map((p) => ({ tracking_id: row.id, lat: p.lat, lng: p.lng, accuracy: p.accuracy, recorded_at: p.recordedAt }))),
   ]);
   if (update.error || insert.error) throw new PublicError("Não foi possível salvar a localização.", 503);
 }
