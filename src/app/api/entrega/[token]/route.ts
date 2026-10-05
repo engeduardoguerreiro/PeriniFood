@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { assertSameOrigin, privateJson, publicFailure, PublicError, readObject } from "@/lib/security";
 import { rateLimit } from "@/lib/customer-session";
 import { createServiceClient } from "@/lib/supabase/service";
+import { queueOrderNotification } from "@/lib/whatsapp/notify";
 import { deliveryCodeMatches, recordLocations, trackingByToken, trackingState } from "@/lib/delivery-tracking";
 
 // Link do motoboy: o token na URL é a credencial (um por pedido, sem cadastro).
@@ -35,6 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       await service.from("delivery_tracking").update({ started_at: row.started_at ?? now }).eq("id", row.id);
       if (ownsStatus && ["pending", "accepted", "preparing", "ready"].includes(order.status)) {
         await service.from("orders").update({ status: "out_for_delivery" }).eq("id", order.id);
+        queueOrderNotification(order.id);
       }
       revalidatePath("/pedidos");
       return privateJson({ ok: true });
@@ -47,7 +49,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       }
       const now = new Date().toISOString();
       await service.from("delivery_tracking").update({ delivered_at: now, started_at: row.started_at ?? now }).eq("id", row.id);
-      if (ownsStatus) await service.from("orders").update({ status: "completed" }).eq("id", order.id);
+      if (ownsStatus) {
+        await service.from("orders").update({ status: "completed" }).eq("id", order.id);
+        queueOrderNotification(order.id);
+      }
       revalidatePath("/pedidos");
       return privateJson({ ok: true });
     }

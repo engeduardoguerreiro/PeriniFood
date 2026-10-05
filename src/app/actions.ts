@@ -13,6 +13,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireRestaurant } from "@/lib/auth";
 import { submittedImageUrl } from "@/lib/image-url";
 import { createTrackingLink } from "@/lib/delivery-tracking";
+import { queueOrderNotification } from "@/lib/whatsapp/notify";
 import { isAdminRole } from "@/lib/integrations/security";
 import { mergeDeliveryRulesIntoOpeningHours } from "@/lib/delivery-fee-rules";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
@@ -890,6 +891,7 @@ export async function updateOrderStatus(formData: FormData) {
 
   const { error: updateError } = await supabase.from("orders").update({ status }).eq("id", id).eq("restaurant_id", restaurant.id);
   if (updateError) throw new Error(updateError.message);
+  queueOrderNotification(id);
   // Só fala com o iFood se o pedido foi importado pelo servidor (integration_orders):
   // external_order_id em orders é editável pelo lojista e apontaria para pedido alheio.
   const linkedToIFood = order?.external_order_id && order.external_platform === "ifood"
@@ -1006,6 +1008,7 @@ export async function createPdvOrder(formData: FormData) {
   const { restaurant, role } = await requireRestaurant();
   if (role === "kitchen") throw new Error("Operação não permitida.");
   const { id } = await saveValidatedOrder(formData, restaurant.id, "pdv");
+  queueOrderNotification(id);
   revalidatePath("/pedidos");
   revalidatePath("/dashboard/orders");
   if (text(formData, "intent") === "print") redirect('/pedidos/' + id + '/print?auto=1');
@@ -1027,6 +1030,7 @@ export async function createPublicOrder(formData: FormData) {
   let destination: string;
   try {
     const order = await saveValidatedOrder(formData, text(formData, "restaurant_id"), "site");
+    queueOrderNotification(order.id);
     destination = '/pedido/' + order.code;
   } catch (error) {
     const slug = encodeURIComponent(boundedText(formData.get("slug"),100,true));
