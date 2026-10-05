@@ -12,9 +12,12 @@ export default async function PrintSetupPage() {
   await requireRestaurant();
 
   const step = "rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]";
-  const badge = "grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-white";
+  const badge = "grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-brand-bright to-brand text-sm font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-5px_rgba(207,74,10,0.7)]";
 
   return (
+    // Fora do layout do painel: precisa do próprio fundo claro (senão herda o
+    // fundo escuro global do site).
+    <div className="panel-3d min-h-screen text-ink">
     <main className="mx-auto max-w-2xl space-y-5 p-5">
       <div>
         <Link href="/configuracoes#impressao" className="text-xs font-medium text-ink-faint transition hover:text-brand">
@@ -92,5 +95,6 @@ export default async function PrintSetupPage() {
         A comanda não saiu? Confira se a impressora está ligada, com papel e aparecendo na lista de impressoras do Windows.
       </p>
     </main>
+    </div>
   );
 }

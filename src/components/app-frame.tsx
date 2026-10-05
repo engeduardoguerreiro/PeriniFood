@@ -32,6 +32,7 @@ import { isRestaurantOpen } from "@/lib/opening-hours";
 import type { Restaurant } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PrinterAgentIndicator } from "./printer-agent-indicator";
+import { toneGradient } from "./ui/icon-3d";
 
 const navGroups = [
   ["Operação", [
@@ -67,17 +68,17 @@ export type FrameRestaurant = Pick<Restaurant, "name" | "logo_url" | "is_open" |
 
 // Cor da pastilha 3D de cada item do menu.
 const navTone: Record<string, string> = {
-  "/dashboard": "from-[#ff8a3d] to-[#d9480f]",
-  "/pedidos": "from-[#4aa8ff] to-[#1d64d8]",
-  "/pedidos/novo": "from-[#40d878] to-[#14964a]",
-  "/cardapio": "from-[#ff6b5a] to-[#d42a1f]",
-  "/cardapio/fichas": "from-[#ffc24a] to-[#d98a00]",
-  "/cupons": "from-[#ff7ab6] to-[#d63384]",
-  "/integracoes": "from-[#a38bff] to-[#6741e0]",
-  "/clientes": "from-[#3fd6c6] to-[#0e9488]",
-  "/relatorios": "from-[#7c8cff] to-[#4338ca]",
-  "/dashboard/online-menu": "from-[#4fd1ff] to-[#0891b2]",
-  "/configuracoes": "from-[#a3acb9] to-[#4b5563]",
+  "/dashboard": toneGradient.orange,
+  "/pedidos": toneGradient.blue,
+  "/pedidos/novo": toneGradient.green,
+  "/cardapio": toneGradient.red,
+  "/cardapio/fichas": toneGradient.amber,
+  "/cupons": toneGradient.pink,
+  "/integracoes": toneGradient.violet,
+  "/clientes": toneGradient.teal,
+  "/relatorios": toneGradient.indigo,
+  "/dashboard/online-menu": toneGradient.cyan,
+  "/configuracoes": toneGradient.slate,
 };
 
 const allNavHrefs: string[] = navGroups.flatMap(([, items]) => items.map(([, href]) => href));
@@ -119,7 +120,7 @@ function NavLinks({ pathname, collapsed, onNavigate }: { pathname: string; colla
                     )}
                   >
                     {active && <span className="absolute -left-2 top-2 bottom-2 w-1 rounded-r-full bg-brand-bright shadow-[0_0_10px_rgba(242,100,25,0.9)]" aria-hidden="true" />}
-                    <span className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-b text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_4px_10px_-3px_rgba(0,0,0,0.6)] transition", navTone[href] ?? "from-[#a3acb9] to-[#4b5563]", !active && "opacity-85 saturate-[0.85]")}>
+                    <span className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-b text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_4px_10px_-3px_rgba(0,0,0,0.6)] transition", navTone[href] ?? toneGradient.slate, !active && "opacity-85 saturate-[0.85]")}>
                       <Icon className="h-4 w-4" />
                     </span>
                     {!collapsed && <span className="truncate">{label}</span>}
