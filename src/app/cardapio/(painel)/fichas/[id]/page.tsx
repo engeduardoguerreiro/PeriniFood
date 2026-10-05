@@ -8,8 +8,8 @@ import { saveRecipe } from "@/app/actions";
 import { isMissingRecipesTable, listToLines, parseRecipe } from "@/lib/recipes";
 import type { Product } from "@/lib/types";
 
-const field = "mt-1 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-sm text-[#2b2925] outline-none transition focus:border-[#c5362e]";
-const label = "text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]";
+const field = "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-body outline-none transition focus:border-brand";
+const label = "text-[0.65rem] font-semibold uppercase tracking-wide text-ink-faint";
 
 export default async function RecipeEditPage({
   params,
@@ -41,16 +41,16 @@ export default async function RecipeEditPage({
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/cardapio/fichas" className="inline-flex items-center gap-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#c5362e]">
+          <Link href="/cardapio/fichas" className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-faint transition hover:text-brand">
             <ArrowLeft size={13} /> Todas as fichas
           </Link>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-[#1b1a17]">{item.name}</h1>
-          <p className="text-sm text-[#9c988f]">Ficha técnica de produção — usada pela cozinha, não aparece no cardápio.</p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{item.name}</h1>
+          <p className="text-sm text-ink-faint">Ficha técnica de produção — usada pela cozinha, não aparece no cardápio.</p>
         </div>
         <a
           href={`/ficha/${item.id}/print`}
           target="_blank"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#e7e4dd] bg-white px-4 py-2.5 text-sm font-medium text-[#2b2925] transition hover:border-[#c5362e] hover:text-[#c5362e]"
+          className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-body transition hover:border-brand hover:text-brand"
         >
           <Printer size={15} /> Imprimir
         </a>
@@ -65,7 +65,7 @@ export default async function RecipeEditPage({
       <form action={saveRecipe} className="space-y-5">
         <input type="hidden" name="product_id" value={item.id} />
 
-        <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+        <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
           <div>
             <label className={label}>Rendimento / tamanho</label>
             <input name="yield_label" defaultValue={recipe?.yield_label ?? ""} placeholder="Ex.: Pizza grande 35 cm — 8 fatias" className={field} />
@@ -73,9 +73,9 @@ export default async function RecipeEditPage({
         </section>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+          <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
             <label className={label}>Ingredientes</label>
-            <p className="mt-1 text-xs text-[#9c988f]">Um por linha, com a quantidade. Ex.: 250 g de mussarela</p>
+            <p className="mt-1 text-xs text-ink-faint">Um por linha, com a quantidade. Ex.: 250 g de mussarela</p>
             <textarea
               name="ingredients"
               rows={10}
@@ -85,9 +85,9 @@ export default async function RecipeEditPage({
             />
           </section>
 
-          <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+          <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
             <label className={label}>Montagem</label>
-            <p className="mt-1 text-xs text-[#9c988f]">Um passo por linha, na ordem. A numeração sai automática na impressão.</p>
+            <p className="mt-1 text-xs text-ink-faint">Um passo por linha, na ordem. A numeração sai automática na impressão.</p>
             <textarea
               name="steps"
               rows={10}
@@ -98,9 +98,9 @@ export default async function RecipeEditPage({
           </section>
         </div>
 
-        <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+        <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
           <label className={label}>Padrão visual</label>
-          <p className="mt-1 text-xs text-[#9c988f]">Como o produto tem que sair para o cliente.</p>
+          <p className="mt-1 text-xs text-ink-faint">Como o produto tem que sair para o cliente.</p>
           <textarea
             name="visual_standard"
             rows={3}

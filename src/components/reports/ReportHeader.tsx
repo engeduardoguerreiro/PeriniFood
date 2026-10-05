@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Download, FileText } from "lucide-react";
 import { reportLinks, type ReportKind, type ReportSearchParams } from "@/lib/reports";
 
-const pillActive = "shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-medium text-[#1b1a17] shadow-[0_1px_2px_rgba(27,26,23,0.06)]";
-const pillIdle = "shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#403d38]";
-const actionBtn = "inline-flex h-9 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3.5 text-sm font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e]";
+const pillActive = "shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-medium text-ink shadow-[0_1px_2px_rgba(27,26,23,0.06)]";
+const pillIdle = "shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-medium text-ink-faint transition hover:text-[#403d38]";
+const actionBtn = "inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-sm font-medium text-[#403d38] transition hover:border-brand hover:text-brand";
 
 export function ReportHeader({
   title,
@@ -26,8 +26,8 @@ export function ReportHeader({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">{title}</h1>
-          <p className="mt-0.5 max-w-2xl text-sm text-[#9c988f]">{description}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+          <p className="mt-0.5 max-w-2xl text-sm text-ink-faint">{description}</p>
         </div>
         {active !== "exportacoes" ? (
           <div className="flex flex-wrap gap-2">
@@ -35,7 +35,7 @@ export function ReportHeader({
               <FileText size={16} />
               PDF
             </Link>
-            <Link href={`/api/relatorios/exportar?tipo=${active}&${query.toString()}`} className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#211d19] px-3.5 text-sm font-medium text-white transition hover:bg-[#37312a]">
+            <Link href={`/api/relatorios/exportar?tipo=${active}&${query.toString()}`} className="inline-flex h-9 items-center gap-2 rounded-lg bg-btn px-3.5 text-sm font-medium text-white transition hover:bg-btn-hover">
               <Download size={16} />
               CSV
             </Link>
@@ -43,7 +43,7 @@ export function ReportHeader({
         ) : null}
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-[#e7e4dd] bg-[#faf9f6] p-1">
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-[#faf9f6] p-1">
         <Link href="/relatorios" className={active === "overview" ? pillActive : pillIdle}>Visão geral</Link>
         {reportLinks.map((link) => {
           const key = link.href.split("/").pop() ?? "";

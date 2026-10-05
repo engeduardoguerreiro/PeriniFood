@@ -1,14 +1,19 @@
-﻿/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 import { OrderPrintClient } from "@/components/order-print-client";
 import { BrowserAutoPrint } from "@/components/browser-auto-print";
 import { loyaltySummary, withLoyaltyCampaign } from "@/lib/loyalty";
 import { createServiceClient } from "@/lib/supabase/service";
+import { requireRestaurant } from "@/lib/auth";
+import { isLocalImagePath, isStorageImageUrl } from "@/lib/image-url";
+import { uuid } from "@/lib/security";
+import { notFound } from "next/navigation";
 import { money, orderCode, statusLabel } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
 import Link from "next/link";
 import { ClipboardList, Pizza } from "lucide-react";
 import { readFile } from "fs/promises";
 import path from "path";
+import { formatStoreDateTime } from "@/lib/timezone";
 
 // Reduz o logo para a largura útil da bobina (80mm ≈ 576px). Sem isso, um logo
 // de 3 MB vira ~4 MB de base64 embutido na comanda: a página fica pesada, demora
@@ -19,19 +24,25 @@ async function shrinkForReceipt(buffer: Buffer): Promise<string> {
     const png = await sharp(buffer).resize({ width: 576, withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer();
     return `data:image/png;base64,${png.toString("base64")}`;
   } catch {
-    return `data:image/png;base64,${buffer.toString("base64")}`;
+    // Não é imagem: nunca devolver os bytes crus (o logo é texto livre do lojista).
+    return "";
   }
 }
 
+// Só lê do disco dentro de public/ e só baixa do Storage do nosso Supabase —
+// qualquer outra URL fica a cargo do navegador, sem fetch/readFile no servidor.
 async function toDataUri(url: string): Promise<string> {
   try {
-    if (/^https?:\/\//.test(url)) {
-      const res = await fetch(url, { cache: "force-cache" });
+    if (isStorageImageUrl(url)) {
+      const res = await fetch(url, { cache: "force-cache", redirect: "error" });
       if (!res.ok) return "";
       return await shrinkForReceipt(Buffer.from(await res.arrayBuffer()));
     }
-    const buffer = await readFile(path.join(process.cwd(), "public", url.replace(/^\//, "")));
-    return await shrinkForReceipt(buffer);
+    if (!isLocalImagePath(url)) return "";
+    const publicDir = path.join(process.cwd(), "public");
+    const file = path.resolve(publicDir, `.${url}`);
+    if (!file.startsWith(publicDir + path.sep)) return "";
+    return await shrinkForReceipt(await readFile(file));
   } catch {
     return "";
   }
@@ -113,7 +124,7 @@ function printableReceipt(order: Order, items: OrderItem[], restaurantName: stri
     "COMANDA DE PEDIDO",
     "==========================================",
     `Pedido #${orderCode(order)}`,
-    `${new Date(order.created_at).toLocaleString("pt-BR")} - ${statusLabel[order.status]}`,
+    `${formatStoreDateTime(order.created_at)} - ${statusLabel[order.status]}`,
     "------------------------------------------",
     `Cliente: ${order.customer_name || "Cliente balcao"}`,
     `Telefone: ${order.customer_phone || "-"}`,
@@ -150,13 +161,16 @@ function printableReceipt(order: Order, items: OrderItem[], restaurantName: stri
 }
 
 export default async function PrintOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ auto?: string }> }) {
+  const { restaurant: session } = await requireRestaurant();
   const { id } = await params;
+  try { uuid(id); } catch { notFound(); }
   const auto = (await searchParams)?.auto === "1";
   const supabase = createServiceClient();
   const [{ data: order }, { data: items }] = await Promise.all([
-    supabase.from("orders").select("*").eq("id", id).single(),
-    supabase.from("order_items").select("*").eq("order_id", id),
+    supabase.from("orders").select("*").eq("id", id).eq("restaurant_id", session.id).maybeSingle(),
+    supabase.from("order_items").select("*").eq("order_id", id).eq("restaurant_id", session.id),
   ]);
+  if (!order) notFound();
 
   const current = order as Order;
   const orderItems = (items ?? []) as OrderItem[];
@@ -314,10 +328,10 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
     <main className="min-h-screen bg-[#f1efea] py-6 print:bg-white print:py-0">
       <style>{printStyles}</style>
       <nav className="print-hide mx-auto mb-4 flex w-[80mm] max-w-full flex-wrap gap-2" aria-label="Navegação da impressão">
-        <Link href={`/pedidos/${current.id}`} className="rounded-lg bg-[#211d19] px-3 py-2 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5">
+        <Link href={`/pedidos/${current.id}`} className="rounded-lg bg-btn px-3 py-2 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5">
           Voltar ao pedido
         </Link>
-        <Link href="/pedidos" className="rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-xs font-black text-[#2b2925] shadow-sm transition hover:-translate-y-0.5">
+        <Link href="/pedidos" className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-black text-ink-body shadow-sm transition hover:-translate-y-0.5">
           Voltar para pedidos
         </Link>
       </nav>

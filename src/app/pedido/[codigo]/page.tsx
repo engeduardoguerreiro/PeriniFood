@@ -27,7 +27,7 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-black">Pedido #{orderCode(current)}</h1>
-            <p className="text-[#9c988f]">Acompanhe o status do seu pedido.</p>
+            <p className="text-ink-faint">Acompanhe o status do seu pedido.</p>
           </div>
           <StatusBadge status={current.status} />
         </div>
@@ -39,7 +39,7 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
         <h2 className="mt-6 font-black">Itens</h2>
         <div className="mt-3 space-y-2">
           {((items ?? []) as OrderItem[]).map((item) => (
-            <div key={item.id} className="flex justify-between rounded-xl border border-[#efece6] p-3">
+            <div key={item.id} className="flex justify-between rounded-xl border border-line-soft p-3">
               <span>{item.quantity}x {item.product_name}</span>
               <strong>{money(item.total_price)}</strong>
             </div>

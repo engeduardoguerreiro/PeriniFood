@@ -27,7 +27,7 @@ export function SettingsTabs({ tabs, children }: { tabs: { id: string; label: st
 
   return (
     <TabContext.Provider value={active}>
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-[#e7e4dd] bg-[#faf9f6] p-1">
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-[#faf9f6] p-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -35,8 +35,8 @@ export function SettingsTabs({ tabs, children }: { tabs: { id: string; label: st
             onClick={() => setActive(tab.id)}
             className={
               active === tab.id
-                ? "shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-medium text-[#1b1a17] shadow-[0_1px_2px_rgba(27,26,23,0.06)]"
-                : "shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#403d38]"
+                ? "shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-medium text-ink shadow-[0_1px_2px_rgba(27,26,23,0.06)]"
+                : "shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-medium text-ink-faint transition hover:text-[#403d38]"
             }
           >
             {tab.label}

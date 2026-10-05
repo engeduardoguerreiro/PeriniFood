@@ -1,8 +1,9 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Bike, CheckCheck, Coffee, Filter, Maximize, MoreHorizontal, Search, Settings, ShoppingBag, SlidersHorizontal, Timer, UserRound } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode } from "@/lib/utils";
 import type { Order, OrderStatus } from "@/lib/types";
+import { formatStoreTime } from "@/lib/timezone";
 
 const columns: Array<{
   title: string;
@@ -40,20 +41,20 @@ const columns: Array<{
 
 function OrderCard({ order }: { order: Order }) {
   return (
-    <Link href={`/pedidos/${order.id}`} className="block rounded-xl border border-[#e7e4dd] bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link href={`/pedidos/${order.id}`} className="block rounded-xl border border-line bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div>
           <strong>#{orderCode(order)}</strong>
-          <p className="mt-1 text-sm text-[#9c988f]">{order.customer_name || "Cliente"}</p>
+          <p className="mt-1 text-sm text-ink-faint">{order.customer_name || "Cliente"}</p>
         </div>
-        <span className="rounded-full bg-[#f1efea] px-2 py-1 text-xs font-bold text-[#6d6a63]">{order.payment_method}</span>
+        <span className="rounded-full bg-[#f1efea] px-2 py-1 text-xs font-bold text-ink-soft">{order.payment_method}</span>
       </div>
-      <div className="mt-3 text-sm text-[#9c988f]">
+      <div className="mt-3 text-sm text-ink-faint">
         <p>{order.delivery_address || "Endereço não informado"}</p>
         <p>{order.customer_phone}</p>
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <span className="text-xs font-bold uppercase text-[#b0aaa0]">{new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+        <span className="text-xs font-bold uppercase text-ink-faint">{formatStoreTime(order.created_at)}</span>
         <strong>{money(order.total)}</strong>
       </div>
     </Link>
@@ -84,33 +85,33 @@ export default async function DeliveryPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[70px] overflow-hidden bg-white lg:left-[70px]">
-      <div className="flex h-14 items-center justify-between gap-3 border-b border-[#e7e4dd] bg-white px-4">
-        <form className="flex h-10 min-w-0 max-w-md flex-1 overflow-hidden rounded-lg border border-[#e7e4dd] bg-white">
+      <div className="flex h-14 items-center justify-between gap-3 border-b border-line bg-white px-4">
+        <form className="flex h-10 min-w-0 max-w-md flex-1 overflow-hidden rounded-lg border border-line bg-white">
           <label className="flex min-w-0 flex-1 items-center gap-2 px-3">
-            <Search className="h-4 w-4 text-[#9c988f]" />
+            <Search className="h-4 w-4 text-ink-faint" />
             <input name="q" defaultValue={sp.q ?? ""} placeholder="Buscar" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
           </label>
-          <button className="flex items-center gap-2 border-l border-[#e7e4dd] px-4 text-sm font-semibold">
+          <button className="flex items-center gap-2 border-l border-line px-4 text-sm font-semibold">
             <SlidersHorizontal className="h-4 w-4" />
             Filtros
           </button>
         </form>
 
         <div className="hidden items-center gap-3 xl:flex">
-          <button className="rounded-lg border border-[#eeccc7] px-4 py-2 text-sm font-bold text-[#1b1a17]">
+          <button className="rounded-lg border border-[#eeccc7] px-4 py-2 text-sm font-bold text-ink">
             <Coffee className="mr-2 inline h-4 w-4" /> Confira as novidades
           </button>
-          <Link href="/configuracoes" className="rounded-lg border border-[#e7e4dd] px-4 py-2 text-sm font-bold">
+          <Link href="/configuracoes" className="rounded-lg border border-line px-4 py-2 text-sm font-bold">
             <Settings className="mr-2 inline h-4 w-4" /> Configurações
           </Link>
-          <span className="rounded-lg border border-[#e7e4dd] px-4 py-2 text-sm font-bold">
+          <span className="rounded-lg border border-line px-4 py-2 text-sm font-bold">
             <Timer className="mr-2 inline h-4 w-4" /> {restaurant.estimated_delivery_time ?? "70 min"}
           </span>
-          <Link href="/pedidos" className="rounded-lg border border-[#e7e4dd] px-4 py-2 text-sm font-bold">
+          <Link href="/pedidos" className="rounded-lg border border-line px-4 py-2 text-sm font-bold">
             <Filter className="mr-2 inline h-4 w-4" /> Quadros
           </Link>
-          <button className="rounded-lg border border-[#e7e4dd] p-2"><MoreHorizontal className="h-5 w-5" /></button>
-          <button className="rounded-lg border border-[#e7e4dd] p-2"><Maximize className="h-5 w-5" /></button>
+          <button className="rounded-lg border border-line p-2"><MoreHorizontal className="h-5 w-5" /></button>
+          <button className="rounded-lg border border-line p-2"><Maximize className="h-5 w-5" /></button>
         </div>
       </div>
 
@@ -127,11 +128,11 @@ export default async function DeliveryPage({ searchParams }: { searchParams: Pro
               <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
                 {columnOrders.map((order) => <OrderCard key={order.id} order={order} />)}
                 {!columnOrders.length && (
-                  <div className="grid flex-1 place-items-center px-8 text-center text-[#b0aaa0]">
+                  <div className="grid flex-1 place-items-center px-8 text-center text-ink-faint">
                     <div>
                       <Icon className="mx-auto mb-4 h-9 w-9" />
                       <p className="font-bold leading-snug">{column.empty}</p>
-                      {column.action && <button className="mt-4 rounded-lg border border-[#e7e4dd] bg-white px-4 py-2 font-semibold text-[#1b1a17]">{column.action}</button>}
+                      {column.action && <button className="mt-4 rounded-lg border border-line bg-white px-4 py-2 font-semibold text-ink">{column.action}</button>}
                     </div>
                   </div>
                 )}
@@ -141,7 +142,7 @@ export default async function DeliveryPage({ searchParams }: { searchParams: Pro
         })}
       </div>
 
-      <Link href="/pedidos/novo" className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-full bg-[#211d19] px-5 py-3 font-bold text-white shadow-xl">
+      <Link href="/pedidos/novo" className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-full bg-btn px-5 py-3 font-bold text-white shadow-xl">
         <Bike className="h-5 w-5" />
         Nova entrega
       </Link>

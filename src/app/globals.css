@@ -18,7 +18,11 @@
   --paper: #f7f6f3;
   --ink: #1b1a17;
   --ink-soft: #6d6a63;
-  --ink-faint: #9c988f;
+  /* #76726a: 4,8:1 sobre branco (AA). O #9c988f anterior dava 2,9:1. */
+  --ink-faint: #76726a;
+  --ink-body: #2b2925;
+  --btn: #211d19;
+  --btn-hover: #37312a;
   --line: #e7e4dd;
   --line-soft: #efece6;
   --ok: #1f8a54;
@@ -34,6 +38,20 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Tokens do painel como classes Tailwind (text-ink, border-line, bg-btn...). */
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-body: var(--ink-body);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-btn: var(--btn);
+  --color-btn-hover: var(--btn-hover);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
   --font-sans: var(--font-body);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
@@ -42,9 +60,26 @@
   box-sizing: border-box;
 }
 
-/* Reduz o tamanho-base (1rem) → escala todas as fontes/rem para baixo de uma vez. */
+/* Tamanho-base (1rem) do sistema. Era 13px: text-xs virava 9,75px, ilegível na
+   cozinha. 14px mantém o painel compacto e legível. */
 html {
-  font-size: 13px;
+  font-size: 14px;
+}
+
+/* iOS dá zoom automático em campo com fonte < 16px (checkout, login). */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Foco visível para teclado em todo o sistema: vários campos usam outline-none
+   trocando só a cor da borda, o que some para quem navega com Tab. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 body {
@@ -151,7 +186,7 @@ b {
   justify-content: center;
   gap: 0.5rem;
   border-radius: 0.7rem;
-  background: #211d19;
+  background: var(--btn);
   padding: 0.65rem 1rem;
   color: #ffffff;
   font-weight: 500;
@@ -160,7 +195,13 @@ b {
 }
 
 .btn-primary:hover {
-  background: #37312a;
+  background: var(--btn-hover);
+}
+
+.btn-primary:disabled,
+.btn-muted:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Secundário: fantasma com borda fina */

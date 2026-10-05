@@ -1,6 +1,6 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Building2, Globe2, LockKeyhole, Mail, Store } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, Globe2, LockKeyhole, Mail, MessageCircle, Store } from "lucide-react";
 import { register } from "../actions";
 
 function Brand() {
@@ -15,7 +15,8 @@ function Brand() {
   );
 }
 
-export default function RegisterPage() {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   return (
     <main className="min-h-screen bg-[#f5f7fb] text-[#182b3a]">
       <header className="border-b border-slate-200 bg-white">
@@ -38,7 +39,7 @@ export default function RegisterPage() {
             Cadastre o restaurante e comece com cardápio digital, pedido manual, clientes, WhatsApp e painel operacional.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {["Plano Básico para operação manual", "Plano Completa para integrações", "Sem pagamento online no MVP", "Preparado para iFood, 99Food e Keeta"].map((item) => (
+            {["Plano Básico para operação manual", "Plano Completa para integrações", "Ativação após confirmação da assinatura", "Preparado para iFood, 99Food e Keeta"].map((item) => (
               <span key={item} className="flex items-center gap-2 rounded-xl bg-white p-4 text-sm font-bold shadow-sm">
                 <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-500" /> {item}
               </span>
@@ -57,6 +58,10 @@ export default function RegisterPage() {
             <h2 className="mt-5 text-3xl font-black">Criar conta e restaurante</h2>
             <p className="mt-2 text-sm text-slate-500">O primeiro usuário será o administrador principal do restaurante.</p>
           </div>
+
+          {error && (
+            <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block space-y-1">
@@ -80,6 +85,13 @@ export default function RegisterPage() {
                 <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-[#E50914] focus:ring-4 focus:ring-red-50" name="restaurant_name" placeholder="Ex.: Pizzaria Forno Nordestino" required />
               </span>
             </label>
+            <label className="block space-y-1 md:col-span-2">
+              <span className="text-xs font-black uppercase tracking-wide text-slate-500">WhatsApp para contato</span>
+              <span className="relative block">
+                <MessageCircle className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <input className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-[#E50914] focus:ring-4 focus:ring-red-50" name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" required />
+              </span>
+            </label>
             <label className="block space-y-1">
               <span className="text-xs font-black uppercase tracking-wide text-slate-500">Slug público</span>
               <span className="relative block">
@@ -93,8 +105,11 @@ export default function RegisterPage() {
             </label>
           </div>
 
-          <button className="mt-6 h-12 w-full rounded-lg bg-[#232A31] px-5 text-sm font-black text-white shadow-lg shadow-red-950/20 transition hover:bg-[#E50914]">Começar agora</button>
-          <p className="mt-6 text-center text-sm text-slate-500">Já tem conta <Link className="font-black text-[#E50914]" href="/login">Entrar</Link></p>
+          <p className="mt-6 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Depois do cadastro, sua loja fica <strong>aguardando ativação</strong>: pague a assinatura ou fale com a nossa equipe para liberar o sistema.
+          </p>
+          <button className="mt-4 h-12 w-full rounded-lg bg-[#232A31] px-5 text-sm font-black text-white shadow-lg shadow-red-950/20 transition hover:bg-[#E50914]">Criar conta</button>
+          <p className="mt-6 text-center text-sm text-slate-500">Já tem conta? <Link className="font-black text-[#E50914]" href="/login">Entrar</Link></p>
         </form>
       </section>
     </main>

@@ -35,8 +35,11 @@ export function decimalInputValue(value: number | string | null | undefined) {
   return String(number).replace(".", ",");
 }
 
+// Formatador criado uma vez: money() roda centenas de vezes por render no cardápio.
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
 export function money(value: number | string | null | undefined) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0));
+  return brl.format(Number(value ?? 0));
 }
 
 export function slugify(value: string) {
@@ -99,11 +102,17 @@ export function whatsappLink(phone: string | null | undefined, message: string) 
   const clean = digits(phone);
   if (!clean) return "#";
   const withCountry = clean.startsWith("55") ? clean : `55${clean}`;
-  return `https://wa.me/${withCountry}text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+}
+
+// Pedidos do site/PDV guardam em `code` o token secreto do link /pedido/<code>
+// (48 hex): nunca exibir — usa o número sequencial da loja no lugar.
+export function isTrackingToken(code: string | null | undefined) {
+  return Boolean(code && /^[a-f0-9]{48}$/.test(code));
 }
 
 export function orderCode(order: { code: string | null; order_number: number | null; id: string }) {
-  if (order.code) return order.code;
+  if (order.code && !isTrackingToken(order.code)) return order.code;
   if (order.order_number) return String(order.order_number).padStart(4, "0");
   return String(order.id ?? "").replace(/-/g, "").slice(0, 8).toUpperCase();
 }

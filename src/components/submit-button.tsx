@@ -7,7 +7,7 @@ import { useFormStatus } from "react-dom";
 export function SubmitButton({
   children,
   pendingLabel = "Salvando…",
-  className = "rounded-xl bg-[#211d19] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#37312a] disabled:cursor-not-allowed disabled:opacity-60",
+  className = "rounded-xl bg-btn px-4 py-2 text-sm font-medium text-white transition hover:bg-btn-hover disabled:cursor-not-allowed disabled:opacity-60",
 }: {
   children: React.ReactNode;
   pendingLabel?: string;

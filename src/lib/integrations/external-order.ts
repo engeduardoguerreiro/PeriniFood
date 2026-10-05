@@ -1,5 +1,5 @@
 import { secretMatches, PublicError, boundedText } from "@/lib/security";
-﻿import { createServiceClient } from "@/lib/supabase/service";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export type NormalizedExternalOrder = {
   provider: string;
@@ -158,6 +158,11 @@ export async function findIntegrationForPayload(provider: string, normalized: No
 export async function createOrderFromExternalPayload(normalized: NormalizedExternalOrder, integration: IntegrationRecord) {
   const supabase = createServiceClient();
   const restaurantId = integration.restaurant_id;
+  // Reentrega do mesmo pedido pelo canal não pode duplicar.
+  if (normalized.externalOrderId) {
+    const { data: existing } = await supabase.from("orders").select("id").eq("restaurant_id", restaurantId).eq("external_order_id", normalized.externalOrderId).limit(1);
+    if (existing?.length) return existing[0].id as string;
+  }
   const phone = normalized.customer.phone ?? null;
   const { data: existingCustomer } = phone ?
      await supabase.from("customers").select("id").eq("restaurant_id", restaurantId).eq("phone", phone).maybeSingle()

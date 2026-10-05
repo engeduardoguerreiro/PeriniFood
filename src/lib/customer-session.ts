@@ -54,9 +54,13 @@ export async function rateLimit(scope: string, identity: string, limit = 10, sec
   if (data !== true) throw new PublicError("Muitas tentativas. Aguarde alguns minutos.", 429);
 }
 
+// Only the hosting provider's overwritten header is trusted as a client IP.
+export function clientIp(request: Request) {
+  return process.env.VERCEL ? request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ?? "unknown" : "local";
+}
+
 export async function authRateLimit(request: Request, restaurantId: string, email: string) {
-  // Only the hosting provider's overwritten header is trusted as a client IP.
-  const ip = process.env.VERCEL ? request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ?? "unknown" : "local";
+  const ip = clientIp(request);
   await rateLimit("auth-network", `${restaurantId}:${ip}`, 60);
   await rateLimit("auth-account", `${restaurantId}:${email}`, 10);
 }

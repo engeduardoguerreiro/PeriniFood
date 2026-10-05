@@ -27,10 +27,10 @@ export default async function TestPrintPage({ searchParams }: { searchParams: Pr
       {auto && <BrowserAutoPrint />}
 
       <div className="print-hide mx-auto mb-4 w-[80mm] max-w-full space-y-2">
-        <Link href="/configuracoes#impressao" className="inline-block rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-xs font-black text-[#2b2925]">
+        <Link href="/configuracoes#impressao" className="inline-block rounded-lg border border-line bg-white px-3 py-2 text-xs font-black text-ink-body">
           Voltar às configurações
         </Link>
-        <p className="rounded-xl border border-[#e7e4dd] bg-white p-3 text-xs text-[#6d6a63]">
+        <p className="rounded-xl border border-line bg-white p-3 text-xs text-ink-soft">
           Clique em <strong className="text-[#403d38]">Imprimir teste</strong>: vai abrir a janela de impressão do computador, com a lista das
           impressoras instaladas. Escolha a sua impressora de comanda e confirme. O navegador lembra a escolha nas próximas vezes.
         </p>

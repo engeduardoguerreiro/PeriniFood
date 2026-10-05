@@ -39,6 +39,7 @@ export async function requireRestaurant() {
   // sistema (os dados do cliente ficam intactos até a reativação).
   const { getAccessState } = await import("./platform-billing");
   const access = await getAccessState(context.restaurant.id);
+  if (access.status === "pending") redirect("/ativacao");
   if (access.blocked) redirect("/assinatura-suspensa");
 
   return context as Awaited<ReturnType<typeof getSessionContext>> & { restaurant: Restaurant };

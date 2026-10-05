@@ -28,6 +28,16 @@ const weekdayMap: Record<string, string> = {
   saturday: "saturday",
 };
 
+const previousWeekday: Record<string, string> = {
+  monday: "sunday",
+  tuesday: "monday",
+  wednesday: "tuesday",
+  thursday: "wednesday",
+  friday: "thursday",
+  saturday: "friday",
+  sunday: "saturday",
+};
+
 function minutesFromTime(value: string | undefined) {
   if (!value) return null;
   const [hour, minute] = value.split(":").map(Number);
@@ -71,18 +81,23 @@ export function isRestaurantOpen(restaurant: Pick<Restaurant, "is_open" | "openi
 
   const openingHours = restaurant.opening_hours as OpeningHours;
   const current = currentSaoPauloParts(date);
-  const day = openingHours[current.weekday];
-  if (!day?.active) return false;
+  const shift = (key: string) => {
+    const day = openingHours[key];
+    if (!day?.active) return null;
+    const open = minutesFromTime(day.open);
+    const close = minutesFromTime(day.close);
+    return open === null || close === null ? null : { open, close };
+  };
 
-  const openMinutes = minutesFromTime(day.open);
-  const closeMinutes = minutesFromTime(day.close);
-  if (openMinutes === null || closeMinutes === null) return false;
+  // Turno de hoje: se vira a meia-noite (18:00–02:00), hoje só vale a parte >= abertura.
+  const today = shift(current.weekday);
+  if (today && (today.open <= today.close
+    ? current.minutes >= today.open && current.minutes <= today.close
+    : current.minutes >= today.open)) return true;
 
-  if (openMinutes <= closeMinutes) {
-    return current.minutes >= openMinutes && current.minutes <= closeMinutes;
-  }
-
-  return current.minutes >= openMinutes || current.minutes <= closeMinutes;
+  // Madrugada: continua aberto se o turno de ONTEM virou a meia-noite e ainda não fechou.
+  const yesterday = shift(previousWeekday[current.weekday] ?? "sunday");
+  return Boolean(yesterday && yesterday.open > yesterday.close && current.minutes <= yesterday.close);
 }
 
 export function currentOpeningLabel(restaurant: Pick<Restaurant, "opening_hours">) {

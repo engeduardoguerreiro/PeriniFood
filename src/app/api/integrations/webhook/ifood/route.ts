@@ -29,8 +29,9 @@ export async function POST(request: Request) {
     try {
       const supabase = createServiceClient();
       await processIFoodEvent(supabase, event);
-    } catch {
-      // nunca bloqueia o ack
+    } catch (error) {
+      // nunca bloqueia o ack (presença da loja); registra para reprocessar via polling
+      console.error("[ifood webhook] evento não processado", event.id, error instanceof Error ? error.message : error);
     }
   }
 

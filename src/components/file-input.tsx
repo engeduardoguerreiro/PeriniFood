@@ -19,12 +19,12 @@ export function FileInput({
   const [fileName, setFileName] = useState("");
 
   return (
-    <label className="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-[#e7e4dd] bg-white pl-1.5 pr-3 text-sm transition hover:border-[#c5362e]">
-      <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-[#211d19] px-3 text-xs font-medium text-white">
+    <label className="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-white pl-1.5 pr-3 text-sm transition hover:border-brand">
+      <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-btn px-3 text-xs font-medium text-white">
         <Upload size={13} />
         {label}
       </span>
-      <span className={`truncate ${fileName ? "text-[#2b2925]" : "text-[#b0aaa0]"}`}>
+      <span className={`truncate ${fileName ? "text-ink-body" : "text-ink-faint"}`}>
         {fileName || "Nenhum arquivo"}
       </span>
       <input

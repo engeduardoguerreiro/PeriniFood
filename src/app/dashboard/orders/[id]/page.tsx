@@ -1,9 +1,10 @@
-﻿import { updateOrderStatus } from "@/app/actions";
+import { updateOrderStatus } from "@/app/actions";
 import { requireRestaurant } from "@/lib/auth";
 import { money, statusLabel } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { orderCode, whatsappLink } from "@/lib/utils";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import { notFound } from "next/navigation";
 
 const flow: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delivery", "completed", "canceled"];
 const sourceLabel: Record<string, string> = {
@@ -39,9 +40,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const { supabase, restaurant } = await requireRestaurant();
   const [{ data: order }, { data: items }] = await Promise.all([
-    supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).eq("id", id).single(),
+    supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).eq("id", id).maybeSingle(),
     supabase.from("order_items").select("*").eq("restaurant_id", restaurant.id).eq("order_id", id),
   ]);
+  if (!order) notFound();
   const current = order as Order;
   const message = `Olá ${current.customer_name || "cliente"}, seu pedido #${orderCode(current)} está com status: ${statusLabel[current.status]}. Total: ${money(current.total)}.`;
   return (
@@ -50,11 +52,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-black">Pedido #{orderCode(current)}</h2>
-            <p className="text-[#9c988f]">{sourceLabel[current.external_platform ?? current.source] ?? current.source.toUpperCase()}  {current.type}</p>
-            {current.external_order_id && <p className="mt-1 text-sm font-bold text-[#c5362e]">Pedido externo: {current.external_order_id}</p>}
+            <p className="text-ink-faint">{sourceLabel[current.external_platform ?? current.source] ?? current.source.toUpperCase()}  {current.type}</p>
+            {current.external_order_id && <p className="mt-1 text-sm font-bold text-brand">Pedido externo: {current.external_order_id}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <a className="rounded-xl bg-[#211d19] px-4 py-2 text-sm font-black text-white shadow-[0_1px_2px_rgba(27,26,23,0.08)] transition hover:-translate-y-0.5" href={`/pedidos/${current.id}/editar`}>
+            <a className="rounded-xl bg-btn px-4 py-2 text-sm font-black text-white shadow-[0_1px_2px_rgba(27,26,23,0.08)] transition hover:-translate-y-0.5" href={`/pedidos/${current.id}/editar`}>
               Editar pedido
             </a>
             <StatusBadge status={current.status} />
@@ -77,13 +79,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               ...(selected.addons ?? []).map((addon) => optionLine("Adicional", addon)),
             ].filter(Boolean) as string[];
             return (
-              <div key={item.id} className="rounded-xl border border-[#efece6] p-4">
+              <div key={item.id} className="rounded-xl border border-line-soft p-4">
                 <div className="flex justify-between gap-3">
                   <span>{item.quantity}x {item.product_name}</span>
                   <strong>{money(item.total_price)}</strong>
                 </div>
                 {!!lines.length && (
-                  <div className="mt-2 space-y-1 text-sm font-semibold text-[#9c988f]">
+                  <div className="mt-2 space-y-1 text-sm font-semibold text-ink-faint">
                     {lines.map((line) => <p key={line}>- {line}</p>)}
                   </div>
                 )}

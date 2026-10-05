@@ -7,6 +7,7 @@ import {
   normalizeGenericExternalOrder,
 } from "@/lib/integrations/external-order";
 import { sanitizeHeaders } from "@/lib/integrations/security";
+import { clientIp, rateLimit } from "@/lib/customer-session";
 
 function bearerToken(request: NextRequest) {
   const authorization = request.headers.get("authorization") ?? "";
@@ -15,9 +16,12 @@ function bearerToken(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Rota pública: limita por IP antes de ler o corpo ou gravar log, senão um loop
+  // de POSTs com token inválido enchia integration_logs e o banco.
+  try { await rateLimit("webhook-ip", clientIp(request), 120, 600); } catch (error) { return publicFailure(error); }
   let payload: unknown;
   try {
-    payload = await readObject(request, 262144);
+    payload = await readObject(request, 65536);
   } catch {
     return NextResponse.json({ ok: false, error: "JSON inválido." }, { status: 400 });
   }
@@ -32,8 +36,7 @@ export async function POST(request: NextRequest) {
       direction: "INBOUND",
       status: "error",
       externalId: normalized.externalOrderId,
-      requestHeaders: sanitizeHeaders(request.headers),
-      requestPayload: payload,
+      requestPayload: { externalStoreId: normalized.externalStoreId?.slice(0, 64) ?? null },
       errorMessage: "Token secreto ausente.",
     });
     return NextResponse.json({ ok: false, error: "Token obrigatório." }, { status: 401 });
@@ -47,8 +50,7 @@ export async function POST(request: NextRequest) {
       direction: "INBOUND",
       status: "error",
       externalId: normalized.externalOrderId,
-      requestHeaders: sanitizeHeaders(request.headers),
-      requestPayload: payload,
+      requestPayload: { externalStoreId: normalized.externalStoreId?.slice(0, 64) ?? null },
       errorMessage: "Token inválido ou integração inativa.",
     });
     return NextResponse.json({ ok: false, error: "Integração inválida." }, { status: 403 });

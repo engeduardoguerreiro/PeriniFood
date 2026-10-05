@@ -247,7 +247,7 @@ export function ManualOrderBuilder({
   const [selectedType, setSelectedType] = useState("all");
   const [search, setSearch] = useState("");
   const [orderType, setOrderType] = useState(initialData.type === "dine_in" ? "pickup" : initialData.type ?? "pickup");
-  const [deliveryRuleId, setDeliveryRuleId] = useState(deliveryRules[0].id ?? "");
+  const [deliveryRuleId, setDeliveryRuleId] = useState(deliveryRules[0]?.id ?? "");
   const [deliveryCalculating, setDeliveryCalculating] = useState(false);
   const [discountText, setDiscountText] = useState(initialData.discount ? decimalInputValue(initialData.discount) : "");
   const discount = parseDecimal(discountText);
@@ -551,15 +551,15 @@ export function ManualOrderBuilder({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-black">{mode === "edit" ? "Editar pedido" : "Novo pedido manual"}</h2>
-            <p className="text-sm text-[#9c988f]">{mode === "edit" ? "Ajuste cliente, entrega, pagamento e itens do pedido." : "Use para balcão, retirada e delivery manual."}</p>
+            <p className="text-sm text-ink-faint">{mode === "edit" ? "Ajuste cliente, entrega, pagamento e itens do pedido." : "Use para balcão, retirada e delivery manual."}</p>
           </div>
-          <span className="rounded-full bg-[#f6ece9] px-3 py-1 text-xs font-bold text-[#c5362e]">Taxa atual: {money(defaultDeliveryFee)}</span>
+          <span className="rounded-full bg-[#f6ece9] px-3 py-1 text-xs font-bold text-brand">Taxa atual: {money(defaultDeliveryFee)}</span>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="relative grid gap-3 md:col-span-2 md:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-xs font-bold uppercase text-[#9c988f]">Cliente</span>
+              <span className="text-xs font-bold uppercase text-ink-faint">Cliente</span>
               <input
                 className="field-light"
                 name="customer_name"
@@ -575,7 +575,7 @@ export function ManualOrderBuilder({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-bold uppercase text-[#9c988f]">Telefone/WhatsApp</span>
+              <span className="text-xs font-bold uppercase text-ink-faint">Telefone/WhatsApp</span>
               <input
                 className="field-light"
                 name="customer_phone"
@@ -591,7 +591,7 @@ export function ManualOrderBuilder({
               />
             </label>
             {(customerLookupStatus || (showCustomerMatches && customerMatches.length > 0)) && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-[#e7e4dd] bg-white p-2 shadow-xl">
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-line bg-white p-2 shadow-xl">
                 {customerMatches.length > 0 && showCustomerMatches ? (
                   <div className="space-y-1">
                     {customerMatches.map((customer) => (
@@ -602,27 +602,27 @@ export function ManualOrderBuilder({
                         className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-[#f6ece9]"
                       >
                         <span>
-                          <strong className="block text-[#1b1a17]">{customer.name}</strong>
-                          <span className="text-xs text-[#9c988f]">{customer.whatsapp || customer.phone || "Sem telefone"}</span>
+                          <strong className="block text-ink">{customer.name}</strong>
+                          <span className="text-xs text-ink-faint">{customer.whatsapp || customer.phone || "Sem telefone"}</span>
                         </span>
-                        <span className="text-xs font-black text-[#c5362e]">Usar</span>
+                        <span className="text-xs font-black text-brand">Usar</span>
                       </button>
                     ))}
                   </div>
                 ) : null}
-                {customerLookupStatus && <p className="px-3 py-2 text-xs font-bold text-[#9c988f]">{customerLookupStatus}</p>}
+                {customerLookupStatus && <p className="px-3 py-2 text-xs font-bold text-ink-faint">{customerLookupStatus}</p>}
               </div>
             )}
           </div>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-[#9c988f]">Tipo do pedido</span>
+            <span className="text-xs font-bold uppercase text-ink-faint">Tipo do pedido</span>
             <select className="field-light" name="type" value={orderType} onChange={(event) => setOrderType(event.target.value)}>
               <option value="pickup">Retirada</option>
               <option value="delivery">Delivery</option>
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-[#9c988f]">Pagamento</span>
+            <span className="text-xs font-bold uppercase text-ink-faint">Pagamento</span>
             <select className="field-light" name="payment_method" defaultValue={initialData.paymentMethod ?? "pix"}>
               <option value="cash">Dinheiro</option>
               <option value="credit_card">Crédito</option>
@@ -632,11 +632,11 @@ export function ManualOrderBuilder({
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-[#9c988f]">Desconto</span>
+            <span className="text-xs font-bold uppercase text-ink-faint">Desconto</span>
             <MoneyInput value={discountText} onValueChange={(value) => setDiscountText(value)} placeholder="0,00" />
           </label>
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs font-bold uppercase text-[#9c988f]">Frete automático</span>
+            <span className="text-xs font-bold uppercase text-ink-faint">Frete automático</span>
             <div className="field-light flex min-h-14 items-center text-sm font-bold text-[#403d38]">
               {orderType !== "delivery"
                 ? "Sem entrega para retirada ou balcão"
@@ -650,18 +650,18 @@ export function ManualOrderBuilder({
             </div>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-bold uppercase text-[#9c988f]">Troco para</span>
+            <span className="text-xs font-bold uppercase text-ink-faint">Troco para</span>
             <MoneyInput name="change_for" defaultValue={initialData.changeFor ?? null} placeholder="Opcional" />
           </label>
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs font-bold uppercase text-[#9c988f]">Observação do cliente</span>
+            <span className="text-xs font-bold uppercase text-ink-faint">Observação do cliente</span>
             <textarea className="field-light min-h-[60px]" name="customer_notes" defaultValue={initialData.notes ?? ""} placeholder="Ex.: sem cebola, entregar sem contato, tocar a campainha…" />
           </label>
         </div>
 
         {orderType === "delivery" && (
-          <div className="mt-4 rounded-xl border border-[#e7e4dd] bg-[#faf9f6] p-4">
-            <div className="mb-3 flex items-center gap-2 font-black"><MapPin className="h-5 w-5 text-[#c5362e]" /> Endereço de entrega</div>
+          <div className="mt-4 rounded-xl border border-line bg-[#faf9f6] p-4">
+            <div className="mb-3 flex items-center gap-2 font-black"><MapPin className="h-5 w-5 text-brand" /> Endereço de entrega</div>
             <div className="grid gap-3 md:grid-cols-6">
               <input className="field-light md:col-span-2" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} onKeyDown={(event) => handleAddressEnter(event, lookupCep)} placeholder="CEP" />
               <input className="field-light md:col-span-4" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} onKeyDown={(event) => handleAddressEnter(event, lookupTypedAddress)} placeholder="Endereço" />
@@ -670,22 +670,22 @@ export function ManualOrderBuilder({
               <input className="field-light md:col-span-2" value={address.complement} onChange={(event) => setAddress({ ...address, complement: event.target.value })} placeholder="Complemento" />
               <input className="field-light md:col-span-2" value={address.reference} onChange={(event) => setAddress({ ...address, reference: event.target.value })} placeholder="Ponto de referencia" />
             </div>
-            {addressStatus && <p className="mt-2 text-sm font-semibold text-[#6d6a63]">{addressStatus}</p>}
-            {fullAddress(address) && <p className="mt-3 rounded bg-white p-3 text-sm text-[#6d6a63]">Endereço: {fullAddress(address)}. Frete calculado: {money(deliveryFee)}</p>}
+            {addressStatus && <p className="mt-2 text-sm font-semibold text-ink-soft">{addressStatus}</p>}
+            {fullAddress(address) && <p className="mt-3 rounded bg-white p-3 text-sm text-ink-soft">Endereço: {fullAddress(address)}. Frete calculado: {money(deliveryFee)}</p>}
           </div>
         )}
 
       </section>
 
       <div className="space-y-5">
-        <section className="flex max-h-[600px] flex-col overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-sm">
-          <div className="shrink-0 space-y-3 border-b border-[#efece6] p-4">
+        <section className="flex max-h-[600px] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+          <div className="shrink-0 space-y-3 border-b border-line-soft p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-base font-semibold text-[#1b1a17]">Itens do pedido</h3>
+              <h3 className="text-base font-semibold text-ink">Itens do pedido</h3>
               <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b0aaa0]" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
                 <input
-                  className="h-10 w-full rounded-lg border border-[#e7e4dd] bg-white pl-10 pr-3 text-sm outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/15"
+                  className="h-10 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Buscar item"
@@ -693,9 +693,9 @@ export function ManualOrderBuilder({
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <button type="button" onClick={() => setSelectedType("all")} className={selectedType === "all" ? "rounded-full bg-[#211d19] px-3 py-1.5 text-xs font-medium text-white" : "rounded-full border border-[#e7e4dd] bg-white px-3 py-1.5 text-xs font-medium text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]"}>Todos</button>
+              <button type="button" onClick={() => setSelectedType("all")} className={selectedType === "all" ? "rounded-full bg-btn px-3 py-1.5 text-xs font-medium text-white" : "rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"}>Todos</button>
               {visibleCategories.map((category) => (
-                <button key={category.id} type="button" onClick={() => setSelectedType(category.id)} className={selectedType === category.id ? "rounded-full bg-[#211d19] px-3 py-1.5 text-xs font-medium text-white" : "rounded-full border border-[#e7e4dd] bg-white px-3 py-1.5 text-xs font-medium text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]"}>{category.name}</button>
+                <button key={category.id} type="button" onClick={() => setSelectedType(category.id)} className={selectedType === category.id ? "rounded-full bg-btn px-3 py-1.5 text-xs font-medium text-white" : "rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"}>{category.name}</button>
               ))}
             </div>
           </div>
@@ -710,39 +710,39 @@ export function ManualOrderBuilder({
                     key={product.id}
                     type="button"
                     onClick={() => openProduct(product)}
-                    className="group flex items-center gap-3 rounded-xl border border-[#e7e4dd] bg-white p-2.5 text-left transition hover:border-[#c5362e] hover:bg-[#f6ece9]/40 focus:outline-none focus:ring-2 focus:ring-[#c5362e]/30"
+                    className="group flex items-center gap-3 rounded-xl border border-line bg-white p-2.5 text-left transition hover:border-brand hover:bg-[#f6ece9]/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
                   >
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#f1efea]">
                       {product.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={product.image_url} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="grid h-full place-items-center text-[9px] font-medium text-[#b0aaa0]">Sem foto</div>
+                        <div className="grid h-full place-items-center text-[9px] font-medium text-ink-faint">Sem foto</div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[#1b1a17] group-hover:text-[#c5362e]">{product.name}</p>
-                      <p className="mt-0.5 text-xs text-[#9c988f]">
+                      <p className="truncate text-sm font-semibold text-ink group-hover:text-brand">{product.name}</p>
+                      <p className="mt-0.5 text-xs text-ink-faint">
                         {activeVariants.length ? "A partir de " : ""}<strong className="font-semibold text-[#403d38]">{money(productBasePrice(product, variants))}</strong>
                       </p>
                     </div>
-                    {hasOptions && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#c5362e]">Person.</span>}
-                    <Plus className="h-4 w-4 shrink-0 text-[#b0aaa0] transition group-hover:text-[#c5362e]" />
+                    {hasOptions && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand">Person.</span>}
+                    <Plus className="h-4 w-4 shrink-0 text-ink-faint transition group-hover:text-brand" />
                   </button>
                 );
               })}
-              {!filteredProducts.length && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-[#9c988f] sm:col-span-2 xl:col-span-3">Nenhum produto encontrado nesse filtro.</p>}
+              {!filteredProducts.length && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-ink-faint sm:col-span-2 xl:col-span-3">Nenhum produto encontrado nesse filtro.</p>}
             </div>
           </div>
         </section>
 
-        <aside className="rounded-2xl border border-[#e7e4dd] bg-white p-5 text-[#1b1a17] shadow-sm">
+        <aside className="rounded-2xl border border-line bg-white p-5 text-ink shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-lg font-black"><ShoppingCart className="h-5 w-5 text-[#c5362e]" /> Carrinho — finalização</span>
-            <span className="rounded-lg bg-[#f6ece9] px-3 py-1 text-xs font-black text-[#c5362e]">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
+            <span className="flex items-center gap-2 text-lg font-black"><ShoppingCart className="h-5 w-5 text-brand" /> Carrinho — finalização</span>
+            <span className="rounded-lg bg-[#f6ece9] px-3 py-1 text-xs font-black text-brand">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {cart.length === 0 && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-[#9c988f] sm:col-span-2 xl:col-span-3">Adicione produtos para finalizar.</p>}
+            {cart.length === 0 && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-ink-faint sm:col-span-2 xl:col-span-3">Adicione produtos para finalizar.</p>}
             {cart.map((item, index) => {
               const product = products.find((row) => row.id === item.id);
               const productVariants = variants.filter((variant) => variant.product_id === item.id && variant.active);
@@ -754,13 +754,13 @@ export function ManualOrderBuilder({
               const flavorOptions = isPizza ? flavorChoices(product, products) : [];
               const flavorSelectionInvalid = isPizza && Number(item.flavorCount ?? 1) > 1 && (item.flavors.length ?? 0) !== Number(item.flavorCount ?? 1);
               return (
-              <div key={`${item.id}-${index}`} className="rounded-xl border border-[#efece6] p-3">
+              <div key={`${item.id}-${index}`} className="rounded-xl border border-line-soft p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold">{item.name}{item.variantName ? ` - ${item.variantName}` : ""}</p>
-                    <p className="text-sm text-[#9c988f]">{money(itemTotal(item))}</p>
+                    <p className="text-sm text-ink-faint">{money(itemTotal(item))}</p>
                   </div>
-                  <button type="button" onClick={() => update(index, { quantity: 0 })} className="text-[#b0aaa0] hover:text-[#c5362e]"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => update(index, { quantity: 0 })} className="text-ink-faint hover:text-brand"><Trash2 className="h-4 w-4" /></button>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button type="button" onClick={() => update(index, { quantity: item.quantity - 1 })} className="rounded-lg border p-2"><Minus className="h-3 w-3" /></button>
@@ -787,7 +787,7 @@ export function ManualOrderBuilder({
                 ) : (
                   <>
                 {isPizza && maxFlavors > 1 && (
-                  <div className="mt-3 rounded-xl border border-[#efece6] p-3 text-sm">
+                  <div className="mt-3 rounded-xl border border-line-soft p-3 text-sm">
                     <span className="mb-2 block font-bold">Sabores da pizza</span>
                     <select
                       className="field-light h-10 py-1 text-sm"
@@ -831,7 +831,7 @@ export function ManualOrderBuilder({
                         );
                       })}
                     </div>
-                    <p className="mt-2 text-xs font-semibold text-[#9c988f]">Selecionados: {(item.flavors ?? []).join(" / ")}</p>
+                    <p className="mt-2 text-xs font-semibold text-ink-faint">Selecionados: {(item.flavors ?? []).join(" / ")}</p>
                   </div>
                 )}
 
@@ -905,15 +905,15 @@ export function ManualOrderBuilder({
               );
             })}
           </div>
-          <div className="mt-5 flex flex-col gap-4 border-t border-[#efece6] pt-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mt-5 flex flex-col gap-4 border-t border-line-soft pt-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-1 lg:min-w-[240px]">
-              <div className="flex justify-between gap-8"><span className="text-[#6d6a63]">Subtotal</span><strong>{money(subtotal)}</strong></div>
-              <div className="flex justify-between gap-8"><span className="text-[#6d6a63]">Entrega</span><strong>{money(deliveryFee)}</strong></div>
-              <div className="flex justify-between gap-8"><span className="text-[#6d6a63]">Desconto</span><strong>{money(discount)}</strong></div>
+              <div className="flex justify-between gap-8"><span className="text-ink-soft">Subtotal</span><strong>{money(subtotal)}</strong></div>
+              <div className="flex justify-between gap-8"><span className="text-ink-soft">Entrega</span><strong>{money(deliveryFee)}</strong></div>
+              <div className="flex justify-between gap-8"><span className="text-ink-soft">Desconto</span><strong>{money(discount)}</strong></div>
               <div className="flex justify-between gap-8 text-lg font-black"><span>Total</span><span>{money(total)}</span></div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[440px]">
-              <button name="intent" value="finish" className="flex-1 rounded-xl border border-[#e7e4dd] bg-white px-4 py-3 text-sm font-black text-[#1b1a17] transition hover:border-[#c5362e] hover:bg-[#f6ece9] disabled:cursor-not-allowed disabled:bg-[#f1efea] disabled:text-[#b0aaa0]" disabled={!cart.length || hasOpenItems}>
+              <button name="intent" value="finish" className="flex-1 rounded-xl border border-line bg-white px-4 py-3 text-sm font-black text-ink transition hover:border-brand hover:bg-[#f6ece9] disabled:cursor-not-allowed disabled:bg-[#f1efea] disabled:text-ink-faint" disabled={!cart.length || hasOpenItems}>
                 {mode === "edit" ? "Salvar alterações" : "Finalizar"}
               </button>
               <button name="intent" value="print" className="btn-primary flex-1" disabled={!cart.length || hasOpenItems}>
@@ -929,20 +929,20 @@ export function ManualOrderBuilder({
       {draft && draftProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex items-start gap-3 border-b border-[#efece6] p-4">
+            <div className="flex items-start gap-3 border-b border-line-soft p-4">
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#f1efea]">
                 {draftProduct.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={draftProduct.image_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="grid h-full place-items-center text-[10px] font-medium text-[#b0aaa0]">Sem foto</div>
+                  <div className="grid h-full place-items-center text-[10px] font-medium text-ink-faint">Sem foto</div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-base font-semibold text-[#1b1a17]">{draftProduct.name}</h2>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-[#9c988f]">{draftProduct.description || "Produto disponível para pedido."}</p>
+                <h2 className="truncate text-base font-semibold text-ink">{draftProduct.name}</h2>
+                <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-ink-faint">{draftProduct.description || "Produto disponível para pedido."}</p>
               </div>
-              <button type="button" onClick={() => setDraft(null)} aria-label="Fechar" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#9c988f] transition hover:bg-[#f1efea] hover:text-[#1b1a17]">
+              <button type="button" onClick={() => setDraft(null)} aria-label="Fechar" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-faint transition hover:bg-[#f1efea] hover:text-ink">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -962,12 +962,12 @@ export function ManualOrderBuilder({
                 return (
                   <>
                     {isPizza && maxFlavors > 1 && (
-                      <section className="border-b border-[#efece6] p-4">
+                      <section className="border-b border-line-soft p-4">
                         <div className="flex items-center justify-between gap-3">
-                          <h3 className="text-sm font-semibold text-[#1b1a17]">Sabores</h3>
-                          <span className="text-xs text-[#9c988f]">{draft.flavors.length}/{limit} escolhido{limit > 1 ? "s" : ""}</span>
+                          <h3 className="text-sm font-semibold text-ink">Sabores</h3>
+                          <span className="text-xs text-ink-faint">{draft.flavors.length}/{limit} escolhido{limit > 1 ? "s" : ""}</span>
                         </div>
-                        <div className="mt-3 inline-flex rounded-lg border border-[#e7e4dd] bg-[#faf9f6] p-0.5">
+                        <div className="mt-3 inline-flex rounded-lg border border-line bg-[#faf9f6] p-0.5">
                           {Array.from({ length: maxFlavors }, (_, flavorIndex) => flavorIndex + 1).map((count) => (
                             <button
                               key={count}
@@ -981,7 +981,7 @@ export function ManualOrderBuilder({
                                   price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
                                 });
                               }}
-                              className={Number(draft.flavorCount ?? 1) === count ? "rounded-md bg-white px-3 py-1.5 text-xs font-medium text-[#1b1a17] shadow-[0_1px_2px_rgba(27,26,23,0.06)]" : "rounded-md px-3 py-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#403d38]"}
+                              className={Number(draft.flavorCount ?? 1) === count ? "rounded-md bg-white px-3 py-1.5 text-xs font-medium text-ink shadow-[0_1px_2px_rgba(27,26,23,0.06)]" : "rounded-md px-3 py-1.5 text-xs font-medium text-ink-faint transition hover:text-[#403d38]"}
                             >
                               {count} sabor{count > 1 ? "es" : ""}
                             </button>
@@ -989,16 +989,16 @@ export function ManualOrderBuilder({
                         </div>
 
                         <div className="relative mt-3">
-                          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#b0aaa0]" />
+                          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                           <input
                             value={flavorSearch}
                             onChange={(event) => setFlavorSearch(event.target.value)}
                             placeholder="Buscar sabor…"
-                            className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white pl-9 pr-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+                            className="h-9 w-full rounded-lg border border-line bg-white pl-9 pr-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12"
                           />
                         </div>
 
-                        <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-[#efece6]">
+                        <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-line-soft">
                           {filteredFlavors.map((flavor) => {
                             const selected = draft.flavors.includes(flavor.name) ?? false;
                             const atLimit = !selected && draft.flavors.length >= limit;
@@ -1006,7 +1006,7 @@ export function ManualOrderBuilder({
                               <label key={flavor.id} className={`flex cursor-pointer items-center gap-2.5 border-b border-[#f2efe9] px-3 py-2 text-sm last:border-0 transition hover:bg-[#faf9f6] ${atLimit ? "opacity-40" : ""}`}>
                                 <input
                                   type="checkbox"
-                                  className="h-4 w-4 shrink-0 accent-[#c5362e]"
+                                  className="h-4 w-4 shrink-0 accent-brand"
                                   checked={selected}
                                   onChange={(event) => {
                                     const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
@@ -1020,32 +1020,32 @@ export function ManualOrderBuilder({
                                   }}
                                   disabled={atLimit}
                                 />
-                                <span className="text-[#2b2925]">{flavor.name}</span>
+                                <span className="text-ink-body">{flavor.name}</span>
                               </label>
                             );
                           })}
-                          {!filteredFlavors.length && <p className="px-3 py-4 text-center text-xs text-[#9c988f]">Nenhum sabor encontrado.</p>}
+                          {!filteredFlavors.length && <p className="px-3 py-4 text-center text-xs text-ink-faint">Nenhum sabor encontrado.</p>}
                         </div>
 
                         {draft.flavors.length > 0 && (
-                          <p className="mt-2 text-xs text-[#9c988f]">Selecionados: <span className="text-[#403d38]">{draft.flavors.join(" / ")}</span></p>
+                          <p className="mt-2 text-xs text-ink-faint">Selecionados: <span className="text-[#403d38]">{draft.flavors.join(" / ")}</span></p>
                         )}
                       </section>
                     )}
 
                     {!!productVariants.length && (
-                      <section className="border-b border-[#efece6] p-4">
-                        <h3 className="text-sm font-semibold text-[#1b1a17]">Tamanho</h3>
+                      <section className="border-b border-line-soft p-4">
+                        <h3 className="text-sm font-semibold text-ink">Tamanho</h3>
                         <div className="mt-2 divide-y divide-[#f2efe9]">
                           {productVariants.map((variant) => (
                             <label key={variant.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
                               <span className="flex items-baseline gap-2">
-                                <strong className="font-medium text-[#2b2925]">{variant.name}</strong>
-                                <span className="text-xs text-[#9c988f]">{money(variant.price)}</span>
+                                <strong className="font-medium text-ink-body">{variant.name}</strong>
+                                <span className="text-xs text-ink-faint">{money(variant.price)}</span>
                               </span>
                               <input
                                 type="radio"
-                                className="h-4 w-4 accent-[#c5362e]"
+                                className="h-4 w-4 accent-brand"
                                 checked={draft.variantId === variant.id}
                                 onChange={() => setDraft({
                                   ...draft,
@@ -1061,16 +1061,16 @@ export function ManualOrderBuilder({
                     )}
 
                     {!!dough.length && (
-                      <section className="border-b border-[#efece6] p-4">
-                        <h3 className="text-sm font-semibold text-[#1b1a17]">Massas</h3>
+                      <section className="border-b border-line-soft p-4">
+                        <h3 className="text-sm font-semibold text-ink">Massas</h3>
                         <div className="mt-2 divide-y divide-[#f2efe9]">
                           {dough.map((option) => (
                             <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
-                              <span className="text-[#2b2925]">
+                              <span className="text-ink-body">
                                 {option.name}
-                                {Number(option.additional_price) ? <span className="ml-2 text-xs text-[#9c988f]">+ {money(option.additional_price)}</span> : null}
+                                {Number(option.additional_price) ? <span className="ml-2 text-xs text-ink-faint">+ {money(option.additional_price)}</span> : null}
                               </span>
-                              <input type="radio" className="h-4 w-4 accent-[#c5362e]" checked={draft.dough?.name === option.name} onChange={() => setDraft({ ...draft, dough: { name: option.name, price: Number(option.additional_price) } })} />
+                              <input type="radio" className="h-4 w-4 accent-brand" checked={draft.dough?.name === option.name} onChange={() => setDraft({ ...draft, dough: { name: option.name, price: Number(option.additional_price) } })} />
                             </label>
                           ))}
                         </div>
@@ -1078,20 +1078,20 @@ export function ManualOrderBuilder({
                     )}
 
                     {!!crusts.length && (
-                      <section className="border-b border-[#efece6] p-4">
-                        <h3 className="text-sm font-semibold text-[#1b1a17]">Bordas</h3>
+                      <section className="border-b border-line-soft p-4">
+                        <h3 className="text-sm font-semibold text-ink">Bordas</h3>
                         <div className="mt-2 divide-y divide-[#f2efe9]">
                           <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
-                            <span className="text-[#2b2925]">Sem borda</span>
-                            <input type="radio" className="h-4 w-4 accent-[#c5362e]" checked={!draft.crust?.name} onChange={() => setDraft({ ...draft, crust: null })} />
+                            <span className="text-ink-body">Sem borda</span>
+                            <input type="radio" className="h-4 w-4 accent-brand" checked={!draft.crust?.name} onChange={() => setDraft({ ...draft, crust: null })} />
                           </label>
                           {crusts.map((option) => (
                             <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
-                              <span className="text-[#2b2925]">
+                              <span className="text-ink-body">
                                 {option.name}
-                                {Number(option.additional_price) ? <span className="ml-2 text-xs text-[#9c988f]">+ {money(option.additional_price)}</span> : null}
+                                {Number(option.additional_price) ? <span className="ml-2 text-xs text-ink-faint">+ {money(option.additional_price)}</span> : null}
                               </span>
-                              <input type="radio" className="h-4 w-4 accent-[#c5362e]" checked={draft.crust?.name === option.name} onChange={() => setDraft({ ...draft, crust: { name: option.name, price: Number(option.additional_price) } })} />
+                              <input type="radio" className="h-4 w-4 accent-brand" checked={draft.crust?.name === option.name} onChange={() => setDraft({ ...draft, crust: { name: option.name, price: Number(option.additional_price) } })} />
                             </label>
                           ))}
                         </div>
@@ -1099,16 +1099,16 @@ export function ManualOrderBuilder({
                     )}
 
                     {!!additions.length && (
-                      <section className="border-b border-[#efece6] p-4">
-                        <h3 className="text-sm font-semibold text-[#1b1a17]">Adicionais</h3>
+                      <section className="border-b border-line-soft p-4">
+                        <h3 className="text-sm font-semibold text-ink">Adicionais</h3>
                         <div className="mt-2 divide-y divide-[#f2efe9]">
                           {additions.map((addition) => (
                             <label key={addition.id} className="flex cursor-pointer items-center justify-between gap-4 py-2.5 text-sm">
-                              <span className="text-[#2b2925]">
+                              <span className="text-ink-body">
                                 {addition.name}
-                                {Number(addition.additional_price) ? <span className="ml-2 text-xs text-[#9c988f]">+ {money(addition.additional_price)}</span> : null}
+                                {Number(addition.additional_price) ? <span className="ml-2 text-xs text-ink-faint">+ {money(addition.additional_price)}</span> : null}
                               </span>
-                              <input type="checkbox" className="h-4 w-4 accent-[#c5362e]" checked={draft.additions.some((selected) => selected.name === addition.name)} onChange={(event) => {
+                              <input type="checkbox" className="h-4 w-4 accent-brand" checked={draft.additions.some((selected) => selected.name === addition.name)} onChange={(event) => {
                                 const current = draft.additions.filter((selected) => selected.name !== addition.name);
                                 setDraft({ ...draft, additions: event.target.checked ? [...current, { name: addition.name, price: Number(addition.additional_price) }] : current });
                               }} />
@@ -1122,25 +1122,25 @@ export function ManualOrderBuilder({
               })()}
 
               <section className="p-4">
-                <label className="block text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]">Observações do item</label>
+                <label className="block text-[0.7rem] font-medium uppercase tracking-[0.08em] text-ink-faint">Observações do item</label>
                 <textarea
-                  className="mt-1.5 min-h-16 w-full resize-none rounded-lg border border-[#e7e4dd] bg-white p-2.5 text-sm outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+                  className="mt-1.5 min-h-16 w-full resize-none rounded-lg border border-line bg-white p-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12"
                   maxLength={250}
                   value={draft.notes ?? ""}
                   onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
                   placeholder="Ex.: sem cebola, caprichar no molho..."
                 />
-                <p className="text-right text-xs text-[#b0aaa0]">{draft.notes.length ?? 0}/250</p>
+                <p className="text-right text-xs text-ink-faint">{draft.notes.length ?? 0}/250</p>
               </section>
             </div>
 
-            <div className="flex items-center gap-3 border-t border-[#efece6] bg-white p-3">
+            <div className="flex items-center gap-3 border-t border-line-soft bg-white p-3">
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e7e4dd] text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]">
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink-soft transition hover:border-brand hover:text-brand">
                   <Minus className="h-4 w-4" />
                 </button>
                 <strong className="w-6 text-center text-sm [font-variant-numeric:tabular-nums]">{draft.quantity}</strong>
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e7e4dd] text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]">
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink-soft transition hover:border-brand hover:text-brand">
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
@@ -1148,7 +1148,7 @@ export function ManualOrderBuilder({
                 type="button"
                 onClick={confirmDraft}
                 disabled={isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1)}
-                className="ml-auto flex h-11 flex-1 items-center justify-center rounded-lg bg-[#211d19] px-5 text-sm font-medium text-white transition hover:bg-[#37312a] disabled:cursor-not-allowed disabled:bg-[#cfc9bd]"
+                className="ml-auto flex h-11 flex-1 items-center justify-center rounded-lg bg-btn px-5 text-sm font-medium text-white transition hover:bg-btn-hover disabled:cursor-not-allowed disabled:bg-[#cfc9bd]"
               >
                 Adicionar · {money(itemTotal(draft))}
               </button>

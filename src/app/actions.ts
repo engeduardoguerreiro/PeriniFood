@@ -11,12 +11,25 @@ import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireRestaurant } from "@/lib/auth";
+import { submittedImageUrl } from "@/lib/image-url";
+import { isAdminRole } from "@/lib/integrations/security";
 import { mergeDeliveryRulesIntoOpeningHours } from "@/lib/delivery-fee-rules";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
 import { syncOrderStatusToIFood } from "@/lib/integrations/ifood/status-sync";
 import { openingHourDays } from "@/lib/opening-hours";
 import { digits, slugify } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
+
+// Ações destrutivas ou de configuração: mesma regra que as telas usam para
+// esconder os botões (owner/admin/manager). Sem isso, caixa e cozinha chamavam
+// a action direto e apagavam pedidos/clientes ou trocavam credenciais.
+async function requireManager() {
+  const context = await requireRestaurant();
+  if (!isAdminRole(context.role)) throw new Error("Seu perfil não tem permissão para esta operação.");
+  return context;
+}
+
+const ORDER_STATUSES: OrderStatus[] = ["pending", "accepted", "preparing", "ready", "out_for_delivery", "completed", "canceled"];
 
 function text(formData: FormData, key: string, fallback = "") {
   return String(formData.get(key) ?? fallback).trim();
@@ -26,25 +39,14 @@ function num(formData: FormData, key: string, fallback = 0) {
   return parseDecimal(formData.get(key), fallback);
 }
 
-function optionLines(formData: FormData, key: string) {
-  return text(formData, key)
-    .split(/\r\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, price = "0"] = line.split("|").map((part) => part.trim());
-      return { name, additional_price: parseDecimal(price) };
-    })
-    .filter((item) => item.name);
-}
-
 function uniqueValues(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 
+// opening_hours também guarda _delivery_fee_rules, _loyalty_campaign e outras chaves
+// gravadas por outras telas: parte do JSON atual e só substitui dias e impressora.
 function openingHoursPayload(formData: FormData, existing: Record<string, unknown> | null) {
-  const deliveryRules = existing?._delivery_fee_rules;
   const printerMethod = text(formData, "printer_method", "browser");
   const allowedPrinterMethods = new Set(["browser", "thermal", "network", "fiscal"]);
   const paperWidth = Number(text(formData, "printer_paper_width", "80"));
@@ -61,6 +63,7 @@ function openingHoursPayload(formData: FormData, existing: Record<string, unknow
     notes: text(formData, "printer_notes") || null,
   };
   return {
+    ...(existing ?? {}),
     ...Object.fromEntries(openingHourDays.map(([key]) => [
     key,
     {
@@ -69,7 +72,6 @@ function openingHoursPayload(formData: FormData, existing: Record<string, unknow
       close: text(formData, `opening_${key}_close`, "23:00"),
     },
     ])),
-    ...(deliveryRules ? { _delivery_fee_rules: deliveryRules } : {}),
     _printer_settings: printerSettings,
   };
 }
@@ -149,7 +151,7 @@ function pizzaOptionGroupName(kind: string) {
   return null;
 }
 
-function redirectWithFeedback(formData: FormData, fallbackPath: string, status: "saved" | "deleted" | "updated", error?: string) {
+function redirectWithFeedback(formData: FormData, fallbackPath: string, status: "saved" | "deleted" | "updated", error?: string): never {
   const requested = text(formData, "return_to", fallbackPath);
   const returnTo = requested.startsWith("/") && !requested.startsWith("//") && !requested.includes("\\") ? requested : fallbackPath;
   const separator = returnTo.includes("?") ? "&" : "?";
@@ -188,7 +190,7 @@ async function replaceProductOptionGroup(
     min_choices: required ? 1 : 0,
     max_choices: type === "single" ? 1 : null,
   }).select("id").single();
-  if (error || !option) throw new Error(error.message ?? "Não foi possível salvar opções do produto.");
+  if (error || !option) throw new Error(error?.message ?? "Não foi possível salvar opções do produto.");
   const { error: itemsError } = await supabase.from("product_option_items").insert(items.map((item) => ({
     restaurant_id: restaurantId,
     option_id: option.id,
@@ -204,22 +206,21 @@ async function replaceProductOptionGroup(
 // deixando as páginas pesadas e a impressão lenta.
 const UPLOAD_MAX_WIDTH: Record<string, number> = {
   logos: 512,
-  products: 900,
+  products: 640,
   banners: 1600,
   "site-covers": 1920,
 };
 
+// Sempre reprocessa com sharp e grava WebP (aceita transparência): o tipo
+// declarado pelo navegador não é confiável e um arquivo que o sharp não decodifica
+// não é imagem — é recusado em vez de ir cru para o Storage.
 async function shrinkUpload(bytes: Buffer, folder: string): Promise<Buffer> {
-  const width = UPLOAD_MAX_WIDTH[folder];
-  if (!width) return bytes;
+  const width = UPLOAD_MAX_WIDTH[folder] ?? 1600;
   try {
     const { default: sharp } = await import("sharp");
-    const image = sharp(bytes).rotate().resize({ width, withoutEnlargement: true });
-    const meta = await sharp(bytes).metadata();
-    const output = meta.hasAlpha ? await image.png({ compressionLevel: 9 }).toBuffer() : await image.jpeg({ quality: 82 }).toBuffer();
-    return output.length < bytes.length ? output : bytes;
+    return await sharp(bytes).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
   } catch {
-    return bytes;
+    throw new Error("Não foi possível ler a imagem. Envie um arquivo PNG, JPG ou WEBP válido.");
   }
 }
 
@@ -227,7 +228,8 @@ async function saveUpload(file: FormDataEntryValue | null, folder: string) {
   if (!(file instanceof File) || !file.size) return null;
   const allowed = new Set(["image/png", "image/jpeg", "image/webp"]);
   if (!allowed.has(file.type)) throw new Error("Envie uma imagem PNG, JPG ou WEBP.");
-  const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  if (file.size > 6 * 1024 * 1024) throw new Error("A imagem deve ter no máximo 6 MB.");
+  const extension = "webp";
   const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
   const bytes = await shrinkUpload(Buffer.from(await file.arrayBuffer()), folder);
 
@@ -239,7 +241,7 @@ async function saveUpload(file: FormDataEntryValue | null, folder: string) {
       throw new Error(`Não foi possível preparar o armazenamento de imagens: ${bucketResult.error.message}`);
     }
     const { error } = await service.storage.from(bucket).upload(filename, bytes, {
-      contentType: file.type,
+      contentType: "image/webp",
       cacheControl: "31536000",
       upsert: true,
     });
@@ -350,6 +352,9 @@ export async function register(formData: FormData) {
   const password = text(formData, "password");
   const restaurantName = text(formData, "restaurant_name");
   const slug = slugify(text(formData, "slug") || restaurantName);
+  const whatsapp = digits(text(formData, "whatsapp"));
+  if (!restaurantName || !slug) redirect(`/register?error=${encodeURIComponent("Informe o nome do restaurante.")}`);
+  if (whatsapp.length < 10) redirect(`/register?error=${encodeURIComponent("Informe um WhatsApp válido com DDD.")}`);
 
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) redirect(`/register?error=${encodeURIComponent(error.message)}`);
@@ -364,6 +369,8 @@ export async function register(formData: FormData) {
       slug,
       description: text(formData, "description", "Delivery moderno com pedidos online."),
       email,
+      whatsapp,
+      phone: whatsapp,
       is_open: true,
       delivery_enabled: true,
       pickup_enabled: true,
@@ -372,26 +379,42 @@ export async function register(formData: FormData) {
     .select("id")
     .single();
 
-  if (restaurantError) redirect(`/register?error=${encodeURIComponent(restaurantError.message)}`);
+  if (restaurantError) {
+    const message = restaurantError.code === "23505" ? "Esse endereço de cardápio (slug) já está em uso. Escolha outro." : restaurantError.message;
+    redirect(`/register?error=${encodeURIComponent(message)}`);
+  }
 
-  await supabase.from("restaurant_users").insert({
+  const { error: memberError } = await supabase.from("restaurant_users").insert({
     restaurant_id: restaurant.id,
     user_id: user.id,
     role: "owner",
   });
+  if (memberError) redirect(`/register?error=${encodeURIComponent(memberError.message)}`);
 
-  redirect("/dashboard");
+  // Loja nova nasce aguardando ativação: a equipe libera no /admin após o
+  // pagamento ou contato. Mesmo se este insert falhar, a falta de assinatura já
+  // é tratada como "pending" por getAccessState.
+  await createServiceClient().from("platform_subscriptions").insert({
+    restaurant_id: restaurant.id,
+    status: "pending",
+    contact_name: restaurantName,
+    contact_email: email,
+    contact_phone: whatsapp,
+    notes: "Cadastro pelo site — aguardando ativação.",
+  });
+
+  redirect("/ativacao");
 }
 
 export async function updatePassword(formData: FormData) {
   const supabase = await createClient();
   const password = text(formData, "password");
   const confirm = text(formData, "confirm_password");
-  if (password.length < 6) redirect("/configuracoes?password_error=senha-curta");
-  if (password !== confirm) redirect("/configuracoes?password_error=confirmacao");
+  if (password.length < 6) redirect("/configuracoes?tab=seguranca&password_error=senha-curta");
+  if (password !== confirm) redirect("/configuracoes?tab=seguranca&password_error=confirmacao");
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) redirect(`/configuracoes?password_error=${encodeURIComponent(error.message)}`);
-  redirect("/configuracoes?password_success=1");
+  if (error) redirect(`/configuracoes?tab=seguranca&password_error=${encodeURIComponent(error.message)}`);
+  redirect("/configuracoes?tab=seguranca&password_success=1");
 }
 
 export async function saveCategory(formData: FormData) {
@@ -576,6 +599,7 @@ export async function deletePizzaOption(formData: FormData) {
 export async function saveProduct(formData: FormData) {
   const { supabase, restaurant } = await requireRestaurant();
   const id = text(formData, "id");
+  let savedId: string | null = null;
   try {
   const imageUpload = await saveUpload(formData.get("image_file"), "products");
   const name = text(formData, "name");
@@ -591,7 +615,7 @@ export async function saveProduct(formData: FormData) {
     name,
     description: text(formData, "description") || null,
     price: basePrice,
-    image_url: imageUpload ?? (text(formData, "image_url") || null),
+    image_url: imageUpload ?? submittedImageUrl(text(formData, "image_url")),
     active: formData.get("active") === "on",
     featured: formData.get("featured") === "on",
     max_flavors: isPizza ? Math.min(4, Math.max(1, Number(restaurant.max_pizza_flavors ?? 1))) : 1,
@@ -622,17 +646,20 @@ export async function saveProduct(formData: FormData) {
     throw new Error("Pizza precisa ter pelo menos um tamanho ativo com preço maior que zero.");
   }
   if (!isPizza && basePrice <= 0) throw new Error("Produto comum precisa ter preço maior que zero.");
+  // Validações antes de gravar: depois do insert, um erro deixaria o produto
+  // salvo pela metade e o lojista recriaria uma cópia ao tentar de novo.
+  const selectedMassas = uniqueValues([...formData.getAll("dough_option").map(String), ...formData.getAll("massa_option").map(String)]);
+  const selectedBordas = uniqueValues([...formData.getAll("crust_option").map(String), ...formData.getAll("borda_option").map(String)]);
+  const selectedAdicionais = uniqueValues([...formData.getAll("addition_option").map(String), ...formData.getAll("adicional_option").map(String)]);
+  if (selectedMassas.length !== formData.getAll("dough_option").length && formData.getAll("dough_option").length) throw new Error("Existem massas duplicadas.");
+  if (selectedBordas.length !== formData.getAll("crust_option").length && formData.getAll("crust_option").length) throw new Error("Existem bordas duplicadas.");
+  if (selectedAdicionais.length !== formData.getAll("addition_option").length && formData.getAll("addition_option").length) throw new Error("Existem adicionais duplicados.");
 
-  const productId = await saveProductRecord(supabase, id, restaurant.id, payload);
+  savedId = await saveProductRecord(supabase, id, restaurant.id, payload);
+  const productId = savedId;
 
   if (productId) {
     await saveProductVariants(supabase, productId, isPizza ? sizes : []);
-    const selectedMassas = uniqueValues([...formData.getAll("dough_option").map(String), ...formData.getAll("massa_option").map(String)]);
-    const selectedBordas = uniqueValues([...formData.getAll("crust_option").map(String), ...formData.getAll("borda_option").map(String)]);
-    const selectedAdicionais = uniqueValues([...formData.getAll("addition_option").map(String), ...formData.getAll("adicional_option").map(String)]);
-    if (selectedMassas.length !== formData.getAll("dough_option").length && formData.getAll("dough_option").length) throw new Error("Existem massas duplicadas.");
-    if (selectedBordas.length !== formData.getAll("crust_option").length && formData.getAll("crust_option").length) throw new Error("Existem bordas duplicadas.");
-    if (selectedAdicionais.length !== formData.getAll("addition_option").length && formData.getAll("addition_option").length) throw new Error("Existem adicionais duplicados.");
     const selectedOptionIds = [...selectedMassas, ...selectedBordas, ...selectedAdicionais];
     const { data: pizzaOptions } = await supabase
       .from("pizza_options")
@@ -642,21 +669,20 @@ export async function saveProduct(formData: FormData) {
     const toItems = (kind: string) => (pizzaOptions ?? [])
       .filter((item) => item.kind === kind)
       .map((item) => ({ name: item.name, additional_price: Number(item.price) }));
-    const manualMassas = optionLines(formData, "massas");
-    const manualBordas = optionLines(formData, "bordas");
-    const manualAdicionais = optionLines(formData, "adicionais_inline");
-    await replaceProductOptionGroup(supabase, restaurant.id, productId, "Tipos de Massas", "single", isPizza ? [...toItems("massa"), ...manualMassas] : []);
-    await replaceProductOptionGroup(supabase, restaurant.id, productId, "Bordas", "single", isPizza ? [...toItems("borda"), ...manualBordas] : []);
-    await replaceProductOptionGroup(supabase, restaurant.id, productId, "Adicionais", "multiple", [...toItems("adicional"), ...manualAdicionais]);
+    await replaceProductOptionGroup(supabase, restaurant.id, productId, "Tipos de Massas", "single", isPizza ? toItems("massa") : []);
+    await replaceProductOptionGroup(supabase, restaurant.id, productId, "Bordas", "single", isPizza ? toItems("borda") : []);
+    await replaceProductOptionGroup(supabase, restaurant.id, productId, "Adicionais", "multiple", toItems("adicional"));
   }
   revalidatePath("/dashboard/products");
   revalidatePath("/cardapio/produtos");
   revalidatePath("/dashboard/menu");
   revalidatePath("/cardapio");
+  revalidatePath(`/cardapio/${restaurant.slug}`);
   } catch (error) {
+    const editId = id || savedId;
     redirectWithFeedback(
       formData,
-      id ? `/dashboard/products/${id}/edit` : "/dashboard/products/new",
+      editId ? `/cardapio/produtos/${editId}` : "/cardapio/produtos/novo",
       "saved",
       error instanceof Error ? error.message : "Não foi possível salvar o produto.",
     );
@@ -665,10 +691,12 @@ export async function saveProduct(formData: FormData) {
 }
 
 export async function toggleProduct(formData: FormData) {
-  const { supabase } = await requireRestaurant();
-  await supabase.from("products").update({ active: formData.get("active") === "true" }).eq("id", text(formData, "id"));
+  const { supabase, restaurant } = await requireRestaurant();
+  const { error } = await supabase.from("products").update({ active: formData.get("active") === "true" }).eq("id", text(formData, "id")).eq("restaurant_id", restaurant.id);
+  if (error) throw new Error(error.message);
   revalidatePath("/dashboard/products");
   revalidatePath("/cardapio/produtos");
+  revalidatePath(`/cardapio/${restaurant.slug}`);
 }
 
 export async function deleteProduct(formData: FormData) {
@@ -683,28 +711,6 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath(`/cardapio/${restaurant.slug}`);
 }
 
-export async function toggleProductFeatured(formData: FormData) {
-  const { supabase } = await requireRestaurant();
-  const { error } = await supabase.from("products").update({ featured: formData.get("featured") === "true" }).eq("id", text(formData, "id"));
-  if (error && !missingSchemaColumn(error)) throw new Error(error.message);
-  revalidatePath("/dashboard/products");
-  revalidatePath("/cardapio/produtos");
-}
-
-export async function saveProductVariant(formData: FormData) {
-  const { supabase } = await requireRestaurant();
-  const id = text(formData, "id");
-  const payload = {
-    product_id: text(formData, "product_id"),
-    name: text(formData, "name"),
-    price: num(formData, "price"),
-    active: formData.get("active") === "on",
-  };
-  if (id) await supabase.from("product_variants").update(payload).eq("id", id);
-  else await supabase.from("product_variants").insert(payload);
-  revalidatePath(`/cardapio/produtos/${payload.product_id}`);
-}
-
 export async function saveAddon(formData: FormData) {
   const { supabase, restaurant } = await requireRestaurant();
   const id = text(formData, "id");
@@ -714,32 +720,55 @@ export async function saveAddon(formData: FormData) {
     price: num(formData, "price"),
     active: formData.get("active") === "on",
   };
-  if (id) await supabase.from("product_addons").update(payload).eq("id", id);
-  else await supabase.from("product_addons").insert(payload);
+  if (!payload.name) redirectWithFeedback(formData, "/cardapio/adicionais", "saved", "Informe o nome do adicional.");
+  const result = id
+    ? await supabase.from("product_addons").update(payload).eq("id", id).eq("restaurant_id", restaurant.id)
+    : await supabase.from("product_addons").insert(payload);
+  if (result.error) redirectWithFeedback(formData, "/cardapio/adicionais", "saved", result.error.message);
   revalidatePath("/cardapio/adicionais");
+  revalidatePath(`/cardapio/${restaurant.slug}`);
 }
 
 export async function toggleAddon(formData: FormData) {
-  const { supabase } = await requireRestaurant();
-  await supabase.from("product_addons").update({ active: formData.get("active") === "true" }).eq("id", text(formData, "id"));
+  const { supabase, restaurant } = await requireRestaurant();
+  const { error } = await supabase.from("product_addons").update({ active: formData.get("active") === "true" }).eq("id", text(formData, "id")).eq("restaurant_id", restaurant.id);
+  if (error) throw new Error(error.message);
   revalidatePath("/cardapio/adicionais");
+  revalidatePath(`/cardapio/${restaurant.slug}`);
 }
 
 export async function updateRestaurant(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
-  const logoUpload = await saveUpload(formData.get("logo_file"), "logos");
-  const bannerUpload = await saveUpload(formData.get("banner_file"), "banners");
-  const siteCoverUpload = await saveUpload(formData.get("site_cover_file"), "site-covers");
-  const logoUrl = logoUpload ?? (text(formData, "logo_url") || restaurant.logo_url || null);
-  const coverUrl = bannerUpload ?? siteCoverUpload ?? (text(formData, "cover_url") || restaurant.cover_url || null);
-  const bannerUrl = bannerUpload ?? siteCoverUpload ?? (text(formData, "banner_url") || text(formData, "cover_url") || restaurant.banner_url || restaurant.cover_url || null);
-  const siteCoverUrl = siteCoverUpload ?? (text(formData, "site_cover_url") || restaurant.site_cover_url || bannerUrl || coverUrl || null);
+  const { supabase, restaurant } = await requireManager();
+  const name = text(formData, "name");
+  const slug = slugify(text(formData, "slug"));
+  if (!name || !slug) redirectWithFeedback(formData, "/configuracoes", "saved", "Informe o nome da loja e o endereço do cardápio (slug).");
+  const manualOpenStatus = text(formData, "manual_open_status", "auto");
+  // Calculado antes do update: um erro nas faixas não pode deixar o resto gravado.
+  let deliveryRules: ReturnType<typeof deliveryFeeRulesPayload>;
+  try {
+    deliveryRules = deliveryFeeRulesPayload(formData, restaurant.id);
+  } catch (error) {
+    redirectWithFeedback(formData, "/configuracoes", "saved", error instanceof Error ? error.message : "Revise as faixas de entrega.");
+  }
+  let logoUpload: string | null, bannerUpload: string | null, siteCoverUpload: string | null;
+  try {
+    logoUpload = await saveUpload(formData.get("logo_file"), "logos");
+    bannerUpload = await saveUpload(formData.get("banner_file"), "banners");
+    siteCoverUpload = await saveUpload(formData.get("site_cover_file"), "site-covers");
+  } catch (error) {
+    redirectWithFeedback(formData, "/configuracoes", "saved", error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+  }
+  const typed = (key: string) => submittedImageUrl(text(formData, key));
+  const logoUrl = logoUpload ?? (typed("logo_url") || restaurant.logo_url || null);
+  const coverUrl = bannerUpload ?? siteCoverUpload ?? (typed("cover_url") || restaurant.cover_url || null);
+  const bannerUrl = bannerUpload ?? siteCoverUpload ?? (typed("banner_url") || typed("cover_url") || restaurant.banner_url || restaurant.cover_url || null);
+  const siteCoverUrl = siteCoverUpload ?? (typed("site_cover_url") || restaurant.site_cover_url || bannerUrl || coverUrl || null);
   const payload = {
-    name: text(formData, "name"),
+    name,
     legal_name: text(formData, "legal_name") || null,
     cnpj: text(formData, "cnpj") || null,
     state_registration: text(formData, "state_registration") || null,
-    slug: slugify(text(formData, "slug")),
+    slug,
     description: text(formData, "description") || null,
     logo_url: logoUrl,
     cover_url: coverUrl,
@@ -755,7 +784,7 @@ export async function updateRestaurant(formData: FormData) {
     state: text(formData, "state") || null,
     zip_code: text(formData, "zip_code") || null,
     is_open: formData.get("is_open") === "on",
-    manual_open_status: text(formData, "manual_open_status", "auto"),
+    manual_open_status: ["auto", "open", "closed"].includes(manualOpenStatus) ? manualOpenStatus : "auto",
     opening_hours: openingHoursPayload(formData, restaurant.opening_hours),
     minimum_order: num(formData, "minimum_order"),
     delivery_fee: num(formData, "delivery_fee"),
@@ -779,10 +808,9 @@ export async function updateRestaurant(formData: FormData) {
       delete restaurantPayload[missingColumn];
       continue;
     }
-    throw new Error(update.error.message);
+    redirectWithFeedback(formData, "/configuracoes", "saved", update.error.code === "23505" ? "Esse endereço de cardápio (slug) já está em uso." : update.error.message);
   }
 
-  const deliveryRules = deliveryFeeRulesPayload(formData, restaurant.id);
   await replaceDeliveryFeeRules(restaurant.id, deliveryRules);
 
   // "layout": o cabeçalho do painel (nome/logo da loja) é renderizado no layout;
@@ -793,6 +821,7 @@ export async function updateRestaurant(formData: FormData) {
   revalidatePath("/pedidos/novo");
   revalidatePath(`/r/${restaurant.slug}`);
   revalidatePath(`/cardapio/${restaurant.slug}`);
+  if (slug !== restaurant.slug) revalidatePath(`/cardapio/${slug}`);
   redirectWithFeedback(formData, "/configuracoes", "saved");
 }
 
@@ -813,7 +842,7 @@ export async function updateStoreOperationStatus(formData: FormData) {
 }
 
 export async function saveDeliveryFeeRules(formData: FormData) {
-  const { restaurant } = await requireRestaurant();
+  const { restaurant } = await requireManager();
   try {
     const deliveryRules = deliveryFeeRulesPayload(formData, restaurant.id);
     await replaceDeliveryFeeRules(restaurant.id, deliveryRules);
@@ -835,12 +864,20 @@ export async function updateOrderStatus(formData: FormData) {
   const { supabase, restaurant } = await requireRestaurant();
   const id = text(formData, "id");
   const status = text(formData, "status") as OrderStatus;
+  if (!ORDER_STATUSES.includes(status)) throw new Error("Status inválido.");
   const { data: order } = await supabase
     .from("orders")
-    .select("id, external_order_id, external_platform")
+    .select("id, status, external_order_id, external_platform")
     .eq("id", id)
     .eq("restaurant_id", restaurant.id)
     .maybeSingle();
+  if (!order) throw new Error("Pedido não encontrado.");
+  // Pedido encerrado (concluído/cancelado) não volta para a fila.
+  if (order.status === status || order.status === "completed" || order.status === "canceled") {
+    revalidatePath("/pedidos");
+    revalidatePath("/dashboard/orders");
+    return;
+  }
 
   // Pedido do iFood não pode ser concluído manualmente — o iFood finaliza sozinho
   // (o status "completed" chega pelo evento CONCLUDED via polling).
@@ -850,8 +887,25 @@ export async function updateOrderStatus(formData: FormData) {
     return;
   }
 
-  await supabase.from("orders").update({ status }).eq("id", id).eq("restaurant_id", restaurant.id);
-  if (order?.external_order_id && order.external_platform === "ifood") {
+  const { error: updateError } = await supabase.from("orders").update({ status }).eq("id", id).eq("restaurant_id", restaurant.id);
+  if (updateError) throw new Error(updateError.message);
+  // Só fala com o iFood se o pedido foi importado pelo servidor (integration_orders):
+  // external_order_id em orders é editável pelo lojista e apontaria para pedido alheio.
+  const linkedToIFood = order?.external_order_id && order.external_platform === "ifood"
+    ? Boolean((await createServiceClient().from("integration_orders").select("id").eq("order_id", id).eq("restaurant_id", restaurant.id).eq("external_order_id", order.external_order_id).limit(1)).data?.length)
+    : false;
+  if (order?.external_order_id && order.external_platform === "ifood" && !linkedToIFood) {
+    await logIntegrationEvent({
+      restaurantId: restaurant.id,
+      provider: "ifood",
+      direction: "OUTBOUND",
+      eventType: "status_skipped",
+      externalId: order.external_order_id,
+      status: "error",
+      requestPayload: { orderId: id, status },
+      responsePayload: { error: "Pedido sem vínculo de importação do iFood; status não enviado." },
+    });
+  } else if (order?.external_order_id && order.external_platform === "ifood") {
     try {
       const result = await syncOrderStatusToIFood(order.external_order_id, status);
       await logIntegrationEvent({
@@ -895,7 +949,7 @@ export async function updateOrderStatus(formData: FormData) {
 }
 
 export async function deleteOrder(formData: FormData) {
-  const { restaurant } = await requireRestaurant();
+  const { restaurant } = await requireManager();
   const service = createServiceClient();
   const id = text(formData, "id");
   if (!id) return;
@@ -952,8 +1006,6 @@ export async function updatePdvOrder(formData: FormData) {
   redirect('/pedidos/' + id);
 }
 
-export async function createOnlineOrder(formData: FormData) { return createPublicOrder(formData); }
-
 export async function createPublicOrder(formData: FormData) {
   let destination: string;
   try {
@@ -1000,7 +1052,7 @@ export async function saveCustomer(formData: FormData) {
 }
 
 export async function saveCoupon(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const id = text(formData, "id");
   const payload = {
     restaurant_id: restaurant.id,
@@ -1026,7 +1078,7 @@ export async function saveCoupon(formData: FormData) {
 }
 
 export async function deleteCoupon(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const result = await supabase.from("coupons").delete().eq("id", text(formData, "id")).eq("restaurant_id", restaurant.id);
   if (result.error) redirectWithFeedback(formData, "/cupons", "deleted", result.error.message);
   revalidatePath("/cupons");
@@ -1035,7 +1087,7 @@ export async function deleteCoupon(formData: FormData) {
 }
 
 export async function saveLoyaltyProgram(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const campaignStartsAt = text(formData, "campaign_starts_at") || null;
   const campaignEndsAt = text(formData, "campaign_ends_at") || null;
   if (campaignStartsAt && campaignEndsAt && campaignStartsAt > campaignEndsAt) {
@@ -1052,7 +1104,8 @@ export async function saveLoyaltyProgram(formData: FormData) {
   };
   const result = await supabase.from("loyalty_programs").upsert(payload, { onConflict: "restaurant_id" });
   if (result.error) redirectWithFeedback(formData, "/cupons", "saved", result.error.message);
-  const openingHours = ((restaurant.opening_hours as Record<string, unknown> | null) ?? {});
+  const { data: fresh } = await supabase.from("restaurants").select("opening_hours").eq("id", restaurant.id).maybeSingle();
+  const openingHours = ((fresh?.opening_hours ?? restaurant.opening_hours) as Record<string, unknown> | null) ?? {};
   const settingsResult = await supabase
     .from("restaurants")
     .update({
@@ -1072,7 +1125,7 @@ export async function saveLoyaltyProgram(formData: FormData) {
 }
 
 export async function deleteCustomer(formData: FormData) {
-  const { restaurant } = await requireRestaurant();
+  const { restaurant } = await requireManager();
   const service = createServiceClient();
   const id = text(formData, "id");
   if (!id) return;
@@ -1084,7 +1137,7 @@ export async function deleteCustomer(formData: FormData) {
 }
 
 export async function saveIntegration(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const provider = text(formData, "provider");
   const enabled = formData.get("enabled") === "on";
   const { data: existingIntegration } = await supabase
@@ -1182,7 +1235,7 @@ export async function saveIntegration(formData: FormData) {
 }
 
 export async function testIntegration(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const provider = text(formData, "provider");
   const { data: integration } = await supabase
     .from("integrations")
@@ -1190,6 +1243,7 @@ export async function testIntegration(formData: FormData) {
     .eq("restaurant_id", restaurant.id)
     .eq("provider", provider)
     .maybeSingle();
+  if (!integration) redirectWithFeedback(formData, provider === "webhook" ? "/integracoes/webhooks" : `/integracoes/${provider}`, "updated", "Salve a integração antes de testar.");
   const credentials = integration.credentials ?? {};
   const hasAuth = Boolean(integration.api_key || integration.access_token || integration.client_secret || credentials.apiKey || credentials.accessToken || credentials.clientSecret || credentials.webhookSecret);
   const enabled = Boolean(integration.is_enabled ?? integration.enabled);
@@ -1211,7 +1265,7 @@ export async function testIntegration(formData: FormData) {
 }
 
 export async function saveProductMap(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const integrationId = text(formData, "integration_id");
   const result = await supabase.from("integration_product_maps").upsert({
     restaurant_id: restaurant.id,
@@ -1220,6 +1274,8 @@ export async function saveProductMap(formData: FormData) {
     external_product_name: text(formData, "external_product_name"),
     product_id: text(formData, "product_id") || null,
     product_variant_id: text(formData, "product_variant_id") || null,
+    // NULL não conflita em unique(): sem isso cada salvamento criava uma linha nova.
+    external_variant_id: text(formData, "external_variant_id"),
     is_active: formData.get("is_active") === "on",
   }, { onConflict: "integration_id,external_product_id,external_variant_id" });
   if (result.error) redirectWithFeedback(formData, text(formData, "return_to", "/integracoes"), "saved", result.error.message);
@@ -1228,7 +1284,7 @@ export async function saveProductMap(formData: FormData) {
 }
 
 export async function savePaymentMap(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
+  const { supabase, restaurant } = await requireManager();
   const integrationId = text(formData, "integration_id");
   const result = await supabase.from("integration_payment_maps").upsert({
     restaurant_id: restaurant.id,
@@ -1241,28 +1297,6 @@ export async function savePaymentMap(formData: FormData) {
   if (result.error) redirectWithFeedback(formData, text(formData, "return_to", "/integracoes"), "saved", result.error.message);
   revalidatePath(text(formData, "return_to", "/integracoes"));
   redirectWithFeedback(formData, text(formData, "return_to", "/integracoes"), "saved");
-}
-
-export async function legacySaveIntegration(formData: FormData) {
-  const { supabase, restaurant } = await requireRestaurant();
-  const provider = text(formData, "provider");
-  await supabase.from("integrations").upsert({
-    restaurant_id: restaurant.id,
-    provider,
-    enabled: formData.get("enabled") === "on",
-    status: formData.get("enabled") === "on" ? "pending" : "disconnected",
-    credentials: {
-      clientId: text(formData, "client_id"),
-      clientSecret: text(formData, "client_secret"),
-      token: text(formData, "token"),
-      merchantId: text(formData, "merchant_id"),
-    },
-    settings: {
-      webhookUrl: text(formData, "webhook_url"),
-      environment: text(formData, "environment", "sandbox"),
-    },
-  }, { onConflict: "restaurant_id,provider" });
-  revalidatePath("/dashboard/integrations");
 }
 
 // Ficha técnica de produção do produto (documento interno da cozinha).

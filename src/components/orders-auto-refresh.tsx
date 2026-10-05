@@ -14,12 +14,10 @@ export function OrdersAutoRefresh({ intervalMs = 15000 }: { intervalMs?: number 
       if (document.visibilityState === "visible") router.refresh();
     };
     const timer = window.setInterval(tick, intervalMs);
-    const onFocus = () => router.refresh();
-    window.addEventListener("focus", onFocus);
+    // Só visibilitychange: com "focus" junto, voltar para a aba disparava dois refreshes.
     document.addEventListener("visibilitychange", tick);
     return () => {
       window.clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", tick);
     };
   }, [router, intervalMs]);

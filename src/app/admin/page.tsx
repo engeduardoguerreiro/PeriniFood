@@ -7,15 +7,15 @@ import { money } from "@/lib/utils";
 import type { Restaurant } from "@/lib/types";
 
 function StatTile({ icon: Icon, label, value, hint, tone = "brand" }: { icon: typeof Building2; label: string; value: string; hint?: string; tone?: "brand" | "warn" | "danger" }) {
-  const badge = tone === "warn" ? "bg-amber-50 text-amber-700" : tone === "danger" ? "bg-rose-50 text-rose-700" : "bg-[#f6ece9] text-[#c5362e]";
+  const badge = tone === "warn" ? "bg-amber-50 text-amber-700" : tone === "danger" ? "bg-rose-50 text-rose-700" : "bg-[#f6ece9] text-brand";
   return (
-    <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="flex items-center gap-2">
         <span className={`grid h-6 w-6 place-items-center rounded-full ${badge}`}><Icon size={13} /></span>
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{label}</p>
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-[#9c988f]">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-ink-faint">{hint}</p>}
     </div>
   );
 }
@@ -44,12 +44,14 @@ export default async function AdminOverviewPage() {
   const suspended = subs.filter((s) => s.status === "suspended").length;
   const since30 = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const newClients = rows.filter((r) => r.created_at >= since30).length;
+  // Sem linha de assinatura também conta como aguardando ativação.
+  const pendingStores = rows.filter((r) => (subByRestaurant.get(r.id)?.status ?? "pending") === "pending");
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Assinantes</h1>
-        <p className="text-sm text-[#9c988f]">Contrato, módulos e mensalidade de cada cliente PeriniFood.</p>
+        <p className="text-sm text-ink-faint">Contrato, módulos e mensalidade de cada cliente PeriniFood.</p>
       </div>
 
       {!ready && (
@@ -63,6 +65,20 @@ export default async function AdminOverviewPage() {
         </div>
       )}
 
+      {pendingStores.length > 0 && (
+        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+          <p className="font-semibold">{pendingStores.length === 1 ? "1 loja aguardando ativação" : `${pendingStores.length} lojas aguardando ativação`}</p>
+          <p className="mt-0.5 text-violet-800">Confirme o pagamento ou o contato e clique em “Ativar loja” na ficha do cliente.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {pendingStores.map((r) => (
+              <Link key={r.id} href={`/admin/clientes/${r.id}`} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-violet-800 ring-1 ring-violet-200 transition hover:ring-violet-400">
+                {r.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatTile icon={Building2} label="Assinantes" value={String(rows.length)} hint={`${newClients} novos em 30 dias`} />
         <StatTile icon={Repeat} label="Receita recorrente" value={money(mrr)} hint="MRR contratado" />
@@ -71,11 +87,11 @@ export default async function AdminOverviewPage() {
         <StatTile icon={ShieldOff} label="Suspensos" value={String(suspended)} tone="danger" hint="Sem acesso ao sistema" />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+      <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[880px] text-sm">
             <thead>
-              <tr className="border-b border-[#efece6] text-left text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">
+              <tr className="border-b border-line-soft text-left text-xs font-semibold uppercase tracking-wide text-ink-soft">
                 <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Contato</th>
                 <th className="px-4 py-3">Plano</th>
@@ -88,30 +104,30 @@ export default async function AdminOverviewPage() {
             <tbody>
               {rows.map((r) => {
                 const sub = subByRestaurant.get(r.id);
-                const status = sub?.status ?? "trial";
+                const status = sub?.status ?? "pending";
                 const mods = sub?.modules ?? [];
                 return (
-                  <tr key={r.id} className="border-b border-[#efece6] last:border-0 hover:bg-[#faf9f6]">
+                  <tr key={r.id} className="border-b border-line-soft last:border-0 hover:bg-[#faf9f6]">
                     <td className="px-4 py-3">
-                      <Link href={`/admin/clientes/${r.id}`} className="font-semibold text-[#1b1a17] transition hover:text-[#c5362e]">
+                      <Link href={`/admin/clientes/${r.id}`} className="font-semibold text-ink transition hover:text-brand">
                         {r.name}
                       </Link>
-                      <p className="text-xs text-[#9c988f]">{[r.city, r.state].filter(Boolean).join(" / ") || `/${r.slug}`}</p>
+                      <p className="text-xs text-ink-faint">{[r.city, r.state].filter(Boolean).join(" / ") || `/${r.slug}`}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[#6d6a63]">{sub?.contact_email || emailById.get(r.owner_id) || "—"}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-[#2b2925]">{planLabel[sub?.plan ?? ""] ?? sub?.plan ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-ink-soft">{sub?.contact_email || emailById.get(r.owner_id) || "—"}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-ink-body">{planLabel[sub?.plan ?? ""] ?? sub?.plan ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${statusToneSub[status]}`}>{statusLabelSub[status]}</span>
                     </td>
                     <td className="px-4 py-3 text-right font-medium [font-variant-numeric:tabular-nums]">{money(sub?.monthly_amount ?? 0)}</td>
-                    <td className="px-4 py-3 text-xs text-[#6d6a63]">{sub ? `Dia ${sub.billing_day}` : "—"}</td>
+                    <td className="px-4 py-3 text-xs text-ink-soft">{sub ? `Dia ${sub.billing_day}` : "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex max-w-[240px] flex-wrap gap-1">
                         {mods.slice(0, 3).map((m) => (
-                          <span key={m} className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">{moduleName(m)}</span>
+                          <span key={m} className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-ink-soft">{moduleName(m)}</span>
                         ))}
-                        {mods.length > 3 && <span className="rounded-full bg-[#f6ece9] px-2 py-0.5 text-[0.65rem] font-medium text-[#c5362e]">+{mods.length - 3}</span>}
-                        {!mods.length && <span className="text-xs text-[#b0aaa0]">Nenhum</span>}
+                        {mods.length > 3 && <span className="rounded-full bg-[#f6ece9] px-2 py-0.5 text-[0.65rem] font-medium text-brand">+{mods.length - 3}</span>}
+                        {!mods.length && <span className="text-xs text-ink-faint">Nenhum</span>}
                       </div>
                     </td>
                   </tr>
@@ -119,7 +135,7 @@ export default async function AdminOverviewPage() {
               })}
               {!rows.length && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#9c988f]">Nenhum assinante cadastrado.</td>
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-faint">Nenhum assinante cadastrado.</td>
                 </tr>
               )}
             </tbody>
@@ -127,7 +143,7 @@ export default async function AdminOverviewPage() {
         </div>
       </section>
 
-      <p className="text-xs text-[#b0aaa0]">
+      <p className="text-xs text-ink-faint">
         Em respeito à LGPD, este painel não exibe faturamento, pedidos ou dados de consumidores dos clientes — apenas a relação comercial deles com a PeriniFood.
         {(payments ?? []).length > 0 && ` Formas de recebimento aceitas: ${Object.values(methodLabel).join(", ")}.`}
       </p>

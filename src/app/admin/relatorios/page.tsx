@@ -6,13 +6,13 @@ import { money } from "@/lib/utils";
 
 function Tile({ icon: Icon, label, value, hint }: { icon: typeof Users; label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-[#e7e4dd] bg-white p-4 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="flex items-center gap-2">
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-[#c5362e]"><Icon size={13} /></span>
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{label}</p>
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-brand"><Icon size={13} /></span>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{label}</p>
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-[#9c988f]">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-ink-faint">{hint}</p>}
     </div>
   );
 }
@@ -69,14 +69,14 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Relatórios de faturamento</h1>
-          <p className="text-sm text-[#9c988f]">Mensalidades recebidas dos assinantes PeriniFood.</p>
+          <p className="text-sm text-ink-faint">Mensalidades recebidas dos assinantes PeriniFood.</p>
         </div>
         <div className="flex items-center gap-1.5">
           {years.map((y) => (
             <Link
               key={y}
               href={`/admin/relatorios?ano=${y}`}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${y === year ? "bg-[#211d19] text-white" : "border border-[#e7e4dd] bg-white text-[#6d6a63] hover:border-[#c5362e] hover:text-[#c5362e]"}`}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${y === year ? "bg-btn text-white" : "border border-line bg-white text-ink-soft hover:border-brand hover:text-brand"}`}
             >
               {y}
             </Link>
@@ -91,13 +91,13 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
         <Tile icon={Users} label="Clientes pagantes" value={String(payingClients)} hint={`em ${year}`} />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
-        <div className="border-b border-[#efece6] px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Faturamento mês a mês · {year}</h2>
+      <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+        <div className="border-b border-line-soft px-4 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Faturamento mês a mês · {year}</h2>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#efece6] text-left text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">
+            <tr className="border-b border-line-soft text-left text-xs font-semibold uppercase tracking-wide text-ink-soft">
               <th className="px-4 py-2.5">Mês</th>
               <th className="px-4 py-2.5 text-right">Mensalidades</th>
               <th className="px-4 py-2.5 text-right">Recebido</th>
@@ -109,11 +109,11 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
               const row = byMonth.get(m) ?? { total: 0, count: 0 };
               const share = yearTotal ? (row.total / yearTotal) * 100 : 0;
               return (
-                <tr key={m} className="border-b border-[#efece6] last:border-0">
-                  <td className="px-4 py-2.5 capitalize text-[#2b2925]">{new Date(year, m, 1).toLocaleDateString("pt-BR", { month: "long" })}</td>
-                  <td className="px-4 py-2.5 text-right text-[#6d6a63] [font-variant-numeric:tabular-nums]">{row.count || "—"}</td>
+                <tr key={m} className="border-b border-line-soft last:border-0">
+                  <td className="px-4 py-2.5 capitalize text-ink-body">{new Date(year, m, 1).toLocaleDateString("pt-BR", { month: "long" })}</td>
+                  <td className="px-4 py-2.5 text-right text-ink-soft [font-variant-numeric:tabular-nums]">{row.count || "—"}</td>
                   <td className="px-4 py-2.5 text-right font-medium [font-variant-numeric:tabular-nums]">{row.total ? money(row.total) : "—"}</td>
-                  <td className="px-4 py-2.5 text-right text-xs text-[#9c988f] [font-variant-numeric:tabular-nums]">{row.total ? `${share.toFixed(1)}%` : "—"}</td>
+                  <td className="px-4 py-2.5 text-right text-xs text-ink-faint [font-variant-numeric:tabular-nums]">{row.total ? `${share.toFixed(1)}%` : "—"}</td>
                 </tr>
               );
             })}
@@ -121,59 +121,59 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
               <td className="px-4 py-3">Total {year}</td>
               <td className="px-4 py-3 text-right [font-variant-numeric:tabular-nums]">{ofYear.length}</td>
               <td className="px-4 py-3 text-right [font-variant-numeric:tabular-nums]">{money(yearTotal)}</td>
-              <td className="px-4 py-3 text-right text-xs text-[#9c988f]">100%</td>
+              <td className="px-4 py-3 text-right text-xs text-ink-faint">100%</td>
             </tr>
           </tbody>
         </table>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Por plano · {year}</h2>
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-soft">Por plano · {year}</h2>
           {byPlan.size ? (
-            <ul className="divide-y divide-[#efece6]">
+            <ul className="divide-y divide-line-soft">
               {[...byPlan.entries()].sort((a, b) => b[1].total - a[1].total).map(([plan, v]) => (
                 <li key={plan} className="flex items-center justify-between py-2.5 text-sm">
-                  <span className="text-[#2b2925]">{planLabel[plan] ?? plan} <span className="text-xs text-[#9c988f]">· {v.clients.size} cliente(s)</span></span>
+                  <span className="text-ink-body">{planLabel[plan] ?? plan} <span className="text-xs text-ink-faint">· {v.clients.size} cliente(s)</span></span>
                   <strong className="[font-variant-numeric:tabular-nums]">{money(v.total)}</strong>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-[#9c988f]">Sem recebimentos no período.</p>}
+          ) : <p className="text-sm text-ink-faint">Sem recebimentos no período.</p>}
         </section>
 
-        <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Por forma de pagamento · {year}</h2>
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-soft">Por forma de pagamento · {year}</h2>
           {byMethod.size ? (
-            <ul className="divide-y divide-[#efece6]">
+            <ul className="divide-y divide-line-soft">
               {[...byMethod.entries()].sort((a, b) => b[1] - a[1]).map(([m, total]) => (
                 <li key={m} className="flex items-center justify-between py-2.5 text-sm">
-                  <span className="text-[#2b2925]">{methodLabel[m] ?? m}</span>
+                  <span className="text-ink-body">{methodLabel[m] ?? m}</span>
                   <strong className="[font-variant-numeric:tabular-nums]">{money(total)}</strong>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-[#9c988f]">Sem recebimentos no período.</p>}
+          ) : <p className="text-sm text-ink-faint">Sem recebimentos no período.</p>}
         </section>
       </div>
 
-      <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">Pendências</h2>
+      <section className="rounded-2xl border border-line bg-white p-5">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-soft">Pendências</h2>
         {inadimplentes.length ? (
-          <ul className="divide-y divide-[#efece6]">
+          <ul className="divide-y divide-line-soft">
             {inadimplentes.map((s) => (
               <li key={s.restaurant_id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <Link href={`/admin/clientes/${s.restaurant_id}`} className="font-medium text-[#2b2925] transition hover:text-[#c5362e]">
+                <Link href={`/admin/clientes/${s.restaurant_id}`} className="font-medium text-ink-body transition hover:text-brand">
                   {nameById.get(s.restaurant_id) ?? s.restaurant_id}
                 </Link>
                 <span className="flex items-center gap-3">
-                  <span className="text-xs text-[#9c988f] [font-variant-numeric:tabular-nums]">{money(s.monthly_amount)}/mês · vence dia {s.billing_day}</span>
+                  <span className="text-xs text-ink-faint [font-variant-numeric:tabular-nums]">{money(s.monthly_amount)}/mês · vence dia {s.billing_day}</span>
                   <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${statusToneSub[s.status]}`}>{statusLabelSub[s.status]}</span>
                 </span>
               </li>
             ))}
           </ul>
-        ) : <p className="text-sm text-[#9c988f]">Nenhum assinante em atraso. 🎉</p>}
+        ) : <p className="text-sm text-ink-faint">Nenhum assinante em atraso. 🎉</p>}
       </section>
     </div>
   );

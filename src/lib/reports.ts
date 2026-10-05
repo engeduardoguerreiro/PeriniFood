@@ -1,4 +1,6 @@
 import { CUSTOMER_FIELDS } from "@/lib/public-data";
+import { orderCode } from "@/lib/utils";
+import { STORE_TIME_ZONE, addDaysToDateParts, formatStoreDateTime, keyFromParts, partsFromKey, zonedDateParts, zonedLocalTimeToUtc } from "@/lib/timezone";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Customer, Order, OrderItem, Product, Restaurant } from "@/lib/types";
@@ -44,60 +46,52 @@ function first(value: string | string[] | undefined, fallback = "") {
   return Array.isArray(value) ? value[0] ?? fallback : value ?? fallback;
 }
 
-function startOfDay(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
+// Datas trabalhadas como dia "de parede" no fuso da loja e convertidas para UTC
+// só no fim: com setHours() do servidor (UTC) o "hoje" começava às 21h de ontem.
+type Day = { year: number; month: number; day: number };
 
-function addDays(date: Date, days: number) {
-  const copy = new Date(date);
-  copy.setDate(copy.getDate() + days);
-  return copy;
-}
-
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+function startOfMonth(day: Day): Day {
+  return { year: day.year, month: day.month, day: 1 };
 }
 
 export function resolveReportRange(searchParams: ReportSearchParams) {
   const period = first(searchParams.periodo, "30dias");
-  const today = startOfDay(new Date());
-  let start = addDays(today, -29);
-  let end = addDays(today, 1);
+  const today = zonedDateParts(new Date());
+  const todayDay: Day = { year: today.year, month: today.month, day: today.day };
+  let start = addDaysToDateParts(todayDay, -29);
+  let end = addDaysToDateParts(todayDay, 1);
 
   if (period === "hoje") {
-    start = today;
-    end = addDays(today, 1);
+    start = todayDay;
   } else if (period === "ontem") {
-    start = addDays(today, -1);
-    end = today;
+    start = addDaysToDateParts(todayDay, -1);
+    end = todayDay;
   } else if (period === "7dias") {
-    start = addDays(today, -6);
-    end = addDays(today, 1);
+    start = addDaysToDateParts(todayDay, -6);
   } else if (period === "mes") {
-    start = startOfMonth(today);
-    end = addDays(today, 1);
+    start = startOfMonth(todayDay);
   } else if (period === "mes-anterior") {
-    const thisMonth = startOfMonth(today);
-    start = startOfMonth(addDays(thisMonth, -1));
+    const thisMonth = startOfMonth(todayDay);
+    start = startOfMonth(addDaysToDateParts(thisMonth, -1));
     end = thisMonth;
   } else if (period === "personalizado") {
-    const inicio = first(searchParams.inicio);
-    const fim = first(searchParams.fim);
-    if (inicio) start = startOfDay(new Date(`${inicio}T00:00:00`));
-    if (fim) end = addDays(startOfDay(new Date(`${fim}T00:00:00`)), 1);
+    const inicio = partsFromKey(first(searchParams.inicio));
+    const fim = partsFromKey(first(searchParams.fim));
+    if (inicio) start = inicio;
+    if (fim) end = addDaysToDateParts(fim, 1);
   }
 
+  const startDate = zonedLocalTimeToUtc(start);
+  const endDate = zonedLocalTimeToUtc(end);
   return {
     period,
     label: PERIOD_LABELS[period] ?? PERIOD_LABELS["30dias"],
-    start,
-    end,
-    startISO: start.toISOString(),
-    endISO: end.toISOString(),
-    startInput: start.toISOString().slice(0, 10),
-    endInput: addDays(end, -1).toISOString().slice(0, 10),
+    start: startDate,
+    end: endDate,
+    startISO: startDate.toISOString(),
+    endISO: endDate.toISOString(),
+    startInput: keyFromParts(start),
+    endInput: keyFromParts(addDaysToDateParts(end, -1)),
   };
 }
 
@@ -147,8 +141,10 @@ function numberValue(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const dayMonthFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: STORE_TIME_ZONE, day: "2-digit", month: "2-digit" });
+
 function dateKey(date: string) {
-  return new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return dayMonthFormatter.format(new Date(date));
 }
 
 function isCanceled(order: Order) {
@@ -225,8 +221,9 @@ export async function loadReportDataset(
   const orderIds = orders.map((order) => order.id);
 
   const [{ data: itemRows }, { data: productRows }, { data: customerRows }] = await Promise.all([
+    // Join pelo período em vez de .in(ids): milhares de ids estouravam a URL.
     orderIds.length
-      ? supabase.from("order_items").select("*").eq("restaurant_id", restaurant.id).in("order_id", orderIds)
+      ? supabase.from("order_items").select("*, orders!inner(created_at)").eq("restaurant_id", restaurant.id).gte("orders.created_at", range.startISO).lt("orders.created_at", range.endISO).limit(50000)
       : Promise.resolve({ data: [] as Row[] }),
     supabase.from("products").select("*, categories(name)").eq("restaurant_id", restaurant.id),
     supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id),
@@ -275,8 +272,8 @@ export function buildSalesReport(dataset: Awaited<ReturnType<typeof loadReportDa
   const delivery = usefulOrders.reduce((sum, order) => sum + numberValue(order.delivery_fee), 0);
   const net = usefulOrders.reduce((sum, order) => sum + numberValue(order.total), 0);
   const rows = usefulOrders.map((order) => ({
-    Pedido: `#${order.code ?? String(order.order_number ?? "").padStart(4, "0")}`,
-    Data: new Date(order.created_at).toLocaleString("pt-BR"),
+    Pedido: `#${orderCode(order)}`,
+    Data: formatStoreDateTime(order.created_at),
     Cliente: order.customer_name ?? "Cliente balcão",
     Canal: sourceLabel(order.external_platform ?? order.source),
     Pagamento: paymentLabel(order.payment_method),
@@ -334,13 +331,13 @@ export function buildOrdersReport(dataset: Awaited<ReturnType<typeof loadReportD
     statusChart: entriesToChart(groupSum(orders, (order) => order.status, () => 1)),
     sourceChart: entriesToChart(groupSum(usefulOrders, (order) => sourceLabel(order.external_platform ?? order.source), () => 1)),
     rows: orders.map((order) => ({
-      Pedido: `#${order.code ?? String(order.order_number ?? "").padStart(4, "0")}`,
+      Pedido: `#${orderCode(order)}`,
       Cliente: order.customer_name ?? "Cliente balcão",
       Status: order.status,
       Tipo: orderTypeLabel(order.type),
       Origem: sourceLabel(order.external_platform ?? order.source),
       Total: netCurrency(order.total),
-      Data: new Date(order.created_at).toLocaleString("pt-BR"),
+      Data: formatStoreDateTime(order.created_at),
     })),
   };
 }
@@ -378,7 +375,7 @@ export function buildCustomersReport(dataset: Awaited<ReturnType<typeof loadRepo
       Telefone: row.phone,
       Pedidos: row.orders,
       Faturamento: netCurrency(row.revenue),
-      "Último pedido": new Date(row.last).toLocaleString("pt-BR"),
+      "Último pedido": formatStoreDateTime(row.last),
     })),
   };
 }
@@ -416,12 +413,12 @@ export function buildDeliveryReport(dataset: Awaited<ReturnType<typeof loadRepor
   const fees = deliveryOrders.reduce((sum, order) => sum + numberValue(order.delivery_fee), 0);
   const revenue = deliveryOrders.reduce((sum, order) => sum + numberValue(order.total), 0);
   const rows = deliveryOrders.map((order) => ({
-    Pedido: `#${order.code ?? String(order.order_number ?? "").padStart(4, "0")}`,
+    Pedido: `#${orderCode(order)}`,
     Cliente: order.customer_name ?? "Cliente",
     Endereço: order.delivery_address ?? "-",
     Entrega: netCurrency(order.delivery_fee),
     Total: netCurrency(order.total),
-    Data: new Date(order.created_at).toLocaleString("pt-BR"),
+    Data: formatStoreDateTime(order.created_at),
   }));
 
   return {
@@ -443,7 +440,12 @@ function netCurrency(value: number | string | null | undefined) {
 export function toCsv(rows: TableRow[]) {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]);
-  const escape = (value: string | number) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  // Nome de cliente vem do checkout público: "=HYPERLINK(...)" viraria fórmula no Excel.
+  const escape = (value: string | number) => {
+    const raw = String(value ?? "");
+    const safe = typeof value === "string" && /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
   return [headers.join(";"), ...rows.map((row) => headers.map((header) => escape(row[header])).join(";"))].join("\n");
 }
 

@@ -47,7 +47,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
     supabase.from("products").select("*").eq("restaurant_id", restaurant.id).eq("active", true).order("name"),
     supabase.from("product_types").select("*").eq("restaurant_id", restaurant.id).eq("active", true).order("name"),
     supabase.from("categories").select("*").eq("restaurant_id", restaurant.id).eq("active", true).order("display_order"),
-    supabase.from("product_variants").select("*").eq("active", true).order("name"),
+    supabase.from("product_variants").select("*, products!inner(restaurant_id)").eq("products.restaurant_id", restaurant.id).eq("active", true).order("name"),
     supabase.from("product_options").select("*, product_option_items(*)").eq("restaurant_id", restaurant.id),
     supabase.from("delivery_fee_rules").select("*").eq("restaurant_id", restaurant.id).eq("active", true).order("min_km"),
     supabase.from("pizza_options").select("*").eq("restaurant_id", restaurant.id).eq("active", true),

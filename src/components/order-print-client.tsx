@@ -218,9 +218,9 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
   if (auto) {
     return (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-[#c5362e]" />
-        <p className="text-sm font-semibold text-[#1b1a17]">{status}</p>
-        <p className="text-xs text-[#9c988f]">Pedido lançado. Voltando para os pedidos…</p>
+        <RefreshCw className="h-6 w-6 animate-spin text-brand" />
+        <p className="text-sm font-semibold text-ink">{status}</p>
+        <p className="text-xs text-ink-faint">Pedido lançado. Voltando para os pedidos…</p>
       </div>
     );
   }
@@ -229,13 +229,13 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
     <div className={agentOnline ? "mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm print:hidden" : "mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm print:hidden"}>
       <div className="flex items-start gap-2">
         {agentOnline ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-700" /> : <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-700" />}
-        <p className="font-bold text-[#2b2925]">{status}</p>
+        <p className="font-bold text-ink-body">{status}</p>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#211d19] px-3 py-2 text-xs font-black text-white"
+          className="inline-flex items-center gap-2 rounded-lg bg-btn px-3 py-2 text-xs font-black text-white"
         >
           <Printer className="h-4 w-4" />
           Imprimir comanda
@@ -244,13 +244,13 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
           type="button"
           onClick={printDirect}
           disabled={printing}
-          className="inline-flex items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-xs font-black text-[#2b2925] disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs font-black text-ink-body disabled:opacity-60"
         >
           {printing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
           Enviar pelo agente local
         </button>
       </div>
-      <p className="mt-2 text-[11px] text-[#6d6a63]">
+      <p className="mt-2 text-[11px] text-ink-soft">
         &quot;Imprimir comanda&quot; abre a janela de impressão do computador, onde aparecem as impressoras instaladas. Funciona em qualquer navegador.
       </p>
     </div>

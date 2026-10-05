@@ -21,12 +21,12 @@ async function Content({ searchParams }: { searchParams: ReportSearchParams }) {
       <ReportFilters searchParams={searchParams} showAdvanced />
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {exports.map((item) => (
-          <article key={item.type} className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-sm">
+          <article key={item.type} className="rounded-2xl border border-line bg-white p-5 shadow-sm">
             <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#f6ece9] text-[#c5362e]"><FileSpreadsheet size={20} /></span>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#f6ece9] text-brand"><FileSpreadsheet size={20} /></span>
               <div>
                 <h2 className="text-lg font-black text-slate-950">{item.title}</h2>
-                <p className="mt-1 text-sm font-medium text-[#9c988f]">{item.description}</p>
+                <p className="mt-1 text-sm font-medium text-ink-faint">{item.description}</p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">

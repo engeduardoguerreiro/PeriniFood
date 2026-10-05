@@ -11,13 +11,13 @@ export function ContentSkeleton({ rows = 6 }: { rows?: number }) {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-2xl border border-[#e7e4dd] bg-white" />
+          <div key={i} className="h-24 animate-pulse rounded-2xl border border-line bg-white" />
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white">
+      <div className="overflow-hidden rounded-2xl border border-line bg-white">
         {Array.from({ length: rows }, (_, i) => (
-          <div key={i} className="flex items-center gap-4 border-b border-[#efece6] px-4 py-3.5 last:border-0">
+          <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-3.5 last:border-0">
             <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-[#f0ede7]" />
             <div className="flex-1 space-y-2">
               <div className="h-3.5 w-1/3 animate-pulse rounded bg-[#eae7df]" />

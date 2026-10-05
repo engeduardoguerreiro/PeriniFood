@@ -34,8 +34,8 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Fichas técnicas</h1>
-          <p className="text-sm text-[#9c988f]">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Fichas técnicas</h1>
+          <p className="text-sm text-ink-faint">
             {preenchidas} de {products.length} produtos com ficha preenchida. Todo produto do cardápio aparece aqui automaticamente.
           </p>
         </div>
@@ -52,13 +52,13 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+      <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
         {products.map((product) => {
           const recipe = recipeByProduct.get(product.id) ?? null;
           const filled = isRecipeFilled(recipe);
           return (
-            <div key={product.id} className="flex items-center gap-3 border-b border-[#efece6] px-4 py-3 last:border-0 hover:bg-[#faf9f6]">
-              <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7e4dd] bg-[#faf9f6] text-[#c4bdb0]">
+            <div key={product.id} className="flex items-center gap-3 border-b border-line-soft px-4 py-3 last:border-0 hover:bg-[#faf9f6]">
+              <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-[#faf9f6] text-[#c4bdb0]">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={product.image_url} alt="" className="h-full w-full object-cover" />
@@ -68,21 +68,21 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-[#1b1a17]">{product.name}</p>
-                <p className="truncate text-xs text-[#9c988f]">
+                <p className="truncate text-sm font-medium text-ink">{product.name}</p>
+                <p className="truncate text-xs text-ink-faint">
                   {product.categories?.name ?? "Sem categoria"}
                   {!product.active && " · inativo"}
                   {filled ? ` · ${recipe?.ingredients.length ?? 0} ingredientes, ${recipe?.steps.length ?? 0} passos` : ""}
                 </p>
               </div>
 
-              <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium ${filled ? "bg-emerald-50 text-emerald-700" : "bg-[#f1efea] text-[#9c988f]"}`}>
+              <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium ${filled ? "bg-emerald-50 text-emerald-700" : "bg-[#f1efea] text-ink-faint"}`}>
                 {filled ? "Preenchida" : "Em branco"}
               </span>
 
               <Link
                 href={`/cardapio/fichas/${product.id}`}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#e7e4dd] bg-white text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-soft transition hover:border-brand hover:text-brand"
                 aria-label={`Editar ficha de ${product.name}`}
               >
                 <Pencil size={15} />
@@ -92,7 +92,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
                 <a
                   href={`/ficha/${product.id}/print`}
                   target="_blank"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#e7e4dd] bg-white text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-soft transition hover:border-brand hover:text-brand"
                   aria-label={`Imprimir ficha de ${product.name}`}
                 >
                   <Printer size={15} />
@@ -102,7 +102,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
           );
         })}
 
-        {!products.length && <p className="p-10 text-center text-sm text-[#9c988f]">Cadastre produtos no cardápio para montar as fichas.</p>}
+        {!products.length && <p className="p-10 text-center text-sm text-ink-faint">Cadastre produtos no cardápio para montar as fichas.</p>}
       </section>
     </div>
   );

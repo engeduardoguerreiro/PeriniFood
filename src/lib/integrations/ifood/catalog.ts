@@ -1,4 +1,5 @@
 import { IFOOD_BASE_URL } from "./config";
+import { isStorageImageUrl } from "@/lib/image-url";
 
 type ApiResult = { ok: boolean; status: number; data: unknown; text: string };
 
@@ -37,14 +38,17 @@ export async function ensureCategory(merchantId: string, catalogId: string, toke
 
 // Baixa a imagem do produto e envia ao iFood (data URI). Best-effort com timeout.
 export async function uploadImage(merchantId: string, token: string, imageUrl: string): Promise<string | null> {
+  // Só baixa do nosso Storage (a URL vem de texto livre do lojista) e converte para
+  // JPEG: os uploads novos são WebP, formato que o catálogo do iFood não garante aceitar.
+  if (!isStorageImageUrl(imageUrl)) return null;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
-    const resp = await fetch(imageUrl, { signal: controller.signal }).finally(() => clearTimeout(timeout));
+    const resp = await fetch(imageUrl, { signal: controller.signal, redirect: "error" }).finally(() => clearTimeout(timeout));
     if (!resp.ok) return null;
-    const ct = resp.headers.get("content-type") || "image/jpeg";
-    const b64 = Buffer.from(await resp.arrayBuffer()).toString("base64");
-    const r = await api("POST", `/catalog/v2.0/merchants/${merchantId}/image/upload`, token, { image: `data:${ct};base64,${b64}` });
+    const { default: sharp } = await import("sharp");
+    const jpeg = await sharp(Buffer.from(await resp.arrayBuffer())).flatten({ background: "#ffffff" }).jpeg({ quality: 85 }).toBuffer();
+    const r = await api("POST", `/catalog/v2.0/merchants/${merchantId}/image/upload`, token, { image: `data:image/jpeg;base64,${jpeg.toString("base64")}` });
     return r.ok ? (r.data as { imagePath?: string })?.imagePath ?? null : null;
   } catch {
     return null;

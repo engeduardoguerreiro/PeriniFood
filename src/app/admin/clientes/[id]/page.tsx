@@ -26,8 +26,8 @@ const roleLabel: Record<string, string> = {
   kitchen: "Cozinha",
 };
 
-const field = "mt-1 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 py-2 text-sm text-[#2b2925] outline-none transition focus:border-[#c5362e]";
-const labelCls = "text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]";
+const field = "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-body outline-none transition focus:border-brand";
+const labelCls = "text-[0.65rem] font-semibold uppercase tracking-wide text-ink-faint";
 
 const feedbackText: Record<string, string> = {
   cliente: "Dados do cliente salvos.",
@@ -40,11 +40,11 @@ const feedbackText: Record<string, string> = {
 
 function Card({ title, icon: Icon, children, aside }: { title: string; icon: typeof Store; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-[#e7e4dd] bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+    <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-[#c5362e]"><Icon size={13} /></span>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#6d6a63]">{title}</h2>
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-brand"><Icon size={13} /></span>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{title}</h2>
         </div>
         {aside}
       </div>
@@ -77,7 +77,8 @@ export default async function AdminClientPage({
   ]);
 
   const payments = (paymentRows ?? []) as unknown as Payment[];
-  const status = sub?.status ?? "trial";
+  const status = sub?.status ?? "pending";
+  const pending = status === "pending";
   const enabled = new Set(sub?.modules ?? []);
   const suspended = status === "suspended" || status === "canceled";
   const paidTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0);
@@ -87,19 +88,32 @@ export default async function AdminClientPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#c5362e]">
+          <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-faint transition hover:text-brand">
             <ArrowLeft size={13} /> Todos os assinantes
           </Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{r.name}</h1>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusToneSub[status]}`}>{statusLabelSub[status]}</span>
-            {sub?.suspension_reason && <span className="text-xs text-[#9c988f]">{sub.suspension_reason}</span>}
+            {sub?.suspension_reason && <span className="text-xs text-ink-faint">{sub.suspension_reason}</span>}
           </div>
-          <p className="text-sm text-[#9c988f]">Cliente desde {new Date(r.created_at).toLocaleDateString("pt-BR")} · /{r.slug}</p>
+          <p className="text-sm text-ink-faint">Cliente desde {new Date(r.created_at).toLocaleDateString("pt-BR")} · /{r.slug}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {suspended ? (
+          {pending ? (
+            <>
+              <form action={setSubscriptionStatus}>
+                <input type="hidden" name="restaurant_id" value={id} />
+                <input type="hidden" name="status" value="active" />
+                <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">Ativar loja</button>
+              </form>
+              <form action={setSubscriptionStatus}>
+                <input type="hidden" name="restaurant_id" value={id} />
+                <input type="hidden" name="status" value="trial" />
+                <button className="rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-800 transition hover:bg-sky-100">Liberar como teste</button>
+              </form>
+            </>
+          ) : suspended ? (
             <form action={setSubscriptionStatus}>
               <input type="hidden" name="restaurant_id" value={id} />
               <input type="hidden" name="status" value="active" />
@@ -117,8 +131,8 @@ export default async function AdminClientPage({
               <form action={setSubscriptionStatus} className="flex items-center gap-2">
                 <input type="hidden" name="restaurant_id" value={id} />
                 <input type="hidden" name="status" value="suspended" />
-                <input name="suspension_reason" placeholder="Motivo (opcional)" className="w-44 rounded-lg border border-[#e7e4dd] px-3 py-2 text-sm outline-none focus:border-[#c5362e]" />
-                <button className="rounded-xl bg-[#c5362e] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#a92c25]">Suspender sistema</button>
+                <input name="suspension_reason" placeholder="Motivo (opcional)" className="w-44 rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand" />
+                <button className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-[#a92c25]">Suspender sistema</button>
               </form>
             </>
           )}
@@ -198,23 +212,23 @@ export default async function AdminClientPage({
       <Card
         title="Módulos contratados"
         icon={Blocks}
-        aside={<span className="text-xs text-[#9c988f]">{enabled.size} de {PLATFORM_MODULES.length} liberados</span>}
+        aside={<span className="text-xs text-ink-faint">{enabled.size} de {PLATFORM_MODULES.length} liberados</span>}
       >
         <form action={saveModules} className="space-y-5">
           <input type="hidden" name="restaurant_id" value={id} />
           {MODULE_GROUPS.map((group) => (
             <div key={group}>
-              <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-[#9c988f]">{group}</p>
+              <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-ink-faint">{group}</p>
               <div className="grid gap-2 md:grid-cols-2">
                 {PLATFORM_MODULES.filter((m) => m.group === group).map((m) => (
-                  <label key={m.key} className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#e7e4dd] p-3 transition hover:border-[#dcd8cf] has-[:checked]:border-[#c5362e] has-[:checked]:bg-[#fdf7f6]">
-                    <input type="checkbox" name="module" value={m.key} defaultChecked={enabled.has(m.key)} className="mt-0.5 h-4 w-4 accent-[#c5362e]" />
+                  <label key={m.key} className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line p-3 transition hover:border-[#dcd8cf] has-[:checked]:border-brand has-[:checked]:bg-[#fdf7f6]">
+                    <input type="checkbox" name="module" value={m.key} defaultChecked={enabled.has(m.key)} className="mt-0.5 h-4 w-4 accent-brand" />
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-sm font-medium text-[#2b2925]">{m.name}</span>
+                        <span className="text-sm font-medium text-ink-body">{m.name}</span>
                         <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${stageTone[m.stage]}`}>{stageLabel[m.stage]}</span>
                       </span>
-                      <span className="mt-0.5 block text-xs text-[#9c988f]">{m.description}</span>
+                      <span className="mt-0.5 block text-xs text-ink-faint">{m.description}</span>
                     </span>
                   </label>
                 ))}
@@ -243,22 +257,22 @@ export default async function AdminClientPage({
               <div><label className={labelCls}>Competência</label><input name="reference_month" type="month" defaultValue={today.slice(0, 7)} className={field} /></div>
             </div>
             <div><label className={labelCls}>Observação</label><input name="notes" placeholder="Ex.: pago em dinheiro na loja" className={field} /></div>
-            <label className="flex items-center gap-2 text-sm text-[#2b2925]">
-              <input type="checkbox" name="reactivate" defaultChecked className="h-4 w-4 accent-[#c5362e]" />
+            <label className="flex items-center gap-2 text-sm text-ink-body">
+              <input type="checkbox" name="reactivate" defaultChecked className="h-4 w-4 accent-brand" />
               Reativar acesso do cliente ao registrar
             </label>
             <SubmitButton pendingLabel="Lançando…">Lançar pagamento</SubmitButton>
           </form>
         </Card>
 
-        <Card title="Histórico de mensalidades" icon={ReceiptText} aside={<span className="text-xs font-medium text-[#6d6a63]">Total {money(paidTotal)}</span>}>
+        <Card title="Histórico de mensalidades" icon={ReceiptText} aside={<span className="text-xs font-medium text-ink-soft">Total {money(paidTotal)}</span>}>
           {payments.length ? (
-            <ul className="divide-y divide-[#efece6]">
+            <ul className="divide-y divide-line-soft">
               {payments.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div>
-                    <p className="text-sm font-medium text-[#2b2925]">{money(Number(p.amount))} <span className="text-xs font-normal text-[#9c988f]">· {methodLabel[p.method] ?? p.method}</span></p>
-                    <p className="text-xs text-[#9c988f]">
+                    <p className="text-sm font-medium text-ink-body">{money(Number(p.amount))} <span className="text-xs font-normal text-ink-faint">· {methodLabel[p.method] ?? p.method}</span></p>
+                    <p className="text-xs text-ink-faint">
                       Pago em {new Date(`${p.paid_on}T12:00:00`).toLocaleDateString("pt-BR")} · ref. {monthLabel(String(p.reference_month).slice(0, 7))}
                       {p.notes ? ` · ${p.notes}` : ""}
                     </p>
@@ -266,7 +280,7 @@ export default async function AdminClientPage({
                   <form action={deletePayment}>
                     <input type="hidden" name="restaurant_id" value={id} />
                     <input type="hidden" name="payment_id" value={p.id} />
-                    <button aria-label="Excluir lançamento" className="grid h-8 w-8 place-items-center rounded-lg border border-[#e7e4dd] text-[#9c988f] transition hover:border-[#c5362e] hover:text-[#c5362e]">
+                    <button aria-label="Excluir lançamento" className="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink-faint transition hover:border-brand hover:text-brand">
                       <Trash2 size={13} />
                     </button>
                   </form>
@@ -274,7 +288,7 @@ export default async function AdminClientPage({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-[#9c988f]">Nenhuma mensalidade registrada.</p>
+            <p className="text-sm text-ink-faint">Nenhuma mensalidade registrada.</p>
           )}
         </Card>
       </div>
@@ -283,14 +297,14 @@ export default async function AdminClientPage({
         {(members ?? []).length ? (
           <ul className="grid gap-2 md:grid-cols-2">
             {(members ?? []).map((m) => (
-              <li key={m.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-[#e7e4dd] px-3 py-2">
-                <span className="truncate text-sm text-[#2b2925]">{emailById.get(m.user_id) || m.user_id}</span>
-                <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-[#6d6a63]">{roleLabel[m.role] ?? m.role}</span>
+              <li key={m.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2">
+                <span className="truncate text-sm text-ink-body">{emailById.get(m.user_id) || m.user_id}</span>
+                <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-ink-soft">{roleLabel[m.role] ?? m.role}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-[#9c988f]">Nenhum usuário vinculado.</p>
+          <p className="text-sm text-ink-faint">Nenhum usuário vinculado.</p>
         )}
       </Card>
     </div>

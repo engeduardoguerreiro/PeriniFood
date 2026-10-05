@@ -34,14 +34,14 @@ function optionNames(options: ProductOption[] | undefined, groupName: string) {
 
 function Card({ title, subtitle, icon: Icon, children }: { title: string; subtitle: string; icon: typeof Settings2; children: React.ReactNode }) {
   return (
-    <section className="rounded border border-[#e7e4dd] bg-white shadow-sm">
-      <div className="flex items-start gap-3 border-b border-[#efece6] px-5 py-4">
+    <section className="rounded border border-line bg-white shadow-sm">
+      <div className="flex items-start gap-3 border-b border-line-soft px-5 py-4">
         <span className="grid h-10 w-10 place-items-center rounded bg-[#f1efea] text-[#403d38]">
           <Icon className="h-5 w-5" />
         </span>
         <div>
-          <h2 className="text-base font-black text-[#1b1a17]">{title}</h2>
-          {subtitle && <p className="mt-1 text-sm text-[#9c988f]">{subtitle}</p>}
+          <h2 className="text-base font-black text-ink">{title}</h2>
+          {subtitle && <p className="mt-1 text-sm text-ink-faint">{subtitle}</p>}
         </div>
       </div>
       <div className="p-5">{children}</div>
@@ -52,7 +52,7 @@ function Card({ title, subtitle, icon: Icon, children }: { title: string; subtit
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1">
-      <span className="text-xs font-bold uppercase text-[#9c988f]">{label}</span>
+      <span className="text-xs font-bold uppercase text-ink-faint">{label}</span>
       {children}
     </label>
   );
@@ -72,14 +72,14 @@ function OptionSelector({
   empty: string;
 }) {
   return (
-    <div className="rounded border border-[#e7e4dd] bg-[#faf9f6] p-4">
+    <div className="rounded border border-line bg-[#faf9f6] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="font-black text-[#2b2925]">{title}</h3>
+        <h3 className="font-black text-ink-body">{title}</h3>
         <Link href="/cardapio/opcoes-pizza" className="text-xs font-bold text-blue-600">Cadastrar</Link>
       </div>
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {options.map((option) => (
-          <label key={option.id} className="flex items-center justify-between gap-3 rounded border border-[#e7e4dd] bg-white px-3 py-2 text-sm">
+          <label key={option.id} className="flex items-center justify-between gap-3 rounded border border-line bg-white px-3 py-2 text-sm">
             <span className="flex items-center gap-2">
               <input name={name} type="checkbox" value={option.id} defaultChecked={selected.has(option.name)} />
               {option.name}
@@ -88,7 +88,7 @@ function OptionSelector({
           </label>
         ))}
       </div>
-      {!options.length && <p className="rounded bg-white p-3 text-sm text-[#9c988f]">{empty}</p>}
+      {!options.length && <p className="rounded bg-white p-3 text-sm text-ink-faint">{empty}</p>}
     </div>
   );
 }
@@ -159,11 +159,11 @@ export function ProductForm({
       <input type="hidden" name="id" value={product.id ?? ""} />
       <input type="hidden" name="product_type_kind" value={isPizza ? "pizza" : productKind} />
 
-      <header className="flex flex-wrap items-center justify-between gap-4 rounded border border-[#e7e4dd] bg-white p-5 shadow-sm">
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded border border-line bg-white p-5 shadow-sm">
         <div>
-          <p className="text-xs font-bold uppercase text-[#9c988f]">Cadastro de produto</p>
-          <h1 className="text-2xl font-black text-[#1b1a17]">{product.id ? "Editar Produto" : "Novo Produto"}</h1>
-          <p className="mt-1 text-sm text-[#9c988f]">Configure preço, tamanhos, massas, bordas, adicionais e canais de venda.</p>
+          <p className="text-xs font-bold uppercase text-ink-faint">Cadastro de produto</p>
+          <h1 className="text-2xl font-black text-ink">{product.id ? "Editar Produto" : "Novo Produto"}</h1>
+          <p className="mt-1 text-sm text-ink-faint">Configure preço, tamanhos, massas, bordas, adicionais e canais de venda.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {restaurantSlug && <Link href={`/cardapio/${restaurantSlug}`} className="btn-muted text-sm"><Eye className="h-4 w-4" /> Visualizar no cardápio</Link>}
@@ -224,18 +224,18 @@ export function ProductForm({
             <Card title="Preços e tamanhos" subtitle="Pizza trabalha com tamanho e preço individual." icon={Pizza}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded bg-[#f6ece9] p-3 text-sm font-semibold text-red-800">
                 <span>Os nomes dos tamanhos vêm de Cardápio &gt; Opções pizza &gt; Tamanhos. Neste produto, selecione os tamanhos vendidos e informe o preço.</span>
-                <Link href="/cardapio/opcoes-pizza" className="rounded bg-white px-3 py-2 text-xs font-black text-[#c5362e] shadow-sm ring-1 ring-red-200 hover:bg-red-100">
+                <Link href="/cardapio/opcoes-pizza" className="rounded bg-white px-3 py-2 text-xs font-black text-brand shadow-sm ring-1 ring-red-200 hover:bg-red-100">
                   Cadastrar tamanhos
                 </Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
-                  <thead className="text-xs uppercase text-[#9c988f]">
+                  <thead className="text-xs uppercase text-ink-faint">
                     <tr><th className="p-3">Ativo</th><th>Tamanho</th><th>Preço</th><th>Fatias</th></tr>
                   </thead>
                   <tbody>
                     {sizeRows.map((size, index) => (
-                      <tr key={size.key} className="border-t border-[#efece6]">
+                      <tr key={size.key} className="border-t border-line-soft">
                         <td className="p-3"><input name="size_active" type="checkbox" value={size.name} checked={size.active} onChange={(event) => updateSizeRow(index, { active: event.target.checked })} /></td>
                         <td>
                           <input type="hidden" name="size_name" value={size.name} />
@@ -252,7 +252,7 @@ export function ProductForm({
                   </tbody>
                 </table>
               </div>
-              {!sizeRows.length && <p className="mt-3 rounded bg-[#faf9f6] p-3 text-sm font-semibold text-[#6d6a63]">Nenhum tamanho cadastrado. Cadastre Broto, Grande, Família ou outros em Cardápio &gt; Opções pizza &gt; Tamanhos.</p>}
+              {!sizeRows.length && <p className="mt-3 rounded bg-[#faf9f6] p-3 text-sm font-semibold text-ink-soft">Nenhum tamanho cadastrado. Cadastre Broto, Grande, Família ou outros em Cardápio &gt; Opções pizza &gt; Tamanhos.</p>}
               <p className="mt-3 rounded bg-amber-50 p-3 text-sm font-semibold text-amber-800">Para salvar pizza, mantenha pelo menos um tamanho ativo com preço maior que zero.</p>
             </Card>
           )}
@@ -268,7 +268,7 @@ export function ProductForm({
                     <option value={4}>Até 4 sabores</option>
                   </select>
                 </Field>
-                <p className="rounded bg-[#faf9f6] p-3 text-sm font-semibold text-[#6d6a63]">
+                <p className="rounded bg-[#faf9f6] p-3 text-sm font-semibold text-ink-soft">
                   No cardápio online e no pedido manual, será possível escolher sabores da mesma categoria deste produto.
                 </p>
               </div>
@@ -306,22 +306,22 @@ export function ProductForm({
 
           <Card title="Configurações de venda" subtitle="Disponibilidade e canais." icon={Settings2}>
             <div className="space-y-3">
-              <label className="flex items-center justify-between rounded border border-[#e7e4dd] p-3 text-sm font-bold">
+              <label className="flex items-center justify-between rounded border border-line p-3 text-sm font-bold">
                 Produto ativo <input name="active" type="checkbox" defaultChecked={product.active ?? true} />
               </label>
-              <label className="flex items-center justify-between rounded border border-[#e7e4dd] p-3 text-sm font-bold">
+              <label className="flex items-center justify-between rounded border border-line p-3 text-sm font-bold">
                 Produto em destaque <input name="featured" type="checkbox" defaultChecked={product.featured ?? false} />
               </label>
-              <label className="flex items-center justify-between rounded border border-[#e7e4dd] p-3 text-sm font-bold">
+              <label className="flex items-center justify-between rounded border border-line p-3 text-sm font-bold">
                 Delivery <input name="delivery_available" type="checkbox" defaultChecked={product.delivery_available ?? true} />
               </label>
-              <label className="flex items-center justify-between rounded border border-[#e7e4dd] p-3 text-sm font-bold">
+              <label className="flex items-center justify-between rounded border border-line p-3 text-sm font-bold">
                 Retirada <input name="pickup_available" type="checkbox" defaultChecked={product.pickup_available ?? true} />
               </label>
-              <label className="flex items-center justify-between rounded border border-[#e7e4dd] p-3 text-sm font-bold">
+              <label className="flex items-center justify-between rounded border border-line p-3 text-sm font-bold">
                 Consumo no local <input name="dine_in_available" type="checkbox" defaultChecked={product.dine_in_available ?? true} />
               </label>
-              <label className="flex items-center justify-between rounded border border-[#e7e4dd] p-3 text-sm font-bold">
+              <label className="flex items-center justify-between rounded border border-line p-3 text-sm font-bold">
                 Controlar estoque <input name="stock_control_enabled" type="checkbox" defaultChecked={product.stock_control_enabled ?? false} />
               </label>
               <Field label="Quantidade em estoque">

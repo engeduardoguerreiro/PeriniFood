@@ -11,7 +11,7 @@ import type { Product } from "@/lib/types";
 type StatusFilter = "all" | "active" | "inactive";
 
 const iconBtn =
-  "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#e7e4dd] bg-white text-[#6d6a63] transition hover:border-[#c5362e] hover:text-[#c5362e]";
+  "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-soft transition hover:border-brand hover:text-brand";
 
 export function ProductList({ products }: { products: Product[] }) {
   const [query, setQuery] = useState("");
@@ -46,7 +46,7 @@ export function ProductList({ products }: { products: Product[] }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#e7e4dd] bg-[#faf9f6] p-0.5">
+        <div className="inline-flex rounded-lg border border-line bg-[#faf9f6] p-0.5">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -54,48 +54,48 @@ export function ProductList({ products }: { products: Product[] }) {
               onClick={() => setStatus(tab.key)}
               className={
                 status === tab.key
-                  ? "rounded-md bg-white px-3 py-1.5 text-xs font-medium text-[#1b1a17] shadow-[0_1px_2px_rgba(27,26,23,0.06)]"
-                  : "rounded-md px-3 py-1.5 text-xs font-medium text-[#9c988f] transition hover:text-[#403d38]"
+                  ? "rounded-md bg-white px-3 py-1.5 text-xs font-medium text-ink shadow-[0_1px_2px_rgba(27,26,23,0.06)]"
+                  : "rounded-md px-3 py-1.5 text-xs font-medium text-ink-faint transition hover:text-[#403d38]"
               }
             >
-              {tab.label} <span className="text-[#b0aaa0]">{counts[tab.key]}</span>
+              {tab.label} <span className="text-ink-faint">{counts[tab.key]}</span>
             </button>
           ))}
         </div>
         <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#b0aaa0]" />
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar produto ou categoria"
-            className="h-10 w-full rounded-lg border border-[#e7e4dd] bg-white pl-9 pr-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+            className="h-10 w-full rounded-lg border border-line bg-white pl-9 pr-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12"
           />
         </div>
       </div>
 
-      <div className="divide-y divide-[#efece6] overflow-hidden rounded-xl border border-[#e7e4dd]">
+      <div className="divide-y divide-line-soft overflow-hidden rounded-xl border border-line">
         {filtered.map((product) => (
           <div key={product.id} className="flex items-center gap-3 bg-white px-3 py-2.5 transition hover:bg-[#faf9f6]">
-            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#efece6] bg-[#faf9f6] text-[#cfc9bd]">
+            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-line-soft bg-[#faf9f6] text-[#cfc9bd]">
               {product.image_url ? <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" /> : <ImageIcon size={16} />}
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="truncate text-sm font-medium text-[#1b1a17]">{product.name}</p>
-                {product.featured && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide text-[#c5362e]">Destaque</span>}
+                <p className="truncate text-sm font-medium text-ink">{product.name}</p>
+                {product.featured && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide text-brand">Destaque</span>}
               </div>
-              <p className="truncate text-xs text-[#9c988f]">{product.categories?.name ?? "Sem categoria"}{product.description ? ` • ${product.description}` : ""}</p>
+              <p className="truncate text-xs text-ink-faint">{product.categories?.name ?? "Sem categoria"}{product.description ? ` • ${product.description}` : ""}</p>
             </div>
 
-            <span className="hidden w-24 shrink-0 text-right text-sm font-semibold text-[#1b1a17] [font-variant-numeric:tabular-nums] sm:block">{money(product.price)}</span>
+            <span className="hidden w-24 shrink-0 text-right text-sm font-semibold text-ink [font-variant-numeric:tabular-nums] sm:block">{money(product.price)}</span>
 
-            <span className={`hidden w-20 shrink-0 justify-center rounded-full px-2 py-0.5 text-center text-xs font-medium sm:inline-flex ${product.active ? "bg-emerald-50 text-emerald-700" : "bg-[#f4f1ec] text-[#9c988f]"}`}>
+            <span className={`hidden w-20 shrink-0 justify-center rounded-full px-2 py-0.5 text-center text-xs font-medium sm:inline-flex ${product.active ? "bg-emerald-50 text-emerald-700" : "bg-[#f4f1ec] text-ink-faint"}`}>
               {product.active ? "Ativo" : "Inativo"}
             </span>
 
             <div className="flex shrink-0 items-center gap-1.5">
-              <Link href={`/dashboard/products/${product.id}/edit`} title="Editar" aria-label="Editar" className={iconBtn}>
+              <Link href={`/cardapio/produtos/${product.id}`} title="Editar" aria-label="Editar" className={iconBtn}>
                 <Pencil size={15} />
               </Link>
               <form action={toggleProduct}>
@@ -116,7 +116,7 @@ export function ProductList({ products }: { products: Product[] }) {
         ))}
 
         {!filtered.length && (
-          <p className="bg-white px-4 py-12 text-center text-sm text-[#9c988f]">
+          <p className="bg-white px-4 py-12 text-center text-sm text-ink-faint">
             {products.length ? "Nenhum produto encontrado para o filtro." : "Nenhum produto cadastrado ainda."}
           </p>
         )}

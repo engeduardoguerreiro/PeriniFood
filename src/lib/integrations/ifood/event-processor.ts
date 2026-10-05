@@ -36,13 +36,18 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
   if (!orderId) return;
   const merchantId = event.merchantId ?? null;
 
-  const { data: integration } = await supabase
+  // limit(2): com maybeSingle(), um segundo cadastro com o mesmo merchantId (o
+  // lojista digita esse campo) fazia o evento ser descartado e confirmado em silêncio.
+  const { data: integrations, error: integrationError } = await supabase
     .from("integrations")
     .select("id, restaurant_id")
     .eq("provider", "ifood")
     .eq("external_store_id", merchantId)
-    .maybeSingle();
-  if (!integration) return;
+    .limit(2);
+  if (integrationError) throw new Error(integrationError.message);
+  if (!integrations?.length) return;
+  if (integrations.length > 1) throw new Error(`merchantId ${merchantId} vinculado a mais de uma loja: evento mantido na fila do iFood.`);
+  const integration = integrations[0];
 
   const { data: existing } = await supabase
     .from("orders")
@@ -112,6 +117,18 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
     .select("id")
     .single();
   if (error) throw new Error(error.message);
+
+  // Vínculo gravado só pelo servidor: é o que autoriza mandar status/cancelamento
+  // de volta ao iFood (o lojista consegue editar external_order_id em orders).
+  await supabase.from("integration_orders").insert({
+    restaurant_id: integration.restaurant_id,
+    integration_id: integration.id,
+    order_id: order.id,
+    external_order_id: mapped.externalOrderId ?? orderId,
+    external_code: mapped.displayId ?? null,
+    external_status: code || "PLACED",
+    raw_payload: details as unknown as Record<string, unknown>,
+  });
 
   if (mapped.items.length && order) {
     await supabase.from("order_items").insert(

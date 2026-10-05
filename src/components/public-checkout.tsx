@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Bike, CheckCircle2, CreditCard, Mail, MapPin, Search, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { createPublicOrder } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
 import { money } from "@/lib/utils";
@@ -81,7 +82,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [addressStatus, setAddressStatus] = useState("");
   const [type, setType] = useState("delivery");
-  const [deliveryRuleId, setDeliveryRuleId] = useState(deliveryRules[0].id ?? "");
+  const [deliveryRuleId, setDeliveryRuleId] = useState(deliveryRules[0]?.id ?? "");
   const [deliveryCalculating, setDeliveryCalculating] = useState(false);
   const [customerId, setCustomerId] = useState("");
   const [customerDraft, setCustomerDraft] = useState({ name: "", phone: "", email: "", cpf: "", birthDate: "" });
@@ -285,8 +286,8 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
 
             <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                <input className="field-light" type="email" placeholder="E-mail da conta" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} />
-                <input className="field-light" type="password" placeholder="Senha" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+                <input className="field-light" type="email" autoComplete="email" aria-label="E-mail da conta" placeholder="E-mail da conta" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} />
+                <input className="field-light" type="password" autoComplete="current-password" aria-label="Senha" placeholder="Senha" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
                 <button
                   type="button"
                   onClick={() => submitCustomerAuth("login")}
@@ -304,11 +305,11 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
             </div>
 
             <div className="mt-6 grid gap-3 md:grid-cols-2">
-              <input className="field-light" name="customer_name" placeholder="Nome completo" value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} required />
-              <input className="field-light" name="customer_phone" placeholder="Celular/WhatsApp" value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: event.target.value })} required />
+              <input className="field-light" name="customer_name" autoComplete="name" aria-label="Nome completo" placeholder="Nome completo" value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} required />
+              <input className="field-light" name="customer_phone" type="tel" inputMode="tel" autoComplete="tel" aria-label="Celular ou WhatsApp" placeholder="Celular/WhatsApp" value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: event.target.value })} required />
               <div className="relative md:col-span-2">
-                <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input className="field-light pl-11" name="customer_email" type="email" placeholder="E-mail" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} required />
+                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input className="field-light pl-11" name="customer_email" type="email" autoComplete="email" aria-label="E-mail" placeholder="E-mail" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} required />
               </div>
             </div>
             <button
@@ -324,11 +325,11 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
           <div className="rounded-lg bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-black">Modo de entrega</h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <button type="button" onClick={() => setType("delivery")} className={type === "delivery" ? "rounded-lg border border-red-500 bg-red-50 p-4 text-left" : "rounded-lg border border-slate-200 bg-white p-4 text-left"}>
+              <button type="button" aria-pressed={type === "delivery"} onClick={() => setType("delivery")} className={type === "delivery" ? "rounded-lg border border-red-500 bg-red-50 p-4 text-left" : "rounded-lg border border-slate-200 bg-white p-4 text-left"}>
                 <strong>Entrega</strong>
                 <span className="block text-sm text-slate-500">Nós levamos o pedido até você</span>
               </button>
-              <button type="button" onClick={() => setType("pickup")} className={type === "pickup" ? "rounded-lg border border-red-500 bg-red-50 p-4 text-left" : "rounded-lg border border-slate-200 bg-slate-50 p-4 text-left"}>
+              <button type="button" aria-pressed={type === "pickup"} onClick={() => setType("pickup")} className={type === "pickup" ? "rounded-lg border border-red-500 bg-red-50 p-4 text-left" : "rounded-lg border border-slate-200 bg-slate-50 p-4 text-left"}>
                 <strong>Retirada</strong>
                 <span className="block text-sm text-slate-500">Você retira o pedido na loja</span>
               </button>
@@ -342,16 +343,16 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="grid grid-cols-[1fr_auto] gap-2 md:col-span-2">
-                    <input className="field-light" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} placeholder="CEP" required />
-                    <button type="button" onClick={lookupCep} className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-red-300"><Search className="h-4 w-4" /></button>
+                    <input className="field-light" inputMode="numeric" autoComplete="postal-code" aria-label="CEP" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} placeholder="CEP" required />
+                    <button type="button" onClick={lookupCep} aria-label="Buscar endereço pelo CEP" title="Buscar CEP" className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-red-300"><Search className="h-4 w-4" /></button>
                   </div>
-                  <input className="field-light md:col-span-2" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} placeholder="Endereço" required />
-                  <input className="field-light" value={address.number} onChange={(event) => setAddress({ ...address, number: event.target.value })} placeholder="Número" required />
-                  <input className="field-light" value={address.neighborhood} onChange={(event) => setAddress({ ...address, neighborhood: event.target.value })} placeholder="Bairro" required />
-                  <input className="field-light" value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} placeholder="Cidade" required />
-                  <input className="field-light" value={address.state} onChange={(event) => setAddress({ ...address, state: event.target.value.toUpperCase() })} placeholder="UF" maxLength={2} required />
-                  <input className="field-light" value={address.complement} onChange={(event) => setAddress({ ...address, complement: event.target.value })} placeholder="Complemento" />
-                  <input className="field-light" value={address.reference} onChange={(event) => setAddress({ ...address, reference: event.target.value })} placeholder="Ponto de referência" />
+                  <input className="field-light md:col-span-2" aria-label="Endereço" autoComplete="address-line1" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} placeholder="Endereço" required />
+                  <input className="field-light" aria-label="Número" inputMode="numeric" value={address.number} onChange={(event) => setAddress({ ...address, number: event.target.value })} placeholder="Número" required />
+                  <input className="field-light" aria-label="Bairro" value={address.neighborhood} onChange={(event) => setAddress({ ...address, neighborhood: event.target.value })} placeholder="Bairro" required />
+                  <input className="field-light" aria-label="Cidade" autoComplete="address-level2" value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} placeholder="Cidade" required />
+                  <input className="field-light" aria-label="UF" autoComplete="address-level1" value={address.state} onChange={(event) => setAddress({ ...address, state: event.target.value.toUpperCase() })} placeholder="UF" maxLength={2} required />
+                  <input className="field-light" aria-label="Complemento" autoComplete="address-line2" value={address.complement} onChange={(event) => setAddress({ ...address, complement: event.target.value })} placeholder="Complemento" />
+                  <input className="field-light" aria-label="Ponto de referência" value={address.reference} onChange={(event) => setAddress({ ...address, reference: event.target.value })} placeholder="Ponto de referência" />
                   <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 md:col-span-2">
                     <span className="block text-xs font-black uppercase text-slate-500">Frete automático</span>
                     <strong className="mt-1 block text-slate-900">
@@ -373,10 +374,10 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
 
           <div className="rounded-lg bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-black">Forma de pagamento</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div role="radiogroup" aria-label="Forma de pagamento" className="mt-4 grid gap-3 md:grid-cols-2">
               {paymentMethods.map((method) => (
                 <label key={method} className={payment === method ? "rounded-lg border border-red-500 bg-red-50 p-4 font-black" : "rounded-lg border border-slate-200 p-4 font-bold"}>
-                  <input className="mr-2" type="radio" checked={payment === method} onChange={() => {
+                  <input className="mr-2" type="radio" name="payment_ui" checked={payment === method} onChange={() => {
                     setPayment(method);
                     if (method !== "cash") setNeedsChange("no");
                   }} />
@@ -389,18 +390,18 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
                 <span className="block text-sm font-black text-slate-800">Precisa de troco</span>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <label className={needsChange === "yes" ? "rounded-lg border border-red-500 bg-red-50 p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
-                    <input className="mr-2" type="radio" checked={needsChange === "yes"} onChange={() => setNeedsChange("yes")} />
+                    <input className="mr-2" type="radio" name="change_ui" checked={needsChange === "yes"} onChange={() => setNeedsChange("yes")} />
                     Sim
                   </label>
                   <label className={needsChange === "no" ? "rounded-lg border border-red-500 bg-red-50 p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
-                    <input className="mr-2" type="radio" checked={needsChange === "no"} onChange={() => setNeedsChange("no")} />
+                    <input className="mr-2" type="radio" name="change_ui" checked={needsChange === "no"} onChange={() => setNeedsChange("no")} />
                     Não
                   </label>
                 </div>
                 {needsChange === "yes" && <MoneyInput className="field-light mt-3" name="change_for" placeholder="Para quanto" required />}
               </div>
             )}
-            <textarea className="field-light mt-3" name="notes" placeholder="Observações do pedido" />
+            <textarea className="field-light mt-3" name="notes" aria-label="Observações do pedido" placeholder="Observações do pedido" />
           </div>
 
           <div className="rounded-lg bg-white p-6 shadow-sm">
@@ -425,12 +426,21 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
               <div className="flex justify-between text-2xl font-black"><span>Total</span><strong>{money(total)}</strong></div>
             </div>
             {checkoutBlockReason && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">{checkoutBlockReason}</p>}
-            <button className="mt-5 w-full rounded-lg bg-red-600 px-4 py-4 font-black uppercase text-white transition hover:bg-red-700 disabled:bg-slate-300" disabled={!canSubmit}>
-              {restaurant.is_open ? "Finalizar pedido" : "Loja fechada"}
-            </button>
+            <FinalizeButton disabled={!canSubmit} label={restaurant.is_open ? "Finalizar pedido" : "Loja fechada"} />
           </div>
         </section>
       </form>
     </main>
+  );
+}
+
+// Estado de envio no botão final: sem ele o cliente não via retorno e clicava de
+// novo, gerando pedido em dobro.
+function FinalizeButton({ disabled, label }: { disabled: boolean; label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button className="mt-5 w-full rounded-lg bg-red-600 px-4 py-4 font-black uppercase text-white transition hover:bg-red-700 disabled:bg-slate-300" disabled={disabled || pending}>
+      {pending ? "Enviando pedido…" : label}
+    </button>
   );
 }

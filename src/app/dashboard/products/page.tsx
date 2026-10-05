@@ -20,10 +20,10 @@ export default async function ProductsPage({ status = "", error = "" }: { status
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Produtos</h1>
-          <p className="text-sm text-[#9c988f]">{products.length} {products.length === 1 ? "item cadastrado" : "itens cadastrados"} no cardápio.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Produtos</h1>
+          <p className="text-sm text-ink-faint">{products.length} {products.length === 1 ? "item cadastrado" : "itens cadastrados"} no cardápio.</p>
         </div>
-        <Link href="/dashboard/products/new" className="rounded-xl bg-[#211d19] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#37312a]">
+        <Link href="/cardapio/produtos/novo" className="rounded-xl bg-btn px-4 py-2.5 text-sm font-medium text-white transition hover:bg-btn-hover">
           Novo produto
         </Link>
       </div>

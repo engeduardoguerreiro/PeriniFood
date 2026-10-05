@@ -1,7 +1,9 @@
 import { cache } from "react";
 import { createServiceClient } from "@/lib/supabase/service";
 
-export type SubscriptionStatus = "trial" | "active" | "past_due" | "suspended" | "canceled";
+export type SubscriptionStatus = "pending" | "trial" | "active" | "past_due" | "suspended" | "canceled";
+
+export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ["pending", "trial", "active", "past_due", "suspended", "canceled"];
 
 export type Subscription = {
   id: string;
@@ -40,6 +42,7 @@ export const planLabel: Record<string, string> = {
 };
 
 export const statusLabelSub: Record<SubscriptionStatus, string> = {
+  pending: "Aguardando ativação",
   trial: "Teste",
   active: "Ativo",
   past_due: "Em atraso",
@@ -48,11 +51,12 @@ export const statusLabelSub: Record<SubscriptionStatus, string> = {
 };
 
 export const statusToneSub: Record<SubscriptionStatus, string> = {
+  pending: "bg-violet-50 text-violet-700",
   trial: "bg-sky-50 text-sky-700",
   active: "bg-emerald-50 text-emerald-700",
   past_due: "bg-amber-50 text-amber-700",
   suspended: "bg-rose-50 text-rose-700",
-  canceled: "bg-[#f1efea] text-[#6d6a63]",
+  canceled: "bg-[#f1efea] text-ink-soft",
 };
 
 export const methodLabel: Record<string, string> = {
@@ -108,7 +112,10 @@ export async function getSubscription(restaurantId: string): Promise<{ sub: Subs
 }
 
 // Usado pelo app do cliente para bloquear o acesso quando a assinatura está
-// suspensa. Service client porque as tabelas da plataforma têm RLS fechada.
+// suspensa ou ainda não foi ativada. Service client porque as tabelas da
+// plataforma têm RLS fechada.
+// Loja sem linha de assinatura = "pending": cadastro novo só entra no sistema
+// depois que a equipe ativa (pagamento ou contato). Antes, a falta de linha liberava.
 export const getAccessState = cache(async (restaurantId: string) => {
   const service = createServiceClient();
   const { data, error } = await service
@@ -116,12 +123,13 @@ export const getAccessState = cache(async (restaurantId: string) => {
     .select("status, modules, suspension_reason")
     .eq("restaurant_id", restaurantId)
     .maybeSingle();
-  if (error || !data) return { blocked: Boolean(error), status: null as SubscriptionStatus | null, modules: [] as string[], reason: null as string | null };
+  if (error) return { blocked: true, status: null as SubscriptionStatus | null, modules: [] as string[], reason: null as string | null };
+  if (!data) return { blocked: true, status: "pending" as SubscriptionStatus, modules: [] as string[], reason: null as string | null };
   const raw = (data as Record<string, unknown>).modules;
   const modules = Array.isArray(raw) ? (raw as string[]) : [];
   const status = (data as Record<string, unknown>).status as SubscriptionStatus;
   return {
-    blocked: status === "suspended" || status === "canceled",
+    blocked: status === "pending" || status === "suspended" || status === "canceled",
     status,
     modules,
     reason: ((data as Record<string, unknown>).suspension_reason as string) ?? null,

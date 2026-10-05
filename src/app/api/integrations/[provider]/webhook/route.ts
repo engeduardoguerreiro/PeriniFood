@@ -1,5 +1,5 @@
 import { readObject, publicFailure } from "@/lib/security";
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   createOrderFromExternalPayload,
   findIntegrationForPayload,
@@ -7,6 +7,7 @@ import {
   normalizeGenericExternalOrder,
 } from "@/lib/integrations/external-order";
 import { sanitizeHeaders } from "@/lib/integrations/security";
+import { clientIp, rateLimit } from "@/lib/customer-session";
 
 const allowedProviders = new Set(["99food", "ifood", "keeta"]);
 
@@ -22,9 +23,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ ok: false, error: "Provider inválido." }, { status: 404 });
   }
 
+  // Rota pública: limita por IP antes de ler o corpo ou gravar log, senão um loop
+  // de POSTs com token inválido enchia integration_logs e o banco.
+  try { await rateLimit("webhook-ip", clientIp(request), 120, 600); } catch (error) { return publicFailure(error); }
   let payload: unknown;
   try {
-    payload = await readObject(request, 262144);
+    payload = await readObject(request, 65536);
   } catch {
     return NextResponse.json({ ok: false, error: "JSON inválido." }, { status: 400 });
   }
@@ -41,8 +45,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       direction: "INBOUND",
       status: "error",
       externalId: normalized.externalOrderId,
-      requestHeaders: sanitizeHeaders(request.headers),
-      requestPayload: payload,
+      // Remetente não autenticado: não grava o corpo enviado.
+      requestPayload: { externalStoreId: normalized.externalStoreId?.slice(0, 64) ?? null },
       errorMessage: "Integração ativa não encontrada para este payload.",
     });
     return NextResponse.json({ ok: false, error: "Integração não encontrada." }, { status: 404 });

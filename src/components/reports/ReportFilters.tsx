@@ -2,8 +2,8 @@ import { Filter } from "lucide-react";
 import type { ReportSearchParams } from "@/lib/reports";
 import { DateRangeFilter } from "./DateRangeFilter";
 
-const fieldCls = "h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12";
-const labelCls = "grid gap-1 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]";
+const fieldCls = "h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
+const labelCls = "grid gap-1 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-ink-faint";
 
 function pick(searchParams: ReportSearchParams, key: string, fallback = "") {
   const value = searchParams[key];
@@ -19,7 +19,7 @@ export function ReportFilters({
 }) {
   const period = pick(searchParams, "periodo", "30dias");
   return (
-    <form className="rounded-2xl border border-[#e7e4dd] bg-white p-3 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+    <form className="rounded-2xl border border-line bg-white p-3 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="grid gap-3 lg:grid-cols-[180px_repeat(2,150px)_1fr_auto] lg:items-end">
         <label className={labelCls}>
           Período
@@ -38,7 +38,7 @@ export function ReportFilters({
           Busca
           <input className={fieldCls} name="q" placeholder="Produto, cliente ou pedido" defaultValue={pick(searchParams, "q")} />
         </label>
-        <button className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#211d19] px-5 text-sm font-medium text-white transition hover:bg-[#37312a]">
+        <button className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-btn px-5 text-sm font-medium text-white transition hover:bg-btn-hover">
           <Filter size={15} />
           Filtrar
         </button>

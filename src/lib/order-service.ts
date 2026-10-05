@@ -1,4 +1,5 @@
 import "server-only";
+import { headers } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { createServiceClient } from "./supabase/service";
 import { customerSession, rateLimit } from "./customer-session";
@@ -52,6 +53,11 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     const session = await customerSession(restaurantId);
     if (claimed && claimed!==session?.customer_id) throw new PublicError("Sua sessão expirou. Entre novamente.",401);
     customerId=session?.customer_id ?? null;
+    // Por IP primeiro: só o teto da loja deixava um script esgotar o bucket e
+    // bloquear todos os clientes reais com 429.
+    const forwarded = process.env.VERCEL ? (await headers()).get("x-vercel-forwarded-for")?.split(",")[0]?.trim() : null;
+    // 20/10min: operadoras móveis compartilham IP (CGNAT) entre muitos clientes.
+    await rateLimit("checkout-ip",`${restaurantId}:${forwarded ?? "local"}`,20,600);
     await rateLimit("checkout-store",restaurantId,120,60);
     if (customerId) await rateLimit("checkout-customer",customerId,10,600);
   } else if (claimed) {

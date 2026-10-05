@@ -121,15 +121,15 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
             <p className={online ? "text-xs font-semibold text-emerald-800" : "text-xs font-semibold text-amber-800"}>
               {online ? "Agente local conectado" : "Agente local offline"}
             </p>
-            <p className="mt-1 text-xs text-[#6d6a63]">{message}</p>
-            {diagnostics?.config?.logPath && <p className="mt-1 text-[11px] text-[#9c988f]">Logs: {diagnostics.config.logPath}</p>}
+            <p className="mt-1 text-xs text-ink-soft">{message}</p>
+            {diagnostics?.config?.logPath && <p className="mt-1 text-[11px] text-ink-faint">Logs: {diagnostics.config.logPath}</p>}
           </div>
         </div>
       </div>
 
       <div className="flex gap-2">
         <select
-          className="h-9 flex-1 rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+          className="h-9 flex-1 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12"
           value={selected}
           onChange={(event) => {
             setSelected(event.target.value);
@@ -147,14 +147,14 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
           type="button"
           onClick={loadPrinters}
           disabled={loading}
-          className="h-9 rounded-lg border border-[#e7e4dd] bg-white px-4 text-sm font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e] disabled:opacity-60"
+          className="h-9 rounded-lg border border-line bg-white px-4 text-sm font-medium text-[#403d38] transition hover:border-brand hover:text-brand disabled:opacity-60"
         >
           {loading ? "Buscando" : "Reconectar"}
         </button>
       </div>
 
       <input
-        className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12"
+        className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12"
         value={selected}
         onChange={(event) => setSelected(event.target.value)}
         placeholder="Ou digite o nome exato da impressora"
@@ -165,7 +165,7 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
           type="button"
           onClick={() => void saveAgentPrinter()}
           disabled={!selected}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 text-xs font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e] disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-xs font-medium text-[#403d38] transition hover:border-brand hover:text-brand disabled:opacity-50"
         >
           <CheckCircle2 className="h-4 w-4" />
           Salvar no agente
@@ -173,7 +173,7 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
         <button
           type="button"
           onClick={() => void loadPrinters()}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 text-xs font-medium text-[#403d38] transition hover:border-[#c5362e] hover:text-[#c5362e]"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-xs font-medium text-[#403d38] transition hover:border-brand hover:text-brand"
         >
           <RefreshCw className="h-4 w-4" />
           Tentar reconectar
@@ -181,13 +181,13 @@ export function PrinterDiscovery({ initialName }: { initialName: string | null }
         <a
           href="/downloads/PeriniFood-PrintAgent-Setup.exe"
           download
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#211d19] px-3 text-xs font-medium text-white transition hover:bg-[#37312a]"
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-btn px-3 text-xs font-medium text-white transition hover:bg-btn-hover"
         >
           <Download className="h-4 w-4" />
           Baixar instalador
         </a>
       </div>
-      <p className="text-xs text-[#9c988f]">Sem impressão? Baixe o instalador, execute o arquivo e pronto — o agente liga sozinho junto com o Windows.</p>
+      <p className="text-xs text-ink-faint">Sem impressão? Baixe o instalador, execute o arquivo e pronto — o agente liga sozinho junto com o Windows.</p>
     </div>
   );
 }

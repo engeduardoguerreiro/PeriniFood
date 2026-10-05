@@ -442,9 +442,32 @@ async function handlePrint(req, res) {
   }
 }
 
+// Barreiras antes de executar qualquer ação. O CORS só esconde a resposta: sem
+// isto, qualquer site aberto no PC da loja mandava imprimir com um POST
+// text/plain (sem preflight) ou lia /logs via DNS rebinding.
+function rejectUntrusted(req, res) {
+  const hostHeader = String(req.headers.host || "").toLowerCase();
+  if (hostHeader !== `127.0.0.1:${port}` && hostHeader !== `localhost:${port}`) {
+    sendJson(req, res, 403, { ok: false, error: "Host não permitido." });
+    return true;
+  }
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.has(origin)) {
+    sendJson(req, res, 403, { ok: false, error: "Origem não permitida." });
+    return true;
+  }
+  if (req.method === "POST" && !String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
+    sendJson(req, res, 415, { ok: false, error: "Envie JSON." });
+    return true;
+  }
+  return false;
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url || "/", `http://${host}:${port}`);
+
+    if (rejectUntrusted(req, res)) return;
 
     if (req.method === "OPTIONS") {
       sendJson(req, res, 200, { ok: true });
@@ -488,7 +511,9 @@ const server = http.createServer(async (req, res) => {
       const next = await writeConfig({
         ...current,
         defaultPrinter: String(body.defaultPrinter || "").trim() || null,
-        token: String(body.token || current.token || "").trim() || null,
+        // O token só muda pelo arquivo de configuração ou PRINT_BRIDGE_TOKEN: pela
+        // rede, uma página qualquer travaria o agente gravando um token desconhecido.
+        token: current.token || null,
       });
       await log("config_updated", { defaultPrinter: next.defaultPrinter || null });
       sendJson(req, res, 200, { ok: true, config: { defaultPrinter: next.defaultPrinter || null } });

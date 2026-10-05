@@ -43,7 +43,7 @@ export const stageLabel: Record<ModuleStage, string> = {
 export const stageTone: Record<ModuleStage, string> = {
   live: "bg-emerald-50 text-emerald-700",
   beta: "bg-amber-50 text-amber-700",
-  soon: "bg-[#f1efea] text-[#6d6a63]",
+  soon: "bg-[#f1efea] text-ink-soft",
 };
 
 export function moduleName(key: string) {

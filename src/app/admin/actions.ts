@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
-import { nextDueDate } from "@/lib/platform-billing";
+import { SUBSCRIPTION_STATUSES, nextDueDate } from "@/lib/platform-billing";
 
 function text(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
@@ -91,7 +91,7 @@ export async function setSubscriptionStatus(formData: FormData) {
   const { service } = await requirePlatformAdmin();
   const id = text(formData, "restaurant_id");
   const status = text(formData, "status");
-  if (!id || !["trial", "active", "past_due", "suspended", "canceled"].includes(status)) return;
+  if (!id || !(SUBSCRIPTION_STATUSES as string[]).includes(status)) return;
 
   const suspending = status === "suspended";
   await service

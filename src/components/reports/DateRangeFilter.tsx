@@ -1,7 +1,7 @@
 import type { ReportSearchParams } from "@/lib/reports";
 
-const fieldCls = "h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12";
-const labelCls = "grid gap-1 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]";
+const fieldCls = "h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
+const labelCls = "grid gap-1 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-ink-faint";
 
 function pick(searchParams: ReportSearchParams, key: string, fallback = "") {
   const value = searchParams[key];

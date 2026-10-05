@@ -15,7 +15,8 @@ type CustomersSearchParams = {
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<CustomersSearchParams> }) {
   const { supabase, restaurant } = await requireRestaurant();
   const sp = await searchParams;
-  const query = (sp.q ?? "").trim();
+  // Vírgula e parênteses quebram a sintaxe do .or() do PostgREST.
+  const query = (sp.q ?? "").replace(/[^\p{L}\p{N} @+.-]/gu, "").trim().slice(0, 100);
   let request = supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).order("created_at", { ascending: false });
   if (query) request = request.or(`name.ilike.%${query}%,phone.ilike.%${query}%,whatsapp.ilike.%${query}%`);
   const [{ data, error }, { data: loyalty }, { data: orders }] = await Promise.all([
@@ -34,46 +35,46 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <section className="rounded-2xl bg-white p-5 shadow-sm">
       <ActionFeedback status={sp.status ?? ""} error={sp.error ?? ""} />
       {error && (
-        <div className="mb-4 rounded-xl border border-[#eeccc7] bg-[#f6ece9] p-3 text-sm font-bold text-[#c5362e]">
+        <div className="mb-4 rounded-xl border border-[#eeccc7] bg-[#f6ece9] p-3 text-sm font-bold text-brand">
           Não foi possível carregar os clientes agora: {error.message}
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-black">Clientes</h2>
-          <p className="text-sm text-[#9c988f]">Clientes são cadastrados automaticamente ao criar pedidos.</p>
+          <p className="text-sm text-ink-faint">Clientes são cadastrados automaticamente ao criar pedidos.</p>
         </div>
         <form className="flex flex-wrap gap-2">
-          <input className="h-10 w-72 rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm outline-none focus:border-red-300" name="q" placeholder="Buscar nome ou telefone" defaultValue={query ?? ""} />
-          <button className="h-10 rounded-lg border border-[#eeccc7] bg-white px-4 text-sm font-black text-[#2b2925] transition hover:border-red-300 hover:bg-[#f6ece9]">Buscar</button>
+          <input className="h-10 w-72 rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="q" placeholder="Buscar nome ou telefone" defaultValue={query ?? ""} />
+          <button className="h-10 rounded-lg border border-[#eeccc7] bg-white px-4 text-sm font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]">Buscar</button>
         </form>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-xl border border-[#e7e4dd]">
-        <div className="grid grid-cols-[minmax(170px,1fr)_150px_80px_92px_82px_76px] gap-3 border-b border-[#e7e4dd] bg-[#faf9f6]/80 px-4 py-2 text-[11px] font-black uppercase text-[#9c988f] max-lg:hidden">
+      <div className="mt-5 overflow-hidden rounded-xl border border-line">
+        <div className="grid grid-cols-[minmax(170px,1fr)_150px_80px_92px_82px_76px] gap-3 border-b border-line bg-[#faf9f6]/80 px-4 py-2 text-[11px] font-black uppercase text-ink-faint max-lg:hidden">
           <span>Nome</span>
           <span>Telefone</span>
           <span>Pontos</span>
           <span className="col-span-3 text-right">Ações</span>
         </div>
 
-        <div className="divide-y divide-[#e7e4dd]">
+        <div className="divide-y divide-line">
           {customers.map((customer) => (
             <div key={customer.id} className="grid gap-3 px-4 py-2 text-sm transition hover:bg-[#faf9f6]/70 lg:grid-cols-[minmax(170px,1fr)_150px_80px_92px_82px_76px] lg:items-center">
               <form action={saveCustomer} className="contents">
                 <input type="hidden" name="id" value={customer.id} />
                 <input type="hidden" name="return_to" value="/clientes" />
                 <label className="space-y-1 lg:space-y-0">
-                  <span className="text-xs font-black uppercase text-[#9c988f] lg:hidden">Nome</span>
-                  <input className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm font-semibold outline-none focus:border-red-300" name="name" defaultValue={customer.name} required />
+                  <span className="text-xs font-black uppercase text-ink-faint lg:hidden">Nome</span>
+                  <input className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-red-300" name="name" defaultValue={customer.name} required />
                 </label>
                 <label className="space-y-1 lg:space-y-0">
-                  <span className="text-xs font-black uppercase text-[#9c988f] lg:hidden">Telefone</span>
-                  <input className="h-9 w-full rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm outline-none focus:border-red-300" name="phone" defaultValue={customer.phone ?? ""} />
+                  <span className="text-xs font-black uppercase text-ink-faint lg:hidden">Telefone</span>
+                  <input className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="phone" defaultValue={customer.phone ?? ""} />
                 </label>
                 <input type="hidden" name="email" value={customer.email ?? ""} />
-                <div className="flex h-9 items-center rounded-lg bg-[#f6ece9] px-3 text-sm font-black text-[#c5362e]">
-                  <span className="mr-2 text-xs uppercase text-[#c5362e] lg:hidden">Pontos</span>{pointsForCustomer(customer)}
+                <div className="flex h-9 items-center rounded-lg bg-[#f6ece9] px-3 text-sm font-black text-brand">
+                  <span className="mr-2 text-xs uppercase text-brand lg:hidden">Pontos</span>{pointsForCustomer(customer)}
                 </div>
                 <input type="hidden" name="address" value={customer.address ?? ""} />
                 <input type="hidden" name="address_number" value={customer.address_number ?? ""} />
@@ -87,22 +88,22 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 <input type="hidden" name="birth_date" value={customer.birth_date ?? ""} />
                 <input type="hidden" name="notes" value={customer.notes ?? ""} />
                 <div className="flex justify-end">
-                  <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-[#2b2925] transition hover:border-red-300 hover:bg-[#f6ece9]">Salvar</button>
+                  <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]">Salvar</button>
                 </div>
               </form>
               <div className="flex flex-wrap justify-end gap-2 lg:col-span-2 lg:col-start-5 lg:flex-nowrap">
-                <Link className="inline-flex h-8 w-full min-w-16 items-center justify-center rounded-lg border border-[#e7e4dd] bg-white px-1.5 text-[10px] font-black text-[#2b2925] transition hover:border-red-300 hover:bg-[#f6ece9]" href={`/clientes/${customer.id}`}>
+                <Link className="inline-flex h-8 w-full min-w-16 items-center justify-center rounded-lg border border-line bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]" href={`/clientes/${customer.id}`}>
                   Editar
                 </Link>
                 <form action={deleteCustomer} className="w-full min-w-16">
                   <input type="hidden" name="id" value={customer.id} />
                   <input type="hidden" name="return_to" value="/clientes" />
-                  <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-[#c5362e] transition hover:bg-[#f6ece9]">Excluir</button>
+                  <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-brand transition hover:bg-[#f6ece9]">Excluir</button>
                 </form>
               </div>
             </div>
           ))}
-          {!customers.length && <p className="p-5 text-sm text-[#9c988f]">Nenhum cliente encontrado.</p>}
+          {!customers.length && <p className="p-5 text-sm text-ink-faint">Nenhum cliente encontrado.</p>}
         </div>
       </div>
     </section>

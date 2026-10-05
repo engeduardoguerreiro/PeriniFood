@@ -1,4 +1,4 @@
-﻿/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 import { Bike, MapPin } from "lucide-react";
 import { PublicMenuOrder } from "@/components/public-menu-order";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
@@ -7,6 +7,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { publicRestaurant, PUBLIC_PRODUCT_FIELDS } from "@/lib/public-data";
 import { money } from "@/lib/utils";
 import type { Category, Coupon, DeliveryFeeRule, LoyaltyProgram, PizzaOption, Product, ProductOption, ProductVariant, Restaurant } from "@/lib/types";
+import { storeDayKey } from "@/lib/timezone";
+import { getAccessState } from "@/lib/platform-billing";
 
 function productDisplayPrice(product: Product, variants: ProductVariant[]) {
   const productVariants = variants.filter((variant) => variant.product_id === product.id && variant.active);
@@ -29,7 +31,9 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
   const sp = await searchParams;
   const supabase = createServiceClient();
   const { data: restaurant } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
-  const current = restaurant ? publicRestaurant(restaurant as Restaurant) : null;
+  // Loja ainda não ativada pela equipe não tem cardápio público no ar.
+  const pending = restaurant ? (await getAccessState((restaurant as Restaurant).id)).status === "pending" : false;
+  const current = restaurant && !pending ? publicRestaurant(restaurant as Restaurant) : null;
 
   if (!current) {
     return (
@@ -63,6 +67,14 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
     current.zip_code ? `CEP ${current.zip_code}` : null,
   ].filter(Boolean).join(" - ");
 
+  // Só cupons dentro da validade: os vencidos apareciam na lista de vantagens.
+  // Datas só com dia ("2026-10-05") valem o dia inteiro no fuso da loja.
+  const nowIso = new Date().toISOString();
+  const today = storeDayKey(new Date());
+  const reached = (value: string) => (value.length === 10 ? value <= today : value <= nowIso);
+  const notPassed = (value: string) => (value.length === 10 ? value >= today : value >= nowIso);
+  const activeCoupons = ((coupons ?? []) as Coupon[]).filter((coupon) => (!coupon.starts_at || reached(coupon.starts_at)) && (!coupon.ends_at || notPassed(coupon.ends_at)));
+
   return (
     <main className="min-h-screen bg-[#f1f1f1] text-[#243640]">
       <section className="relative overflow-hidden bg-[#3b1114] text-white">
@@ -72,7 +84,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
         />
         <div className="absolute inset-0 bg-black/55" />
         {/* Vitrine da loja: logo grande em destaque e informações centralizadas. */}
-        <div className="relative mx-auto flex max-w-[1320px] flex-col items-center px-4 pb-8 pt-10 text-center">
+        <div className="relative mx-auto flex max-w-[1320px] flex-col items-center px-4 pb-6 pt-6 text-center md:pb-8 md:pt-10">
           {/* Logo solto sobre a capa: sem moldura, para logotipo com fundo
               transparente aparecer transparente mesmo. A sombra segue o
               contorno da arte (drop-shadow, não box-shadow). */}
@@ -80,15 +92,17 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
             <img
               src={current.logo_url}
               alt={current.name}
-              className="h-44 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)] md:h-60"
+              fetchPriority="high"
+              decoding="async"
+              className="h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)] md:h-60"
             />
           ) : (
-            <div className="grid h-44 w-44 place-items-center rounded-2xl bg-white/10 text-4xl font-black text-white ring-1 ring-white/25 md:h-60 md:w-60">
+            <div className="grid h-36 w-36 place-items-center rounded-2xl bg-white/10 text-4xl font-black text-white ring-1 ring-white/25 md:h-60 md:w-60">
               {current.name.slice(0, 2)}
             </div>
           )}
 
-          <h1 className="mt-5 text-3xl font-black drop-shadow-sm md:text-4xl">{current.name}</h1>
+          <h1 className="mt-4 text-2xl font-black drop-shadow-sm md:mt-5 md:text-4xl">{current.name}</h1>
 
           <p className="mt-2 flex max-w-3xl items-center justify-center gap-2 text-sm text-white/90">
             <MapPin className="h-4 w-4 shrink-0" />
@@ -109,19 +123,19 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
 
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto grid max-w-[1320px] gap-0 md:grid-cols-[280px_1fr]">
-          <div className="flex items-center justify-center gap-3 border-r border-slate-100 px-5 py-4 font-black uppercase">
+          <div className="flex items-center justify-center gap-3 border-b border-slate-100 px-5 py-3 font-black uppercase md:border-b-0 md:border-r md:py-4">
             <Bike className="h-6 w-6" />
             Entrega
           </div>
-          <div className="px-5 py-4 text-sm text-slate-600">
+          <div className="px-5 py-3 text-center text-sm text-slate-600 md:py-4 md:text-left">
             <p>Entrega em até {current.estimated_delivery_time ?? "50 min"} • A partir de {money(current.delivery_fee ?? 0)}</p>
-            <p className="font-bold text-red-600">Selecionar endereço</p>
+            <p className="text-slate-500">O valor da entrega é calculado pelo seu endereço no fechamento do pedido.</p>
           </div>
         </div>
       </section>
 
-      {sp.success && <div className="mx-auto mt-5 max-w-[1320px] rounded-lg border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">Pedido enviado com sucesso.</div>}
-      {!storeOpen && <div className="mx-auto mt-5 max-w-[1320px] rounded-lg border border-red-200 bg-red-50 p-4 font-bold text-red-700">A loja está fechada no momento. Você pode consultar o cardápio, mas novos pedidos estão bloqueados.</div>}
+      {sp.success && <div role="status" className="mx-4 mt-5 max-w-[1320px] rounded-lg xl:mx-auto border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">Pedido enviado com sucesso.</div>}
+      {!storeOpen && <div role="status" className="mx-4 mt-5 max-w-[1320px] rounded-lg xl:mx-auto border border-red-200 bg-red-50 p-4 font-bold text-red-700">A loja está fechada no momento. Você pode consultar o cardápio, mas novos pedidos estão bloqueados.</div>}
       <PublicMenuOrder
         restaurant={storefront}
         categories={(categories ?? []) as Category[]}
@@ -130,7 +144,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
         options={(options ?? []) as ProductOption[]}
         deliveryRules={(((deliveryRules ?? []).length ? deliveryRules : deliveryRulesFromRestaurant(current)) ?? []) as DeliveryFeeRule[]}
         pizzaOptions={(pizzaOptions ?? []) as PizzaOption[]}
-        coupons={(coupons ?? []) as Coupon[]}
+        coupons={activeCoupons}
         loyalty={loyalty as LoyaltyProgram | null}
       />
       {current.menu_footer_message && <footer className="mx-auto max-w-[1320px] px-4 pb-8 text-center text-sm text-slate-500">{current.menu_footer_message}</footer>}

@@ -35,6 +35,28 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// Todas as rotas do painel: sem renovar a sessão aqui, o Server Component renova o
+// token mas não consegue gravar o cookie e o usuário cai deslogado na navegação
+// seguinte. O cardápio público (/cardapio/[slug]) fica de fora de propósito.
 export const config = {
-  matcher: ["/", "/admin/:path*", "/dashboard/:path*", "/cardapio", "/cardapio/categorias", "/cardapio/produtos/:path*", "/cardapio/adicionais", "/pedidos/:path*", "/clientes/:path*", "/configuracoes", "/login", "/register"],
+  matcher: [
+    "/",
+    "/admin/:path*",
+    "/dashboard/:path*",
+    "/cardapio",
+    "/cardapio/(categorias|tipos|opcoes-pizza|adicionais)",
+    "/cardapio/(produtos|fichas)/:path*",
+    "/pedidos/:path*",
+    "/clientes/:path*",
+    "/configuracoes/:path*",
+    "/cupons/:path*",
+    "/relatorios/:path*",
+    "/integracoes/:path*",
+    "/impressao/:path*",
+    "/ficha/:path*",
+    "/assinatura-suspensa",
+    "/ativacao",
+    "/login",
+    "/register",
+  ],
 };

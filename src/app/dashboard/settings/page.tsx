@@ -15,17 +15,17 @@ import type { DeliveryFeeRule } from "@/lib/types";
 
 // Campos auto-contidos (altura fixa + padding só horizontal) evitam o corte
 // de letra que acontecia com o .field-light + h-10.
-const fieldBase = "w-full rounded-lg border border-[#e7e4dd] bg-white text-sm text-[#1b1a17] outline-none transition focus:border-[#c5362e] focus:ring-2 focus:ring-[#c5362e]/12";
+const fieldBase = "w-full rounded-lg border border-line bg-white text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
 const inputClass = `${fieldBase} h-9 px-3`;
 const textareaClass = `${fieldBase} px-3 py-2 leading-snug`;
-const saveBtnClass = "inline-flex h-9 items-center justify-center rounded-lg bg-[#211d19] px-5 text-sm font-medium text-white transition hover:bg-[#37312a]";
-const noteClass = "rounded-lg bg-[#faf9f6] p-2.5 text-xs text-[#6d6a63]";
-const checkboxRowClass = "flex items-center gap-2 rounded-lg border border-[#efece6] bg-[#faf9f6] px-3 py-2 text-sm text-[#403d38]";
+const saveBtnClass = "inline-flex h-9 items-center justify-center rounded-lg bg-btn px-5 text-sm font-medium text-white transition hover:bg-btn-hover";
+const noteClass = "rounded-lg bg-[#faf9f6] p-2.5 text-xs text-ink-soft";
+const checkboxRowClass = "flex items-center gap-2 rounded-lg border border-line-soft bg-[#faf9f6] px-3 py-2 text-sm text-[#403d38]";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1">
-      <span className="block text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#9c988f]">{label}</span>
+      <span className="block text-[0.7rem] font-medium uppercase tracking-[0.08em] text-ink-faint">{label}</span>
       {children}
     </label>
   );
@@ -33,10 +33,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ConfigSection({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-[#e7e4dd] bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
-      <div className="border-b border-[#efece6] px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-[#1b1a17]">{title}</h2>
-        {description && <p className="mt-0.5 text-xs text-[#9c988f]">{description}</p>}
+    <section className="rounded-2xl border border-line bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
+      <div className="border-b border-line-soft px-4 py-2.5">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-ink-faint">{description}</p>}
       </div>
       <div className="p-4">{children}</div>
     </section>
@@ -79,8 +79,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[#1b1a17]">Configurações</h1>
-        <p className="text-sm text-[#9c988f]">Dados da empresa, cardápio online, impressão e entrega.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Configurações</h1>
+        <p className="text-sm text-ink-faint">Dados da empresa, cardápio online, impressão e entrega.</p>
       </div>
 
       <ActionFeedback status={sp.status} error={sp.error} />
@@ -155,40 +155,40 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <input type="hidden" name="site_cover_url" value={restaurant.site_cover_url ?? ""} />
 
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[#efece6] bg-[#faf9f6] p-3">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7e4dd] bg-white text-[10px] font-medium text-[#b0aaa0]">
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line-soft bg-[#faf9f6] p-3">
+              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-white text-[10px] font-medium text-ink-faint">
                 {restaurant.logo_url ? <img src={restaurant.logo_url} alt="Logotipo atual" className="h-full w-full object-cover" /> : "300×300"}
               </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-[#1b1a17]">Logotipo</p>
-                  <p className="text-xs text-[#9c988f]">Quadrado 300 × 300 px · PNG, JPG ou WEBP. Aparece no cardápio online e na comanda.</p>
+                  <p className="text-sm font-medium text-ink">Logotipo</p>
+                  <p className="text-xs text-ink-faint">Quadrado 300 × 300 px · PNG, JPG ou WEBP. Aparece no cardápio online e na comanda.</p>
                 </div>
                 <FileInput name="logo_file" accept="image/png,image/jpeg,image/webp" label="Escolher imagem" />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[#efece6] bg-[#faf9f6] p-3">
-              <div className="grid aspect-[16/5] w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7e4dd] bg-white text-[10px] font-medium text-[#b0aaa0]">
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line-soft bg-[#faf9f6] p-3">
+              <div className="grid aspect-[16/5] w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-white text-[10px] font-medium text-ink-faint">
                 {restaurant.banner_url || restaurant.cover_url ? <img src={restaurant.banner_url ?? restaurant.cover_url ?? ""} alt="Banner atual" className="h-full w-full object-cover" /> : "1600×500"}
               </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-[#1b1a17]">Banner do cardápio</p>
-                  <p className="text-xs text-[#9c988f]">1600 × 500 px. Aparece no topo do cardápio público.</p>
+                  <p className="text-sm font-medium text-ink">Banner do cardápio</p>
+                  <p className="text-xs text-ink-faint">1600 × 500 px. Aparece no topo do cardápio público.</p>
                 </div>
                 <FileInput name="banner_file" accept="image/png,image/jpeg,image/webp" label="Escolher imagem" />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[#efece6] bg-[#faf9f6] p-3">
-              <div className="grid aspect-[31/10] w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7e4dd] bg-white text-[10px] font-medium text-[#b0aaa0]">
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line-soft bg-[#faf9f6] p-3">
+              <div className="grid aspect-[31/10] w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-white text-[10px] font-medium text-ink-faint">
                 {restaurant.site_cover_url ? <img src={restaurant.site_cover_url} alt="Capa atual do site" className="h-full w-full object-cover" /> : "1920×620"}
               </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-[#1b1a17]">Capa do site</p>
-                  <p className="text-xs text-[#9c988f]">1920 × 620 px, arte larga com boa leitura no centro.</p>
+                  <p className="text-sm font-medium text-ink">Capa do site</p>
+                  <p className="text-xs text-ink-faint">1920 × 620 px, arte larga com boa leitura no centro.</p>
                 </div>
                 <FileInput name="site_cover_file" accept="image/png,image/jpeg,image/webp" label="Escolher imagem" />
               </div>
@@ -249,7 +249,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             Para pizzas com mais de um sabor, o sistema sempre cobra o maior valor entre os sabores escolhidos.
           </p>
           <div className="mt-4">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-[#9c988f]">Formas de pagamento aceitas no site</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-ink-faint">Formas de pagamento aceitas no site</p>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 ["pix", "Pix"],
@@ -278,7 +278,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <ConfigSection title="Impressão de pedidos" description="Clique em Imprimir teste: abre a janela de impressão do computador, já com as impressoras instaladas na lista. Escolha a sua e confirme — o navegador lembra a escolha.">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <Field label="Status da impressão">
-                <label className="flex h-9 items-center gap-2 rounded-lg border border-[#e7e4dd] bg-white px-3 text-sm text-[#403d38]">
+                <label className="flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm text-[#403d38]">
                   <input name="printer_enabled" type="checkbox" defaultChecked={printerSettings.enabled ?? true} />
                   Impressão ativa
                 </label>
@@ -292,7 +292,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <Field label="Testar e instalar">
                 <a
                   href="/impressao"
-                  className="inline-flex h-9 items-center justify-center rounded-lg bg-[#211d19] px-4 text-sm font-medium text-white transition hover:bg-[#37312a]"
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-btn px-4 text-sm font-medium text-white transition hover:bg-btn-hover"
                 >
                   Configurar impressora
                 </a>
@@ -336,9 +336,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <strong className="font-semibold text-[#403d38]">Não precisa instalar nada.</strong> A impressão pelo navegador funciona em qualquer
               computador e em qualquer navegador — quem lista as impressoras é a própria janela de impressão do Windows.{" "}
               <strong className="font-semibold text-[#403d38]">Quer que imprima sozinho, sem aparecer a janela?</strong>{" "}
-              <a href="/downloads/PeriniFood-Balcao-Impressao.cmd" className="font-semibold text-[#c5362e] underline">Baixe este atalho</a> e use o
+              <a href="/downloads/PeriniFood-Balcao-Impressao.cmd" className="font-semibold text-brand underline">Baixe este atalho</a> e use o
               sistema por ele (Chrome em modo impressão direta).{" "}
-              <a href="/docs/IMPRESSAO_NAVEGADOR.md" target="_blank" className="font-semibold text-[#c5362e] underline">Ver guia</a>
+              <a href="/docs/IMPRESSAO_NAVEGADOR.md" target="_blank" className="font-semibold text-brand underline">Ver guia</a>
             </p>
             <SaveBar label="Salvar impressão" />
           </ConfigSection>
@@ -358,7 +358,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <TabPanel id="seguranca">
             <ConfigSection title="Segurança da conta">
           {sp.password_success && <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-700">Senha alterada com sucesso.</div>}
-          {sp.password_error && <div className="mb-4 rounded-lg border border-[#eeccc7] bg-[#f6ece9] p-3 text-sm font-medium text-[#c5362e]">Não foi possível alterar a senha. Verifique os campos e tente novamente.</div>}
+          {sp.password_error && <div className="mb-4 rounded-lg border border-[#eeccc7] bg-[#f6ece9] p-3 text-sm font-medium text-brand">Não foi possível alterar a senha. Verifique os campos e tente novamente.</div>}
           <div className="grid gap-3 lg:grid-cols-2">
             <Field label="Nova senha">
               <input className={inputClass} name="password" type="password" minLength={6} required />

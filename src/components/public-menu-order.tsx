@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 /* eslint-disable @next/next/no-img-element */
 import { ChevronDown, Minus, Plus, Search, ShoppingCart, TicketPercent, Trash2, UserCircle2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { money } from "@/lib/utils";
 import type { Category, Coupon, DeliveryFeeRule, LoyaltyProgram, PizzaOption, Product, ProductOption, ProductOptionItem, ProductVariant, Restaurant } from "@/lib/types";
 
@@ -56,20 +57,6 @@ function groupOptions(options: ProductOption[], productId: string, groupName: st
 function lineTotal(item: CartLine) {
   const extras = Number(item.dough?.price ?? 0) + Number(item.crust?.price ?? 0) + item.additions.reduce((sum, addition) => sum + Number(addition.price), 0);
   return (Number(item.price) + extras) * item.quantity;
-}
-
-function productBasePrice(product: Product, variants: ProductVariant[]) {
-  const productVariants = variants.filter((variant) => variant.product_id === product.id && variant.active);
-  if (productVariants.length) return Math.min(...productVariants.map((variant) => Number(variant.price)));
-  return Number(product.price);
-}
-
-function sortProductsByPrice(products: Product[], variants: ProductVariant[]) {
-  return [...products].sort((a, b) => {
-    const priceDiff = productBasePrice(a, variants) - productBasePrice(b, variants);
-    if (priceDiff !== 0) return priceDiff;
-    return a.name.localeCompare(b.name, "pt-BR");
-  });
 }
 
 function flavorChoices(product: Product, products: Product[]) {
@@ -127,16 +114,62 @@ export function PublicMenuOrder({
   // rolar a lista inteira no celular é o que mais trava o pedido.
   const [flavorSearch, setFlavorSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const router = useRouter();
+  const closeDraftRef = useRef<HTMLButtonElement>(null);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
   const finalTotal = subtotal;
-  const visibleProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return products;
-    return products.filter((product) => `${product.name} ${product.description ?? ""}`.toLowerCase().includes(term));
-  }, [products, search]);
+  const itemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
   const draftProduct = draft ? products.find((product) => product.id === draft.id) : null;
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
+
+  // Tudo que depende só do catálogo é calculado uma vez. Antes, cada tecla na
+  // busca ou na observação do item refazia filtros/ordenações por produto.
+  const catalog = useMemo(() => {
+    const variantsByProduct = new Map<string, ProductVariant[]>();
+    for (const variant of variants) {
+      if (!variant.active) continue;
+      const list = variantsByProduct.get(variant.product_id) ?? [];
+      list.push(variant);
+      variantsByProduct.set(variant.product_id, list);
+    }
+    const isPizza = (product: Product) => Boolean(product.category_id && normalizeLabel(categoryById.get(product.category_id)?.name ?? "").includes("pizza"));
+    const info = new Map(products.map((product) => {
+      const productVariants = variantsByProduct.get(product.id) ?? [];
+      const pizza = isPizza(product);
+      const hasOptions = Boolean(
+        productVariants.length
+        || (pizza && (groupOptions(options, product.id, "Bordas", pizzaOptions).length || groupOptions(options, product.id, "Tipos de Massas", pizzaOptions).length))
+        || groupOptions(options, product.id, "Adicionais", pizzaOptions).length,
+      );
+      const basePrice = productVariants.length ? Math.min(...productVariants.map((variant) => Number(variant.price))) : Number(product.price);
+      return [product.id, { hasVariants: productVariants.length > 0, hasOptions, basePrice, searchText: normalizeLabel(`${product.name} ${product.description ?? ""}`) }];
+    }));
+    const byCategory = new Map(categories.map((category) => [
+      category.id,
+      products
+        .filter((product) => product.category_id === category.id)
+        .sort((a, b) => (info.get(a.id)!.basePrice - info.get(b.id)!.basePrice) || a.name.localeCompare(b.name, "pt-BR")),
+    ]));
+    return { info, byCategory };
+  }, [categories, categoryById, options, pizzaOptions, products, variants]);
+
+  const deferredSearch = useDeferredValue(search);
+  const searchTerm = normalizeLabel(deferredSearch.trim());
+
+  // Modal de produto: Esc fecha, a página por trás não rola e o foco vai para o modal.
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setDraft(null); };
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeDraftRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [draft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     window.localStorage.removeItem('gastroflow_customer_' + restaurant.slug);
@@ -211,7 +244,7 @@ export function PublicMenuOrder({
   function goToCheckout() {
     if (!cart.length || !restaurant.is_open) return;
     window.sessionStorage.setItem(`gastroflow_cart_${restaurant.slug}`, JSON.stringify(cart));
-    window.location.href = `/cardapio/${restaurant.slug}/checkout`;
+    router.push(`/cardapio/${restaurant.slug}/checkout`);
   }
 
   function updateCart(index: number, patch: Partial<CartLine>) {
@@ -221,33 +254,37 @@ export function PublicMenuOrder({
   return (
     <>
       <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
-        <div className="mx-auto grid max-w-[1320px] items-center gap-4 px-4 py-3 md:grid-cols-[150px_1fr_auto]">
-          <a href="#categorias" className="flex items-center gap-3 font-black uppercase">
+        <div className="relative mx-auto grid max-w-[1320px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-3 sm:gap-4 sm:px-4 md:grid-cols-[150px_1fr_auto]">
+          <a href="#categorias" className="hidden items-center gap-3 font-black uppercase md:flex">
             Categorias <ChevronDown className="h-4 w-4 text-red-600" />
           </a>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 sm:left-4" />
             <input
-              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none focus:border-red-500"
+              type="search"
+              aria-label="Buscar no cardápio"
+              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-red-500 sm:pl-12 sm:pr-4"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Busque por um item na loja"
+              placeholder="Busque por um item"
             />
           </div>
-          <div className="relative flex justify-end gap-2">
+          <div className="flex justify-end gap-1.5 sm:gap-2">
             <a
               href={`/cardapio/${restaurant.slug}/conta`}
-              className="hidden h-12 items-center gap-2 rounded-lg bg-slate-50 px-3 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-600 sm:flex"
+              className="grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-600 sm:flex sm:w-auto sm:items-center sm:gap-2 sm:px-3"
               title={customerName ? `Conta de ${customerName}` : "Entrar ou cadastrar-se"}
+              aria-label={customerName ? `Minha conta (${customerName})` : "Entrar ou cadastrar-se"}
             >
               <UserCircle2 className="h-5 w-5" />
-              <span className="max-w-28 truncate">{customerName ? `Olá, ${customerName}` : "Conta"}</span>
+              <span className="hidden max-w-28 truncate sm:inline">{customerName ? `Olá, ${customerName}` : "Conta"}</span>
             </a>
             <button
               type="button"
               onClick={() => setCouponsOpen((current) => !current)}
               className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
               aria-label="Ver cupons"
+              aria-expanded={couponsOpen}
               title="Cupons de desconto"
             >
               <TicketPercent className="h-5 w-5" />
@@ -257,18 +294,19 @@ export function PublicMenuOrder({
               type="button"
               onClick={() => setCartOpen((current) => !current)}
               className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
-              aria-label="Abrir carrinho"
+              aria-label={itemCount ? `Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}` : "Abrir carrinho"}
+              aria-expanded={cartOpen}
             >
               <ShoppingCart className="h-5 w-5 text-red-600" />
-              {cart.length > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
-                  {cart.length}
+              {itemCount > 0 && (
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[11px] font-black text-white">
+                  {itemCount}
                 </span>
               )}
             </button>
           </div>
           {couponsOpen && (
-            <div className="absolute right-20 top-[68px] z-30 w-[min(360px,calc(100vw-32px))] rounded-lg bg-white text-[#243640] shadow-2xl ring-1 ring-black/5">
+            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-20 rounded-lg bg-white text-[#243640] shadow-2xl ring-1 ring-black/5">
               <span className="absolute -top-3 right-5 h-6 w-6 rotate-45 bg-white" />
               <div className="relative p-5">
                 <div className="flex items-center gap-2 text-lg font-black">
@@ -295,7 +333,7 @@ export function PublicMenuOrder({
             </div>
           )}
           {cartOpen && (
-            <div className="absolute right-4 top-[68px] z-30 w-[min(360px,calc(100vw-32px))] rounded-lg bg-white text-[#243640] shadow-2xl ring-1 ring-black/5">
+            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-4 rounded-lg bg-white text-[#243640] shadow-2xl ring-1 ring-black/5">
               <span className="absolute -top-3 right-5 h-6 w-6 rotate-45 bg-white" />
               <div className="relative p-5">
                 <div className="flex items-center gap-2 text-lg">
@@ -307,7 +345,7 @@ export function PublicMenuOrder({
                     <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 text-sm">
                       <div className="min-w-0">
                         <div className="flex items-start gap-2">
-                          <button type="button" onClick={() => updateCart(index, { quantity: 0 })} className="mt-0.5 text-red-600 hover:text-red-700" aria-label="Remover item">
+                          <button type="button" onClick={() => updateCart(index, { quantity: 0 })} className="-m-2 p-2 text-red-600 hover:text-red-700" aria-label={`Remover ${item.name}`}>
                             <Trash2 className="h-4 w-4" />
                           </button>
                           <div>
@@ -343,15 +381,15 @@ export function PublicMenuOrder({
         </div>
       </nav>
 
-      <div className="mx-auto max-w-[1320px] px-4 py-8">
+      <div className={`mx-auto max-w-[1320px] px-4 py-6 sm:py-8 ${itemCount ? "pb-28 md:pb-8" : ""}`}>
         <div className="min-w-0">
           <section id="categorias" className="mb-8">
             <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4">
               <h2 className="text-lg font-black uppercase">Categorias <ChevronDown className="inline h-4 w-4 text-red-600" /></h2>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
               {categories.map((category) => (
-                <a key={category.id} href={`#${category.id}`} className="rounded-full bg-white px-4 py-2 text-sm font-bold shadow-sm hover:text-red-600">
+                <a key={category.id} href={`#${category.id}`} className="shrink-0 snap-start rounded-full bg-white px-4 py-2.5 text-sm font-bold shadow-sm hover:text-red-600">
                   {category.name}
                 </a>
               ))}
@@ -360,16 +398,15 @@ export function PublicMenuOrder({
 
           <div className="space-y-14">
             {categories.map((category) => {
-              const categoryProducts = sortProductsByPrice(visibleProducts.filter((product) => product.category_id === category.id), variants);
+              const categoryProducts = (catalog.byCategory.get(category.id) ?? []).filter((product) => !searchTerm || catalog.info.get(product.id)?.searchText.includes(searchTerm));
               if (!categoryProducts.length) return null;
               return (
                 <section key={category.id} id={category.id} className="scroll-mt-24">
                   <h2 className="mb-6 text-xl font-black uppercase text-[#243640]">{category.name}</h2>
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {categoryProducts.map((product) => {
-                      const productVariants = variants.filter((variant) => variant.product_id === product.id && variant.active);
-                      const isPizza = isPizzaProduct(product);
-                      const hasOptions = Boolean((isPizza && groupOptions(options, product.id, "Bordas", pizzaOptions).length) || (isPizza && groupOptions(options, product.id, "Tipos de Massas", pizzaOptions).length) || groupOptions(options, product.id, "Adicionais", pizzaOptions).length || productVariants.length);
+                      const info = catalog.info.get(product.id)!;
+                      const hasOptions = info.hasOptions;
                       return (
                         <button
                           key={product.id}
@@ -383,13 +420,13 @@ export function PublicMenuOrder({
                           <div className="relative min-w-0">
                             <h3 className="line-clamp-2 text-base font-black text-red-600">{product.name}</h3>
                             <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">{product.description || "Produto disponível para pedido."}</p>
-                            <p className="mt-6 text-sm text-slate-700">{productVariants.length ? "A partir de " : ""}<strong>{money(productBasePrice(product, variants))}</strong></p>
+                            <p className="mt-6 text-sm text-slate-700">{info.hasVariants ? "A partir de " : ""}<strong>{money(info.basePrice)}</strong></p>
                           </div>
                           <div className="relative">
                             <div className="h-28 w-28 overflow-hidden rounded-lg bg-slate-100">
-                              {product.image_url ? <img src={product.image_url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-red-500">Sem foto</div>}
+                              {product.image_url ? <img src={product.image_url} alt="" loading="lazy" decoding="async" width={112} height={112} onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-red-500">Sem foto</div>}
                             </div>
-                            {!restaurant.is_open && <span className="absolute bottom-1 right-1 rounded-full bg-slate-500 px-3 py-1 text-[10px] font-black uppercase text-white">Indisponível</span>}
+                            {!restaurant.is_open && <span className="absolute bottom-1 right-1 rounded-full bg-slate-600 px-3 py-1 text-[11px] font-black uppercase text-white">Indisponível</span>}
                           </div>
                           {/* Ação sempre visível: sem ela o card de bebida parecia
                               apenas informativo, sem jeito de comprar. */}
@@ -405,29 +442,49 @@ export function PublicMenuOrder({
                 </section>
               );
             })}
+            {searchTerm && ![...catalog.byCategory.values()].some((list) => list.some((product) => catalog.info.get(product.id)?.searchText.includes(searchTerm))) && (
+              <p className="rounded-lg bg-white p-6 text-center text-sm text-slate-600 shadow-sm">Nenhum item encontrado para “{deferredSearch.trim()}”.</p>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Barra de carrinho fixa no celular: o ícone no topo some ao rolar o cardápio. */}
+      {itemCount > 0 && !draft && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+          <button
+            type="button"
+            onClick={() => { setCartOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="flex h-12 w-full items-center justify-between rounded-lg bg-red-600 px-4 text-sm font-black text-white"
+          >
+            <span className="inline-flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Ver carrinho · {itemCount} {itemCount === 1 ? "item" : "itens"}</span>
+            <span>{money(subtotal)}</span>
+          </button>
+        </div>
+      )}
+
 
       {draft && draftProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4 py-8">
-          <button type="button" onClick={() => setDraft(null)} className="absolute right-6 top-4 text-white">
-            <X className="h-10 w-10" />
-          </button>
-          <div className="grid max-h-[88vh] w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-2xl md:grid-cols-[310px_1fr]">
-            <div className="space-y-5 p-5">
-              <div className="aspect-square overflow-hidden rounded-lg bg-slate-100">
-                {draftProduct.image_url ? <img src={draftProduct.image_url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>}
+        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/65 md:items-center md:px-4 md:py-8" onClick={(event) => { if (event.target === event.currentTarget) setDraft(null); }}>
+          {/* Celular: tela cheia com rodapé fixo (antes o botão "Adicionar" ficava
+              cortado abaixo da foto e não dava para pôr o item no carrinho). */}
+          <div role="dialog" aria-modal="true" aria-labelledby="produto-titulo" className="relative flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:rounded-lg">
+            <button ref={closeDraftRef} type="button" onClick={() => setDraft(null)} aria-label="Fechar" className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-white/90 text-slate-700 shadow md:bg-slate-100">
+              <X className="h-6 w-6" />
+            </button>
+            {/* Corpo rola inteiro no celular; no desktop cada coluna rola sozinha. */}
+            <div className="min-h-0 flex-1 overflow-y-auto md:flex md:overflow-hidden">
+            <div className="space-y-4 p-4 md:w-[310px] md:shrink-0 md:space-y-5 md:overflow-y-auto md:p-5">
+              <div className="aspect-video overflow-hidden rounded-lg bg-slate-100 md:aspect-square">
+                {draftProduct.image_url ? <img src={draftProduct.image_url} alt="" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>}
               </div>
               <div>
-                <h2 className="text-3xl font-black text-red-600">{draftProduct.name}</h2>
+                <h2 id="produto-titulo" className="pr-12 text-2xl font-black text-red-600 md:pr-0 md:text-3xl">{draftProduct.name}</h2>
                 <p className="mt-3 text-sm leading-5 text-slate-600">{draftProduct.description || "Produto disponível para pedido."}</p>
               </div>
             </div>
 
-            <div className="flex max-h-[88vh] flex-col border-l border-slate-100">
-              <div className="flex-1 overflow-y-auto">
+              <div className="md:min-h-0 md:flex-1 md:overflow-y-auto md:border-l md:border-slate-100">
                 {(() => {
                   const isPizza = isPizzaProduct(draftProduct);
                   const productVariants = variants.filter((variant) => variant.product_id === draft.id && variant.active);
@@ -476,6 +533,8 @@ export function PublicMenuOrder({
                             <div className="relative mt-4">
                               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                               <input
+                                type="search"
+                                aria-label="Buscar sabor"
                                 value={flavorSearch}
                                 onChange={(event) => setFlavorSearch(event.target.value)}
                                 placeholder="Buscar sabor…"
@@ -616,8 +675,9 @@ export function PublicMenuOrder({
                 })()}
 
                 <section className="p-5">
-                  <label className="block text-sm font-black uppercase tracking-wide text-slate-500">Observações do item</label>
+                  <label htmlFor="observacoes-item" className="block text-sm font-black uppercase tracking-wide text-slate-500">Observações do item</label>
                   <textarea
+                    id="observacoes-item"
                     className="mt-2 min-h-20 w-full resize-none border-b border-slate-200 bg-white py-2 outline-none focus:border-red-500"
                     maxLength={250}
                     value={draft.notes ?? ""}
@@ -627,13 +687,14 @@ export function PublicMenuOrder({
                   <p className="text-right text-xs text-slate-400">{draft.notes.length ?? 0}/250</p>
                 </section>
               </div>
+            </div>
 
-              <div className="flex items-center gap-4 border-t border-slate-100 bg-white p-4">
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
+              <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:gap-4 sm:p-4">
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} aria-label="Diminuir quantidade" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-600">
                   <Minus className="h-4 w-4" />
                 </button>
-                <strong className="text-lg">{draft.quantity}</strong>
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} className="grid h-10 w-10 place-items-center rounded-full bg-red-600 text-white">
+                <strong className="min-w-6 text-center text-lg" aria-live="polite">{draft.quantity}</strong>
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} aria-label="Aumentar quantidade" className="grid h-11 w-11 place-items-center rounded-full bg-red-600 text-white">
                   <Plus className="h-4 w-4" />
                 </button>
                 <button
@@ -645,7 +706,6 @@ export function PublicMenuOrder({
                   Adicionar - {money(lineTotal(draft))}
                 </button>
               </div>
-            </div>
           </div>
         </div>
       )}

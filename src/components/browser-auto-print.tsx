@@ -39,9 +39,9 @@ export function BrowserAutoPrint() {
 
   return (
     <div className="print-hide flex flex-col items-center gap-2 py-6 text-center">
-      <RefreshCw className="h-5 w-5 animate-spin text-[#c5362e]" />
-      <p className="text-sm font-semibold text-[#1b1a17]">{status}</p>
-      <p className="text-xs text-[#9c988f]">Pedido lançado. Voltando para os pedidos…</p>
+      <RefreshCw className="h-5 w-5 animate-spin text-brand" />
+      <p className="text-sm font-semibold text-ink">{status}</p>
+      <p className="text-xs text-ink-faint">Pedido lançado. Voltando para os pedidos…</p>
     </div>
   );
 }
