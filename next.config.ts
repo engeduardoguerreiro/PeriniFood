@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
       { key: "Content-Security-Policy", value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" },
     ] }, { source: "/pedido/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+    { source: "/entrega/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" }] },
     { source: "/api/customer-auth/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] }];
   },
   async redirects() {

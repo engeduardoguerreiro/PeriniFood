@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireRestaurant } from "@/lib/auth";
 import { submittedImageUrl } from "@/lib/image-url";
+import { createTrackingLink } from "@/lib/delivery-tracking";
 import { isAdminRole } from "@/lib/integrations/security";
 import { mergeDeliveryRulesIntoOpeningHours } from "@/lib/delivery-fee-rules";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
@@ -946,6 +947,22 @@ export async function updateOrderStatus(formData: FormData) {
   revalidatePath("/pedidos");
   revalidatePath(`/dashboard/orders/${id}`);
   revalidatePath(`/pedidos/${id}`);
+}
+
+// Gera (ou troca) o link do motoboy do pedido. Trocar invalida o link anterior —
+// é assim que a loja passa a entrega para outro motoboy.
+export async function createCourierLink(formData: FormData) {
+  const { restaurant, role } = await requireRestaurant();
+  const id = text(formData, "id");
+  const back = `/pedidos/${id}`;
+  if (role === "kitchen") redirectWithFeedback(formData, back, "updated", "Seu perfil não pode gerar link de entrega.");
+  try {
+    await createTrackingLink(restaurant.id, id, boundedText(formData.get("courier_name"), 60) || null);
+  } catch (error) {
+    redirectWithFeedback(formData, back, "updated", error instanceof Error ? error.message : "Não foi possível gerar o link.");
+  }
+  revalidatePath(back);
+  redirect(`${back}?status=updated#motoboy`);
 }
 
 export async function deleteOrder(formData: FormData) {

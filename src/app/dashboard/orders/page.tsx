@@ -109,6 +109,11 @@ function OrderCard({ order }: { order: Order }) {
             iFood finaliza a entrega
           </span>
         ) : null}
+        {order.type === "delivery" && (
+          <Link href={`/pedidos/${order.id}#motoboy`} aria-label={`Motoboy e rastreamento do pedido #${orderCode(order)}`} title="Motoboy / rastrear" className={iconBtn}>
+            <Bike size={15} />
+          </Link>
+        )}
         <Link href={`/pedidos/${order.id}/print`} target="_blank" aria-label={`Imprimir pedido #${orderCode(order)}`} title="Imprimir" className={iconBtn}>
           <Printer size={15} />
         </Link>

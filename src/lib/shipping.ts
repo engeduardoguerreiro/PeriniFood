@@ -9,7 +9,8 @@ export function shippingAddress(row: Record<string, unknown>): ShippingAddress {
     city: boundedText(row.city,100,true), state: boundedText(row.state,2,true), cep: boundedText(row.cep ?? row.zip_code,10), complement: boundedText(row.complement,150), reference: boundedText(row.reference,150) };
 }
 export function addressText(a: ShippingAddress) { return [a.street,a.number,a.neighborhood,`${a.city}/${a.state}`,a.cep,a.complement,a.reference].filter(Boolean).join(" - "); }
-async function geocode(query: string) {
+// Exportada para o rastreamento (destino da entrega no mapa).
+export async function geocode(query: string) {
   const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(query)}`, { headers: { "User-Agent": "PeriniFood/1.0 (delivery estimate)" }, signal: AbortSignal.timeout(8000), cache: "no-store" });
   if (!response.ok) throw new PublicError("Não foi possível calcular o frete. Tente novamente.");
   const rows = await response.json() as Array<{lat:string;lon:string}>;

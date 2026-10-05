@@ -5,6 +5,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { orderCode, whatsappLink } from "@/lib/utils";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { CourierPanel } from "@/components/tracking/courier-panel";
+import { trackingByOrder } from "@/lib/delivery-tracking";
+import { isTrackingToken } from "@/lib/utils";
 
 const flow: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delivery", "completed", "canceled"];
 const sourceLabel: Record<string, string> = {
@@ -45,6 +49,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   ]);
   if (!order) notFound();
   const current = order as Order;
+  const tracking = current.type === "delivery" ? await trackingByOrder(current.id, restaurant.id) : null;
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host") ?? "perinifood.com.br";
+  const origin = `${requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
   const message = `Olá ${current.customer_name || "cliente"}, seu pedido #${orderCode(current)} está com status: ${statusLabel[current.status]}. Total: ${money(current.total)}.`;
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
@@ -94,6 +102,18 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           })}
         </div>
       </section>
+      <div className="space-y-5">
+      {current.type === "delivery" && (
+        <CourierPanel
+          origin={origin}
+          orderId={current.id}
+          token={tracking?.token ?? null}
+          courierName={tracking?.courier_name ?? null}
+          customerPhone={current.customer_phone}
+          trackingCode={isTrackingToken(current.code) ? current.code : null}
+          closed={current.status === "completed" || current.status === "canceled"}
+        />
+      )}
       <aside className="rounded-2xl bg-white p-5 shadow-sm">
         <h3 className="font-black">Ações</h3>
         <div className="mt-4 space-y-2">
@@ -115,6 +135,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="mt-3 flex justify-between border-t pt-3 text-lg"><span>Total</span><strong>{money(current.total)}</strong></div>
         </div>
       </aside>
+      </div>
     </div>
   );
 }
