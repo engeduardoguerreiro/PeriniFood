@@ -8,7 +8,7 @@ function Tile({ icon: Icon, label, value, hint }: { icon: typeof Users; label: s
   return (
     <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="flex items-center gap-2">
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-brand"><Icon size={13} /></span>
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-soft text-brand"><Icon size={13} /></span>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{label}</p>
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]">{value}</p>

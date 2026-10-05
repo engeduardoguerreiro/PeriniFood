@@ -233,10 +233,10 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
   }
 
   return (
-    <main className="min-h-screen bg-[#f1f1f1] px-5 py-8 text-[#243640]">
+    <main className="min-h-screen bg-[#f1f1f1] px-5 py-8 text-ink">
       {checkoutError && <p role="alert" className="mx-auto mb-5 max-w-[1280px] rounded-lg bg-red-50 p-4 text-red-700">{checkoutError}</p>}
       {!restaurant.is_open && (
-        <div className="mx-auto mb-6 max-w-[1280px] rounded-lg border border-red-200 bg-red-50 p-4 font-bold text-red-700">
+        <div className="mx-auto mb-6 max-w-[1280px] rounded-lg border border-brand-line bg-brand-soft p-4 font-bold text-brand-strong">
           A loja está fechada no momento. Volte ao cardápio para consultar os produtos disponíveis.
         </div>
       )}
@@ -264,13 +264,13 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
               ["4", "Confira seu pedido", CheckCircle2],
             ].map(([number, label, Icon]) => (
               <div key={String(number)} className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#243640] text-sm font-black text-white">{String(number)}</span>
-                <Icon className="h-4 w-4 text-red-600" />
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-sm font-black text-white">{String(number)}</span>
+                <Icon className="h-4 w-4 text-brand" />
                 <span className="font-semibold">{String(label)}</span>
               </div>
             ))}
           </div>
-          <Link href={`/cardapio/${restaurant.slug}`} className="mt-6 inline-flex font-black text-red-600">Voltar para a loja</Link>
+          <Link href={`/cardapio/${restaurant.slug}`} className="mt-6 inline-flex font-black text-brand">Voltar para a loja</Link>
         </aside>
 
         <section className="space-y-5">
@@ -292,7 +292,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
                   type="button"
                   onClick={() => submitCustomerAuth("login")}
                   disabled={authLoading}
-                  className="rounded-lg bg-[#243640] px-5 py-3 font-black text-white transition hover:bg-[#16252d] disabled:opacity-60"
+                  className="rounded-lg bg-ink px-5 py-3 font-black text-white transition hover:bg-black disabled:opacity-60"
                 >
                   Entrar
                 </button>
@@ -316,7 +316,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
               type="button"
               onClick={() => submitCustomerAuth("register")}
               disabled={authLoading}
-              className="mt-4 w-full rounded-lg border border-red-200 bg-white px-4 py-3 font-black text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+              className="mt-4 w-full rounded-lg border border-brand-line bg-white px-4 py-3 font-black text-brand transition hover:bg-brand-soft disabled:opacity-60"
             >
               Salvar cadastro com senha
             </button>
@@ -325,11 +325,11 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
           <div className="rounded-lg bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-black">Modo de entrega</h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <button type="button" aria-pressed={type === "delivery"} onClick={() => setType("delivery")} className={type === "delivery" ? "rounded-lg border border-red-500 bg-red-50 p-4 text-left" : "rounded-lg border border-slate-200 bg-white p-4 text-left"}>
+              <button type="button" aria-pressed={type === "delivery"} onClick={() => setType("delivery")} className={type === "delivery" ? "rounded-lg border border-brand bg-brand-soft p-4 text-left" : "rounded-lg border border-slate-200 bg-white p-4 text-left"}>
                 <strong>Entrega</strong>
                 <span className="block text-sm text-slate-500">Nós levamos o pedido até você</span>
               </button>
-              <button type="button" aria-pressed={type === "pickup"} onClick={() => setType("pickup")} className={type === "pickup" ? "rounded-lg border border-red-500 bg-red-50 p-4 text-left" : "rounded-lg border border-slate-200 bg-slate-50 p-4 text-left"}>
+              <button type="button" aria-pressed={type === "pickup"} onClick={() => setType("pickup")} className={type === "pickup" ? "rounded-lg border border-brand bg-brand-soft p-4 text-left" : "rounded-lg border border-slate-200 bg-slate-50 p-4 text-left"}>
                 <strong>Retirada</strong>
                 <span className="block text-sm text-slate-500">Você retira o pedido na loja</span>
               </button>
@@ -338,13 +338,13 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
             {type === "delivery" && (
               <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-3 flex items-center gap-2 font-black">
-                  <MapPin className="h-4 w-4 text-red-600" />
+                  <MapPin className="h-4 w-4 text-brand" />
                   Endereço de entrega
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="grid grid-cols-[1fr_auto] gap-2 md:col-span-2">
                     <input className="field-light" inputMode="numeric" autoComplete="postal-code" aria-label="CEP" value={address.cep} onChange={(event) => setAddress({ ...address, cep: event.target.value })} placeholder="CEP" required />
-                    <button type="button" onClick={lookupCep} aria-label="Buscar endereço pelo CEP" title="Buscar CEP" className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-red-300"><Search className="h-4 w-4" /></button>
+                    <button type="button" onClick={lookupCep} aria-label="Buscar endereço pelo CEP" title="Buscar CEP" className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-brand-line"><Search className="h-4 w-4" /></button>
                   </div>
                   <input className="field-light md:col-span-2" aria-label="Endereço" autoComplete="address-line1" value={address.street} onChange={(event) => setAddress({ ...address, street: event.target.value })} placeholder="Endereço" required />
                   <input className="field-light" aria-label="Número" inputMode="numeric" value={address.number} onChange={(event) => setAddress({ ...address, number: event.target.value })} placeholder="Número" required />
@@ -376,7 +376,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
             <h2 className="text-2xl font-black">Forma de pagamento</h2>
             <div role="radiogroup" aria-label="Forma de pagamento" className="mt-4 grid gap-3 md:grid-cols-2">
               {paymentMethods.map((method) => (
-                <label key={method} className={payment === method ? "rounded-lg border border-red-500 bg-red-50 p-4 font-black" : "rounded-lg border border-slate-200 p-4 font-bold"}>
+                <label key={method} className={payment === method ? "rounded-lg border border-brand bg-brand-soft p-4 font-black" : "rounded-lg border border-slate-200 p-4 font-bold"}>
                   <input className="mr-2" type="radio" name="payment_ui" checked={payment === method} onChange={() => {
                     setPayment(method);
                     if (method !== "cash") setNeedsChange("no");
@@ -389,11 +389,11 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <span className="block text-sm font-black text-slate-800">Precisa de troco</span>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  <label className={needsChange === "yes" ? "rounded-lg border border-red-500 bg-red-50 p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
+                  <label className={needsChange === "yes" ? "rounded-lg border border-brand bg-brand-soft p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
                     <input className="mr-2" type="radio" name="change_ui" checked={needsChange === "yes"} onChange={() => setNeedsChange("yes")} />
                     Sim
                   </label>
-                  <label className={needsChange === "no" ? "rounded-lg border border-red-500 bg-red-50 p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
+                  <label className={needsChange === "no" ? "rounded-lg border border-brand bg-brand-soft p-3 font-black" : "rounded-lg border border-slate-200 bg-white p-3 font-bold"}>
                     <input className="mr-2" type="radio" name="change_ui" checked={needsChange === "no"} onChange={() => setNeedsChange("no")} />
                     Não
                   </label>
@@ -439,7 +439,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
 function FinalizeButton({ disabled, label }: { disabled: boolean; label: string }) {
   const { pending } = useFormStatus();
   return (
-    <button className="mt-5 w-full rounded-lg bg-red-600 px-4 py-4 font-black uppercase text-white transition hover:bg-red-700 disabled:bg-slate-300" disabled={disabled || pending}>
+    <button className="mt-5 w-full rounded-lg bg-brand px-4 py-4 font-black uppercase text-white transition hover:bg-brand-strong disabled:bg-slate-300" disabled={disabled || pending}>
       {pending ? "Enviando pedido…" : label}
     </button>
   );

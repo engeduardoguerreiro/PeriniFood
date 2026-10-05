@@ -139,13 +139,13 @@ function HistoryRow({ order }: { order: Order }) {
         <p className="truncate font-medium text-ink-body">{order.customer_name || "Cliente balcão"}</p>
         <p className="text-[0.7rem] font-medium uppercase tracking-wide text-ink-faint">{orderSource(order)} • {typeLabel[order.type]} • {orderTime(order)}</p>
       </div>
-      <span className={order.status === "completed" ? "justify-self-start rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700" : "justify-self-start rounded-full bg-[#f6ece9] px-2.5 py-0.5 text-xs font-medium text-brand"}>
+      <span className={order.status === "completed" ? "justify-self-start rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700" : "justify-self-start rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand"}>
         {statusLabel[order.status]}
       </span>
       <strong className="font-semibold text-ink [font-variant-numeric:tabular-nums]">{money(order.total)}</strong>
       <form action={deleteOrder} className="md:justify-self-end">
         <input type="hidden" name="id" value={order.id} />
-        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#eeccc7] px-2.5 text-xs font-medium text-brand transition hover:bg-[#f6ece9]">
+        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand-line px-2.5 text-xs font-medium text-brand transition hover:bg-brand-soft">
           <Trash2 size={13} />
           Excluir
         </button>

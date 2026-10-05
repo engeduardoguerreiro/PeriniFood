@@ -14,7 +14,7 @@ export default async function CheckoutPage({ params, searchParams }: { params: P
 
   if (!restaurant || pending) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#f1f1f1] px-5 text-[#243640]">
+      <main className="grid min-h-screen place-items-center bg-[#f1f1f1] px-5 text-ink">
         <div className="rounded-lg bg-white p-8 shadow-sm">Restaurante não encontrado.</div>
       </main>
     );

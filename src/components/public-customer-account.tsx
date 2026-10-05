@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Gift, Mail, MapPin, PackageCheck, Search, UserCircle2 } from "lucide-react";
@@ -286,16 +286,16 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
     : 0;
 
   return (
-    <main className="min-h-screen bg-[#f1f1f1] px-5 py-10 text-[#243640]">
+    <main className="min-h-screen bg-[#f1f1f1] px-5 py-10 text-ink">
       <div className="mx-auto max-w-[1120px]">
-        <Link href={`/cardapio/${restaurant.slug}`} className="font-black text-red-600">Voltar para a loja</Link>
+        <Link href={`/cardapio/${restaurant.slug}`} className="font-black text-brand">Voltar para a loja</Link>
         <section className="mt-5 rounded-xl bg-white p-6 shadow-sm md:p-10">
           <div className="mx-auto grid h-20 w-20 place-items-center overflow-hidden rounded-2xl bg-white shadow">
             {restaurant.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={restaurant.logo_url} alt="" className="h-full w-full object-cover" />
             ) : (
-              <UserCircle2 className="h-10 w-10 text-red-600" />
+              <UserCircle2 className="h-10 w-10 text-brand" />
             )}
           </div>
 
@@ -334,7 +334,7 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                   <div className="grid gap-3 md:grid-cols-2">
                   </div>
                 )}
-                <button type="button" onClick={submitAuth} disabled={loading} className="rounded-lg bg-red-600 px-4 py-4 font-black uppercase text-white transition hover:bg-red-700 disabled:bg-slate-300">
+                <button type="button" onClick={submitAuth} disabled={loading} className="rounded-lg bg-brand px-4 py-4 font-black uppercase text-white transition hover:bg-brand-strong disabled:bg-slate-300">
                   {loading ? "Aguarde..." : mode === "login" ? "Entrar na conta" : "Criar cadastro"}
                 </button>
               </div>
@@ -349,13 +349,13 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5">
-                  <div className="flex items-center gap-2 font-black"><Gift className="h-5 w-5 text-red-600" /> Programa de fidelidade</div>
+                  <div className="flex items-center gap-2 font-black"><Gift className="h-5 w-5 text-brand" /> Programa de fidelidade</div>
                   {loyalty.enabled ? (
                     <>
                       <p className="mt-4 text-4xl font-black">{loyalty.points}</p>
                       <p className="text-sm font-semibold text-slate-500">pontos acumulados</p>
                       <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-red-600" style={{ width: `${progress}%` }} />
+                        <div className="h-full rounded-full bg-brand" style={{ width: `${progress}%` }} />
                       </div>
                       <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-700">
                         Você ganha 1 ponto por pedido dentro da campanha. A cada {loyalty.pointsToReward} pontos você ganha {rewardLabel(loyalty)}. Pontos valem por {loyalty.pointsValidityMonths ?? 6} meses.
@@ -394,14 +394,14 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
 
               <div className="space-y-5">
                 <section className="rounded-xl border border-slate-200 bg-white p-5">
-                  <h2 className="flex items-center gap-2 text-xl font-black"><MapPin className="h-5 w-5 text-red-600" /> Meus dados e endereço</h2>
+                  <h2 className="flex items-center gap-2 text-xl font-black"><MapPin className="h-5 w-5 text-brand" /> Meus dados e endereço</h2>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <input className="field-light" placeholder="Nome completo" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
                     <input className="field-light" placeholder="Celular/WhatsApp" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
                     <input className="field-light" type="email" placeholder="E-mail" readOnly={Boolean(profile)} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <input className="field-light" placeholder="CEP" value={draft.zipCode} onChange={(event) => setDraft({ ...draft, zipCode: event.target.value })} />
-                      <button type="button" onClick={lookupCep} className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-red-300" aria-label="Buscar CEP"><Search className="h-4 w-4" /></button>
+                      <button type="button" onClick={lookupCep} className="rounded-lg border border-slate-200 bg-white px-4 font-black hover:border-brand-line" aria-label="Buscar CEP"><Search className="h-4 w-4" /></button>
                     </div>
                     <input className="field-light md:col-span-2" placeholder="Endereço" value={draft.address} onChange={(event) => setDraft({ ...draft, address: event.target.value })} />
                     <input className="field-light" placeholder="Número" value={draft.addressNumber} onChange={(event) => setDraft({ ...draft, addressNumber: event.target.value })} />
@@ -411,13 +411,13 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                     <input className="field-light" placeholder="Complemento" value={draft.complement} onChange={(event) => setDraft({ ...draft, complement: event.target.value })} />
                     <input className="field-light" placeholder="Ponto de referência" value={draft.reference} onChange={(event) => setDraft({ ...draft, reference: event.target.value })} />
                   </div>
-                  <button type="button" onClick={saveAccount} disabled={loading} className="mt-4 w-full rounded-lg bg-red-600 px-4 py-3 font-black text-white transition hover:bg-red-700 disabled:bg-slate-300">
+                  <button type="button" onClick={saveAccount} disabled={loading} className="mt-4 w-full rounded-lg bg-brand px-4 py-3 font-black text-white transition hover:bg-brand-strong disabled:bg-slate-300">
                     {loading ? "Salvando..." : "Salvar meus dados"}
                   </button>
                 </section>
 
                 <section className="rounded-xl border border-slate-200 bg-white p-5">
-                  <h2 className="flex items-center gap-2 text-xl font-black"><PackageCheck className="h-5 w-5 text-red-600" /> Histórico de pedidos</h2>
+                  <h2 className="flex items-center gap-2 text-xl font-black"><PackageCheck className="h-5 w-5 text-brand" /> Histórico de pedidos</h2>
                   <div className="mt-4 divide-y divide-slate-100">
                     {orders.map((order) => (
                       <div key={order.id} className="grid gap-2 py-3 md:grid-cols-[1fr_120px_120px] md:items-center">

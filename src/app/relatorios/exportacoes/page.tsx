@@ -23,7 +23,7 @@ async function Content({ searchParams }: { searchParams: ReportSearchParams }) {
         {exports.map((item) => (
           <article key={item.type} className="rounded-2xl border border-line bg-white p-5 shadow-sm">
             <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#f6ece9] text-brand"><FileSpreadsheet size={20} /></span>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-soft text-brand"><FileSpreadsheet size={20} /></span>
               <div>
                 <h2 className="text-lg font-black text-slate-950">{item.title}</h2>
                 <p className="mt-1 text-sm font-medium text-ink-faint">{item.description}</p>

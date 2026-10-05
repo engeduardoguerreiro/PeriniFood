@@ -7,7 +7,7 @@ import { money } from "@/lib/utils";
 import type { Restaurant } from "@/lib/types";
 
 function StatTile({ icon: Icon, label, value, hint, tone = "brand" }: { icon: typeof Building2; label: string; value: string; hint?: string; tone?: "brand" | "warn" | "danger" }) {
-  const badge = tone === "warn" ? "bg-amber-50 text-amber-700" : tone === "danger" ? "bg-rose-50 text-rose-700" : "bg-[#f6ece9] text-brand";
+  const badge = tone === "warn" ? "bg-amber-50 text-amber-700" : tone === "danger" ? "bg-rose-50 text-rose-700" : "bg-brand-soft text-brand";
   return (
     <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="flex items-center gap-2">
@@ -126,7 +126,7 @@ export default async function AdminOverviewPage() {
                         {mods.slice(0, 3).map((m) => (
                           <span key={m} className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.65rem] font-medium text-ink-soft">{moduleName(m)}</span>
                         ))}
-                        {mods.length > 3 && <span className="rounded-full bg-[#f6ece9] px-2 py-0.5 text-[0.65rem] font-medium text-brand">+{mods.length - 3}</span>}
+                        {mods.length > 3 && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[0.65rem] font-medium text-brand">+{mods.length - 3}</span>}
                         {!mods.length && <span className="text-xs text-ink-faint">Nenhum</span>}
                       </div>
                     </td>

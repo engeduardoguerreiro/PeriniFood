@@ -83,7 +83,7 @@ export function ProductList({ products }: { products: Product[] }) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="truncate text-sm font-medium text-ink">{product.name}</p>
-                {product.featured && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide text-brand">Destaque</span>}
+                {product.featured && <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide text-brand">Destaque</span>}
               </div>
               <p className="truncate text-xs text-ink-faint">{product.categories?.name ?? "Sem categoria"}{product.description ? ` • ${product.description}` : ""}</p>
             </div>

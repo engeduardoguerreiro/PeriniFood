@@ -256,14 +256,14 @@ export function PublicMenuOrder({
       <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
         <div className="relative mx-auto grid max-w-[1320px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-3 sm:gap-4 sm:px-4 md:grid-cols-[150px_1fr_auto]">
           <a href="#categorias" className="hidden items-center gap-3 font-black uppercase md:flex">
-            Categorias <ChevronDown className="h-4 w-4 text-red-600" />
+            Categorias <ChevronDown className="h-4 w-4 text-brand" />
           </a>
           <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 sm:left-4" />
             <input
               type="search"
               aria-label="Buscar no cardápio"
-              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-red-500 sm:pl-12 sm:pr-4"
+              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand sm:pl-12 sm:pr-4"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Busque por um item"
@@ -272,7 +272,7 @@ export function PublicMenuOrder({
           <div className="flex justify-end gap-1.5 sm:gap-2">
             <a
               href={`/cardapio/${restaurant.slug}/conta`}
-              className="grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-600 sm:flex sm:w-auto sm:items-center sm:gap-2 sm:px-3"
+              className="grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-sm font-bold text-slate-700 transition hover:bg-brand-soft hover:text-brand sm:flex sm:w-auto sm:items-center sm:gap-2 sm:px-3"
               title={customerName ? `Conta de ${customerName}` : "Entrar ou cadastrar-se"}
               aria-label={customerName ? `Minha conta (${customerName})` : "Entrar ou cadastrar-se"}
             >
@@ -282,41 +282,41 @@ export function PublicMenuOrder({
             <button
               type="button"
               onClick={() => setCouponsOpen((current) => !current)}
-              className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-brand transition hover:bg-brand-soft focus:outline-none focus:ring-2 focus:ring-brand"
               aria-label="Ver cupons"
               aria-expanded={couponsOpen}
               title="Cupons de desconto"
             >
               <TicketPercent className="h-5 w-5" />
-              {coupons.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">{coupons.length}</span>}
+              {coupons.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-black text-white">{coupons.length}</span>}
             </button>
             <button
               type="button"
               onClick={() => setCartOpen((current) => !current)}
-              className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="relative grid h-12 w-12 place-items-center rounded-lg bg-slate-50 text-brand transition hover:bg-brand-soft focus:outline-none focus:ring-2 focus:ring-brand"
               aria-label={itemCount ? `Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}` : "Abrir carrinho"}
               aria-expanded={cartOpen}
             >
-              <ShoppingCart className="h-5 w-5 text-red-600" />
+              <ShoppingCart className="h-5 w-5 text-brand" />
               {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[11px] font-black text-white">
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-black text-white">
                   {itemCount}
                 </span>
               )}
             </button>
           </div>
           {couponsOpen && (
-            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-20 rounded-lg bg-white text-[#243640] shadow-2xl ring-1 ring-black/5">
+            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-20 rounded-lg bg-white text-ink shadow-2xl ring-1 ring-black/5">
               <span className="absolute -top-3 right-5 h-6 w-6 rotate-45 bg-white" />
               <div className="relative p-5">
                 <div className="flex items-center gap-2 text-lg font-black">
-                  <TicketPercent className="h-5 w-5 text-red-600" />
+                  <TicketPercent className="h-5 w-5 text-brand" />
                   Cupons e vantagens
                 </div>
                 <div className="mt-4 space-y-3">
                   {coupons.map((coupon) => (
-                    <div key={coupon.id} className="rounded-lg border border-red-100 bg-red-50 p-3">
-                      <p className="font-black text-red-700">{coupon.code}</p>
+                    <div key={coupon.id} className="rounded-lg border border-brand-line bg-brand-soft p-3">
+                      <p className="font-black text-brand-strong">{coupon.code}</p>
                       <p className="text-sm text-slate-600">{coupon.description || "Cupom disponível para esta loja."}</p>
                       <p className="mt-1 text-xs font-bold text-slate-500">Pedido mínimo: {money(coupon.minimum_order ?? 0)}</p>
                     </div>
@@ -333,11 +333,11 @@ export function PublicMenuOrder({
             </div>
           )}
           {cartOpen && (
-            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-4 rounded-lg bg-white text-[#243640] shadow-2xl ring-1 ring-black/5">
+            <div className="absolute right-3 top-full z-30 mt-2 w-[min(360px,calc(100vw-24px))] sm:right-4 rounded-lg bg-white text-ink shadow-2xl ring-1 ring-black/5">
               <span className="absolute -top-3 right-5 h-6 w-6 rotate-45 bg-white" />
               <div className="relative p-5">
                 <div className="flex items-center gap-2 text-lg">
-                  <ShoppingCart className="h-5 w-5 text-red-600" />
+                  <ShoppingCart className="h-5 w-5 text-brand" />
                   <span>Meu carrinho</span>
                 </div>
                 <div className="mt-4 max-h-[220px] space-y-3 overflow-y-auto border-y border-slate-200 py-3 pr-2">
@@ -345,7 +345,7 @@ export function PublicMenuOrder({
                     <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 text-sm">
                       <div className="min-w-0">
                         <div className="flex items-start gap-2">
-                          <button type="button" onClick={() => updateCart(index, { quantity: 0 })} className="-m-2 p-2 text-red-600 hover:text-red-700" aria-label={`Remover ${item.name}`}>
+                          <button type="button" onClick={() => updateCart(index, { quantity: 0 })} className="-m-2 p-2 text-brand hover:text-brand-strong" aria-label={`Remover ${item.name}`}>
                             <Trash2 className="h-4 w-4" />
                           </button>
                           <div>
@@ -371,7 +371,7 @@ export function PublicMenuOrder({
                   type="button"
                   onClick={goToCheckout}
                   disabled={!cart.length || !restaurant.is_open}
-                  className="mt-4 w-full rounded-lg bg-red-600 px-4 py-4 font-black uppercase text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="mt-4 w-full rounded-lg bg-brand px-4 py-4 font-black uppercase text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   {restaurant.is_open ? "Fechar pedido" : "Loja fechada"}
                 </button>
@@ -385,11 +385,11 @@ export function PublicMenuOrder({
         <div className="min-w-0">
           <section id="categorias" className="mb-8">
             <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-lg font-black uppercase">Categorias <ChevronDown className="inline h-4 w-4 text-red-600" /></h2>
+              <h2 className="text-lg font-black uppercase">Categorias <ChevronDown className="inline h-4 w-4 text-brand" /></h2>
             </div>
             <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
               {categories.map((category) => (
-                <a key={category.id} href={`#${category.id}`} className="shrink-0 snap-start rounded-full bg-white px-4 py-2.5 text-sm font-bold shadow-sm hover:text-red-600">
+                <a key={category.id} href={`#${category.id}`} className="shrink-0 snap-start rounded-full bg-white px-4 py-2.5 text-sm font-bold shadow-sm hover:text-brand">
                   {category.name}
                 </a>
               ))}
@@ -402,7 +402,7 @@ export function PublicMenuOrder({
               if (!categoryProducts.length) return null;
               return (
                 <section key={category.id} id={category.id} className="scroll-mt-24">
-                  <h2 className="mb-6 text-xl font-black uppercase text-[#243640]">{category.name}</h2>
+                  <h2 className="mb-6 text-xl font-black uppercase text-ink">{category.name}</h2>
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {categoryProducts.map((product) => {
                       const info = catalog.info.get(product.id)!;
@@ -413,25 +413,25 @@ export function PublicMenuOrder({
                           type="button"
                           onClick={() => (hasOptions ? openProduct(product) : addSimpleToCart(product))}
                           disabled={!restaurant.is_open}
-                          className="group relative grid min-h-[142px] grid-cols-[1fr_116px] gap-4 overflow-hidden rounded-lg bg-white p-4 pb-12 text-left shadow-sm ring-1 ring-transparent transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+                          className="group relative grid min-h-[142px] grid-cols-[1fr_116px] gap-4 overflow-hidden rounded-lg bg-white p-4 pb-12 text-left shadow-sm ring-1 ring-transparent transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-brand-line focus:outline-none focus:ring-2 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
                           aria-label={hasOptions ? `Personalizar ${product.name}` : `Adicionar ${product.name} ao carrinho`}
                         >
-                          <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-red-50/0 via-red-50/0 to-red-50/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                          <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-orange-50/0 via-orange-50/0 to-orange-50/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                           <div className="relative min-w-0">
-                            <h3 className="line-clamp-2 text-base font-black text-red-600">{product.name}</h3>
+                            <h3 className="line-clamp-2 text-base font-black text-brand">{product.name}</h3>
                             <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">{product.description || "Produto disponível para pedido."}</p>
                             <p className="mt-6 text-sm text-slate-700">{info.hasVariants ? "A partir de " : ""}<strong>{money(info.basePrice)}</strong></p>
                           </div>
                           <div className="relative">
                             <div className="h-28 w-28 overflow-hidden rounded-lg bg-slate-100">
-                              {product.image_url ? <img src={product.image_url} alt="" loading="lazy" decoding="async" width={112} height={112} onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-red-500">Sem foto</div>}
+                              {product.image_url ? <img src={product.image_url} alt="" loading="lazy" decoding="async" width={112} height={112} onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400 transition group-hover:text-brand">Sem foto</div>}
                             </div>
                             {!restaurant.is_open && <span className="absolute bottom-1 right-1 rounded-full bg-slate-600 px-3 py-1 text-[11px] font-black uppercase text-white">Indisponível</span>}
                           </div>
                           {/* Ação sempre visível: sem ela o card de bebida parecia
                               apenas informativo, sem jeito de comprar. */}
                           {restaurant.is_open && (
-                            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white shadow-sm transition group-hover:bg-red-700">
+                            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-black text-white shadow-sm transition group-hover:bg-brand-strong">
                               {hasOptions ? "Personalizar" : <><Plus className="h-3.5 w-3.5" /> Adicionar</>}
                             </span>
                           )}
@@ -455,7 +455,7 @@ export function PublicMenuOrder({
           <button
             type="button"
             onClick={() => { setCartOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            className="flex h-12 w-full items-center justify-between rounded-lg bg-red-600 px-4 text-sm font-black text-white"
+            className="flex h-12 w-full items-center justify-between rounded-lg bg-brand px-4 text-sm font-black text-white"
           >
             <span className="inline-flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Ver carrinho · {itemCount} {itemCount === 1 ? "item" : "itens"}</span>
             <span>{money(subtotal)}</span>
@@ -479,7 +479,7 @@ export function PublicMenuOrder({
                 {draftProduct.image_url ? <img src={draftProduct.image_url} alt="" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>}
               </div>
               <div>
-                <h2 id="produto-titulo" className="pr-12 text-2xl font-black text-red-600 md:pr-0 md:text-3xl">{draftProduct.name}</h2>
+                <h2 id="produto-titulo" className="pr-12 text-2xl font-black text-brand md:pr-0 md:text-3xl">{draftProduct.name}</h2>
                 <p className="mt-3 text-sm leading-5 text-slate-600">{draftProduct.description || "Produto disponível para pedido."}</p>
               </div>
             </div>
@@ -523,7 +523,7 @@ export function PublicMenuOrder({
                                       price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
                                     });
                                   }}
-                                  className={Number(draft.flavorCount ?? 1) === count ? "rounded-full bg-red-600 px-4 py-2 text-sm font-black text-white" : "rounded-full px-4 py-2 text-sm font-bold text-slate-500 transition hover:text-slate-800"}
+                                  className={Number(draft.flavorCount ?? 1) === count ? "rounded-full bg-brand px-4 py-2 text-sm font-black text-white" : "rounded-full px-4 py-2 text-sm font-bold text-slate-500 transition hover:text-slate-800"}
                                 >
                                   {count} sabor{count > 1 ? "es" : ""}
                                 </button>
@@ -538,7 +538,7 @@ export function PublicMenuOrder({
                                 value={flavorSearch}
                                 onChange={(event) => setFlavorSearch(event.target.value)}
                                 placeholder="Buscar sabor…"
-                                className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-red-500"
+                                className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand"
                               />
                             </div>
 
@@ -553,7 +553,7 @@ export function PublicMenuOrder({
                                   >
                                     <input
                                       type="checkbox"
-                                      className="h-5 w-5 shrink-0 accent-red-600"
+                                      className="h-5 w-5 shrink-0 accent-brand"
                                       checked={selected}
                                       onChange={(event) => {
                                         const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
@@ -678,7 +678,7 @@ export function PublicMenuOrder({
                   <label htmlFor="observacoes-item" className="block text-sm font-black uppercase tracking-wide text-slate-500">Observações do item</label>
                   <textarea
                     id="observacoes-item"
-                    className="mt-2 min-h-20 w-full resize-none border-b border-slate-200 bg-white py-2 outline-none focus:border-red-500"
+                    className="mt-2 min-h-20 w-full resize-none border-b border-slate-200 bg-white py-2 outline-none focus:border-brand"
                     maxLength={250}
                     value={draft.notes ?? ""}
                     onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
@@ -694,14 +694,14 @@ export function PublicMenuOrder({
                   <Minus className="h-4 w-4" />
                 </button>
                 <strong className="min-w-6 text-center text-lg" aria-live="polite">{draft.quantity}</strong>
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} aria-label="Aumentar quantidade" className="grid h-11 w-11 place-items-center rounded-full bg-red-600 text-white">
+                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} aria-label="Aumentar quantidade" className="grid h-11 w-11 place-items-center rounded-full bg-brand text-white">
                   <Plus className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={confirmDraft}
                   disabled={isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1)}
-                  className="ml-auto h-12 flex-1 rounded-lg bg-red-600 px-5 text-sm font-black uppercase text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="ml-auto h-12 flex-1 rounded-lg bg-brand px-5 text-sm font-black uppercase text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   Adicionar - {money(lineTotal(draft))}
                 </button>

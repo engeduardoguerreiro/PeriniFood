@@ -74,9 +74,9 @@ export const publicStatusLabel = {
 export const statusClass: Record<OrderStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   accepted: "bg-blue-100 text-blue-800 border-blue-200",
-  preparing: "bg-[#E50914]/15 text-[#232A31] border-[#E50914]/25",
+  preparing: "bg-orange-100 text-orange-800 border-orange-200",
   ready: "bg-purple-100 text-purple-800 border-purple-200",
-  out_for_delivery: "bg-red-100 text-red-800 border-red-200",
+  out_for_delivery: "bg-sky-100 text-sky-800 border-sky-200",
   completed: "bg-emerald-100 text-emerald-800 border-emerald-200",
   canceled: "bg-red-100 text-red-800 border-red-200",
 };

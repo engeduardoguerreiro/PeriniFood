@@ -553,7 +553,7 @@ export function ManualOrderBuilder({
             <h2 className="text-xl font-black">{mode === "edit" ? "Editar pedido" : "Novo pedido manual"}</h2>
             <p className="text-sm text-ink-faint">{mode === "edit" ? "Ajuste cliente, entrega, pagamento e itens do pedido." : "Use para balcão, retirada e delivery manual."}</p>
           </div>
-          <span className="rounded-full bg-[#f6ece9] px-3 py-1 text-xs font-bold text-brand">Taxa atual: {money(defaultDeliveryFee)}</span>
+          <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand">Taxa atual: {money(defaultDeliveryFee)}</span>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -599,7 +599,7 @@ export function ManualOrderBuilder({
                         key={customer.id}
                         type="button"
                         onClick={() => applyCustomer(customer, "Cliente selecionado.")}
-                        className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-[#f6ece9]"
+                        className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-brand-soft"
                       >
                         <span>
                           <strong className="block text-ink">{customer.name}</strong>
@@ -710,7 +710,7 @@ export function ManualOrderBuilder({
                     key={product.id}
                     type="button"
                     onClick={() => openProduct(product)}
-                    className="group flex items-center gap-3 rounded-xl border border-line bg-white p-2.5 text-left transition hover:border-brand hover:bg-[#f6ece9]/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    className="group flex items-center gap-3 rounded-xl border border-line bg-white p-2.5 text-left transition hover:border-brand hover:bg-brand-soft/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
                   >
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#f1efea]">
                       {product.image_url ? (
@@ -726,7 +726,7 @@ export function ManualOrderBuilder({
                         {activeVariants.length ? "A partir de " : ""}<strong className="font-semibold text-[#403d38]">{money(productBasePrice(product, variants))}</strong>
                       </p>
                     </div>
-                    {hasOptions && <span className="shrink-0 rounded-full bg-[#f6ece9] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand">Person.</span>}
+                    {hasOptions && <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand">Person.</span>}
                     <Plus className="h-4 w-4 shrink-0 text-ink-faint transition group-hover:text-brand" />
                   </button>
                 );
@@ -739,7 +739,7 @@ export function ManualOrderBuilder({
         <aside className="rounded-2xl border border-line bg-white p-5 text-ink shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-lg font-black"><ShoppingCart className="h-5 w-5 text-brand" /> Carrinho — finalização</span>
-            <span className="rounded-lg bg-[#f6ece9] px-3 py-1 text-xs font-black text-brand">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
+            <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-black text-brand">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {cart.length === 0 && <p className="rounded-xl bg-[#faf9f6] p-4 text-sm text-ink-faint sm:col-span-2 xl:col-span-3">Adicione produtos para finalizar.</p>}
@@ -913,7 +913,7 @@ export function ManualOrderBuilder({
               <div className="flex justify-between gap-8 text-lg font-black"><span>Total</span><span>{money(total)}</span></div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[440px]">
-              <button name="intent" value="finish" className="flex-1 rounded-xl border border-line bg-white px-4 py-3 text-sm font-black text-ink transition hover:border-brand hover:bg-[#f6ece9] disabled:cursor-not-allowed disabled:bg-[#f1efea] disabled:text-ink-faint" disabled={!cart.length || hasOpenItems}>
+              <button name="intent" value="finish" className="flex-1 rounded-xl border border-line bg-white px-4 py-3 text-sm font-black text-ink transition hover:border-brand hover:bg-brand-soft disabled:cursor-not-allowed disabled:bg-[#f1efea] disabled:text-ink-faint" disabled={!cart.length || hasOpenItems}>
                 {mode === "edit" ? "Salvar alterações" : "Finalizar"}
               </button>
               <button name="intent" value="print" className="btn-primary flex-1" disabled={!cart.length || hasOpenItems}>

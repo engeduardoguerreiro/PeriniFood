@@ -7,7 +7,7 @@ const messages = {
 export function ActionFeedback({ status, error }: { status: string; error: string }) {
   if (error) {
     return (
-      <div role="alert" className="rounded-xl border border-[#eeccc7] bg-[#f6ece9] px-4 py-3 text-sm font-medium text-brand">
+      <div role="alert" className="rounded-xl border border-brand-line bg-brand-soft px-4 py-3 text-sm font-medium text-brand">
         Não foi possível concluir a ação: {error}
       </div>
     );

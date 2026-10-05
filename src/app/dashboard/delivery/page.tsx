@@ -98,7 +98,7 @@ export default async function DeliveryPage({ searchParams }: { searchParams: Pro
         </form>
 
         <div className="hidden items-center gap-3 xl:flex">
-          <button className="rounded-lg border border-[#eeccc7] px-4 py-2 text-sm font-bold text-ink">
+          <button className="rounded-lg border border-brand-line px-4 py-2 text-sm font-bold text-ink">
             <Coffee className="mr-2 inline h-4 w-4" /> Confira as novidades
           </button>
           <Link href="/configuracoes" className="rounded-lg border border-line px-4 py-2 text-sm font-bold">

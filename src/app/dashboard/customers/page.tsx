@@ -35,7 +35,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <section className="rounded-2xl bg-white p-5 shadow-sm">
       <ActionFeedback status={sp.status ?? ""} error={sp.error ?? ""} />
       {error && (
-        <div className="mb-4 rounded-xl border border-[#eeccc7] bg-[#f6ece9] p-3 text-sm font-bold text-brand">
+        <div className="mb-4 rounded-xl border border-brand-line bg-brand-soft p-3 text-sm font-bold text-brand">
           Não foi possível carregar os clientes agora: {error.message}
         </div>
       )}
@@ -46,7 +46,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </div>
         <form className="flex flex-wrap gap-2">
           <input className="h-10 w-72 rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="q" placeholder="Buscar nome ou telefone" defaultValue={query ?? ""} />
-          <button className="h-10 rounded-lg border border-[#eeccc7] bg-white px-4 text-sm font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]">Buscar</button>
+          <button className="h-10 rounded-lg border border-brand-line bg-white px-4 text-sm font-black text-ink-body transition hover:border-red-300 hover:bg-brand-soft">Buscar</button>
         </form>
       </div>
 
@@ -73,7 +73,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   <input className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="phone" defaultValue={customer.phone ?? ""} />
                 </label>
                 <input type="hidden" name="email" value={customer.email ?? ""} />
-                <div className="flex h-9 items-center rounded-lg bg-[#f6ece9] px-3 text-sm font-black text-brand">
+                <div className="flex h-9 items-center rounded-lg bg-brand-soft px-3 text-sm font-black text-brand">
                   <span className="mr-2 text-xs uppercase text-brand lg:hidden">Pontos</span>{pointsForCustomer(customer)}
                 </div>
                 <input type="hidden" name="address" value={customer.address ?? ""} />
@@ -88,17 +88,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 <input type="hidden" name="birth_date" value={customer.birth_date ?? ""} />
                 <input type="hidden" name="notes" value={customer.notes ?? ""} />
                 <div className="flex justify-end">
-                  <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]">Salvar</button>
+                  <button className="h-8 w-full rounded-lg border border-brand-line bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-brand-soft">Salvar</button>
                 </div>
               </form>
               <div className="flex flex-wrap justify-end gap-2 lg:col-span-2 lg:col-start-5 lg:flex-nowrap">
-                <Link className="inline-flex h-8 w-full min-w-16 items-center justify-center rounded-lg border border-line bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]" href={`/clientes/${customer.id}`}>
+                <Link className="inline-flex h-8 w-full min-w-16 items-center justify-center rounded-lg border border-line bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-brand-soft" href={`/clientes/${customer.id}`}>
                   Editar
                 </Link>
                 <form action={deleteCustomer} className="w-full min-w-16">
                   <input type="hidden" name="id" value={customer.id} />
                   <input type="hidden" name="return_to" value="/clientes" />
-                  <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-brand transition hover:bg-[#f6ece9]">Excluir</button>
+                  <button className="h-8 w-full rounded-lg border border-brand-line bg-white px-1.5 text-[10px] font-black text-brand transition hover:bg-brand-soft">Excluir</button>
                 </form>
               </div>
             </div>

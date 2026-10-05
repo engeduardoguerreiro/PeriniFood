@@ -51,9 +51,9 @@ function TrendChart({ series }: { series: { revenue: number }[] }) {
       {[0.25, 0.5, 0.75].map((g) => (
         <line key={g} x1={pad} x2={W - pad} y1={pad + g * (H - pad * 2)} y2={pad + g * (H - pad * 2)} stroke="#efece6" strokeWidth="1" />
       ))}
-      <path d={area} fill="rgba(197,54,46,0.07)" />
-      <path d={line} fill="none" stroke="#c5362e" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={px(last)} cy={py(series[last]?.revenue ?? 0)} r="3.5" fill="#c5362e" />
+      <path d={area} fill="rgba(207,74,10,0.07)" />
+      <path d={line} fill="none" stroke="#cf4a0a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={px(last)} cy={py(series[last]?.revenue ?? 0)} r="3.5" fill="#cf4a0a" />
     </svg>
   );
 }

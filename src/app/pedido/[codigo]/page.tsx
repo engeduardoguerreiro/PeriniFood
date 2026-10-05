@@ -1,4 +1,4 @@
-﻿import { notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/status-badge";
 import { createServiceClient } from "@/lib/supabase/service";
 import { money, orderCode } from "@/lib/utils";

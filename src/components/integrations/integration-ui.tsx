@@ -25,10 +25,10 @@ export function IntegrationOverview({ integrations }: { integrations: Integratio
           const saved = integrations.find((integration) => integration.provider === item.provider);
           const Icon = item.icon;
           return (
-            <Link key={item.provider} href={item.provider === "webhook" ? "/integracoes/webhooks" : `/integracoes/${item.provider}`} className="group rounded-2xl border border-line bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#eeccc7] hover:shadow-md">
+            <Link key={item.provider} href={item.provider === "webhook" ? "/integracoes/webhooks" : `/integracoes/${item.provider}`} className="group rounded-2xl border border-line bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-line hover:shadow-md">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#f6ece9] text-brand"><Icon className="h-6 w-6" /></span>
+                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-soft text-brand"><Icon className="h-6 w-6" /></span>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-black">{item.name}</h2>
@@ -41,7 +41,7 @@ export function IntegrationOverview({ integrations }: { integrations: Integratio
                   {statusLabel(saved?.status, saved?.is_enabled ?? saved?.enabled)}
                 </span>
               </div>
-              <span className="mt-5 inline-flex rounded-xl border border-[#eeccc7] px-4 py-2 text-sm font-black text-brand group-hover:bg-[#f6ece9]">Configurar</span>
+              <span className="mt-5 inline-flex rounded-xl border border-brand-line px-4 py-2 text-sm font-black text-brand group-hover:bg-brand-soft">Configurar</span>
             </Link>
           );
         })}

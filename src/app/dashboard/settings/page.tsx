@@ -358,7 +358,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <TabPanel id="seguranca">
             <ConfigSection title="Segurança da conta">
           {sp.password_success && <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-700">Senha alterada com sucesso.</div>}
-          {sp.password_error && <div className="mb-4 rounded-lg border border-[#eeccc7] bg-[#f6ece9] p-3 text-sm font-medium text-brand">Não foi possível alterar a senha. Verifique os campos e tente novamente.</div>}
+          {sp.password_error && <div className="mb-4 rounded-lg border border-brand-line bg-brand-soft p-3 text-sm font-medium text-brand">Não foi possível alterar a senha. Verifique os campos e tente novamente.</div>}
           <div className="grid gap-3 lg:grid-cols-2">
             <Field label="Nova senha">
               <input className={inputClass} name="password" type="password" minLength={6} required />

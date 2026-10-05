@@ -37,7 +37,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
 
   if (!current) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#f1f1f1] px-5 text-[#243640]">
+      <main className="grid min-h-screen place-items-center bg-[#f1f1f1] px-5 text-ink">
         <div className="rounded-lg bg-white p-8 shadow-sm">Restaurante não encontrado.</div>
       </main>
     );
@@ -76,11 +76,11 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
   const activeCoupons = ((coupons ?? []) as Coupon[]).filter((coupon) => (!coupon.starts_at || reached(coupon.starts_at)) && (!coupon.ends_at || notPassed(coupon.ends_at)));
 
   return (
-    <main className="min-h-screen bg-[#f1f1f1] text-[#243640]">
-      <section className="relative overflow-hidden bg-[#3b1114] text-white">
+    <main className="min-h-screen bg-[#f1f1f1] text-ink">
+      <section className="relative overflow-hidden bg-[#2a1608] text-white">
         <div
           className="absolute inset-0 scale-105 bg-cover bg-center blur-[1px]"
-          style={{ backgroundImage: cover ? `url(${cover})` : "linear-gradient(135deg,#6b1116,#1f2933)" }}
+          style={{ backgroundImage: cover ? `url(${cover})` : "linear-gradient(135deg,#7c2d12,#1c1410)" }}
         />
         <div className="absolute inset-0 bg-black/55" />
         {/* Vitrine da loja: logo grande em destaque e informações centralizadas. */}

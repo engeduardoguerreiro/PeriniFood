@@ -17,7 +17,7 @@ export default async function SuspendedPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-[#faf9f6] px-6 py-12">
       <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 text-center shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6ece9] text-brand"><Lock size={20} /></span>
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-soft text-brand"><Lock size={20} /></span>
         <h1 className="mt-4 text-xl font-semibold tracking-tight text-ink">Assinatura suspensa</h1>
         <p className="mt-2 text-sm text-ink-soft">
           O acesso {restaurant ? <>de <strong>{restaurant.name}</strong></> : null} ao PeriniFood está temporariamente bloqueado
@@ -29,7 +29,7 @@ export default async function SuspendedPage() {
         <a
           href={`https://wa.me/${supportPhone}?text=${encodeURIComponent("Olá! Quero regularizar a assinatura do PeriniFood.")}`}
           target="_blank"
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-medium text-white transition hover:bg-[#a92c25]"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-medium text-white transition hover:bg-brand-strong"
         >
           <MessageCircle size={15} /> Falar com o financeiro
         </a>

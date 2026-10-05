@@ -42,12 +42,12 @@ async function AddonsPage() {
                   <MoneyInput className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="price" defaultValue={addon.price} />
                 </label>
                 <label className="flex items-center gap-2 text-xs font-black"><input name="active" type="checkbox" defaultChecked={addon.active} /> Ativo</label>
-                <button className="h-8 w-full rounded-lg border border-[#eeccc7] bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-[#f6ece9]">Salvar</button>
+                <button className="h-8 w-full rounded-lg border border-brand-line bg-white px-1.5 text-[10px] font-black text-ink-body transition hover:border-red-300 hover:bg-brand-soft">Salvar</button>
               </form>
               <form action={toggleAddon} className="w-full">
                 <input type="hidden" name="id" value={addon.id} />
                 <input type="hidden" name="active" value={String(!addon.active)} />
-                <button className="h-8 w-full rounded-lg border border-line bg-white px-1.5 text-[10px] font-black text-[#403d38] transition hover:border-red-300 hover:bg-[#f6ece9]">{addon.active ? "Desativar" : "Ativar"}</button>
+                <button className="h-8 w-full rounded-lg border border-line bg-white px-1.5 text-[10px] font-black text-[#403d38] transition hover:border-red-300 hover:bg-brand-soft">{addon.active ? "Desativar" : "Ativar"}</button>
               </form>
             </div>
           ))}

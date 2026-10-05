@@ -43,7 +43,7 @@ function Card({ title, icon: Icon, children, aside }: { title: string; icon: typ
     <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f6ece9] text-brand"><Icon size={13} /></span>
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-soft text-brand"><Icon size={13} /></span>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{title}</h2>
         </div>
         {aside}
@@ -132,7 +132,7 @@ export default async function AdminClientPage({
                 <input type="hidden" name="restaurant_id" value={id} />
                 <input type="hidden" name="status" value="suspended" />
                 <input name="suspension_reason" placeholder="Motivo (opcional)" className="w-44 rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand" />
-                <button className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-[#a92c25]">Suspender sistema</button>
+                <button className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong">Suspender sistema</button>
               </form>
             </>
           )}

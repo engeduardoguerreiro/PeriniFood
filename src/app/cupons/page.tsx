@@ -44,7 +44,7 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
           </div>
           {canEdit && (
             <details className="group relative">
-              <summary className="inline-flex cursor-pointer list-none items-center justify-center rounded-xl bg-gradient-to-r from-brand to-[#FF2A35] px-6 py-3 text-sm font-black text-slate-950 shadow-[0_14px_30px_rgba(229,9,20,0.18)]">
+              <summary className="inline-flex cursor-pointer list-none items-center justify-center rounded-xl bg-gradient-to-r from-brand to-brand-bright px-6 py-3 text-sm font-black text-white shadow-[0_14px_30px_rgba(207,74,10,0.22)]">
                 Adicionar cupom
               </summary>
               <form action={saveCoupon} className="absolute right-0 z-10 mt-3 w-[min(92vw,520px)] rounded-2xl border border-line bg-white p-5 shadow-2xl">
@@ -87,7 +87,7 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
           </div>
           <div className="divide-y divide-line">
             {((coupons ?? []) as Coupon[]).map((coupon) => (
-              <div key={coupon.id} className="grid gap-3 px-4 py-3 transition hover:bg-[#f6ece9]/50 xl:grid-cols-[1.4fr_120px_150px_120px_120px_160px] xl:items-center">
+              <div key={coupon.id} className="grid gap-3 px-4 py-3 transition hover:bg-brand-soft/50 xl:grid-cols-[1.4fr_120px_150px_120px_120px_160px] xl:items-center">
                 <div className="min-w-0">
                   <p className="truncate text-base font-black text-ink">{coupon.code}</p>
                   <p className="truncate text-sm text-ink-faint">{coupon.description || "Sem descrição"}</p>
@@ -103,7 +103,7 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
                   {canEdit && (
                     <form action={deleteCoupon}>
                       <input type="hidden" name="id" value={coupon.id} />
-                      <button className="inline-flex h-10 items-center rounded-lg border border-[#eeccc7] px-4 text-sm font-black text-brand transition hover:bg-[#f6ece9]">Excluir</button>
+                      <button className="inline-flex h-10 items-center rounded-lg border border-brand-line px-4 text-sm font-black text-brand transition hover:bg-brand-soft">Excluir</button>
                     </form>
                   )}
                 </div>

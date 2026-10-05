@@ -101,7 +101,7 @@ async function CustomerDetail({ id, status, error }: { id: string; status: strin
           <form action={deleteCustomer}>
             <input type="hidden" name="id" value={current.id} />
             <input type="hidden" name="return_to" value="/clientes" />
-            <button className="h-9 rounded-lg border border-[#eeccc7] bg-white px-4 text-sm font-medium text-brand transition hover:bg-[#f6ece9]">
+            <button className="h-9 rounded-lg border border-brand-line bg-white px-4 text-sm font-medium text-brand transition hover:bg-brand-soft">
               Excluir cliente
             </button>
           </form>

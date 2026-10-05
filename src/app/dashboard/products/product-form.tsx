@@ -222,7 +222,7 @@ export function ProductForm({
 
           {isPizza && (
             <Card title="Preços e tamanhos" subtitle="Pizza trabalha com tamanho e preço individual." icon={Pizza}>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded bg-[#f6ece9] p-3 text-sm font-semibold text-red-800">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded bg-brand-soft p-3 text-sm font-semibold text-red-800">
                 <span>Os nomes dos tamanhos vêm de Cardápio &gt; Opções pizza &gt; Tamanhos. Neste produto, selecione os tamanhos vendidos e informe o preço.</span>
                 <Link href="/cardapio/opcoes-pizza" className="rounded bg-white px-3 py-2 text-xs font-black text-brand shadow-sm ring-1 ring-red-200 hover:bg-red-100">
                   Cadastrar tamanhos

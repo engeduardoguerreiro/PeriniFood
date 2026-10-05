@@ -18,7 +18,7 @@ export function AdminNav() {
           <Link
             key={href}
             href={href}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${active ? "bg-[#f6ece9] text-brand" : "text-ink-soft hover:text-brand"}`}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${active ? "bg-brand-soft text-brand" : "text-ink-soft hover:text-brand"}`}
           >
             {label}
           </Link>

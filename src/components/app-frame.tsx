@@ -177,7 +177,7 @@ export function AppFrame({ restaurant, children }: { restaurant: FrameRestaurant
         </button>
         <Link href="/dashboard" aria-label="PeriniFood — início" className="flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-            <Image src="/brand/perinifood-logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" priority />
+            <Image src="/brand/perinifood-logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" loading="eager" />
           </span>
           <span className="hidden min-w-0 md:block">
             <span className="block whitespace-nowrap text-[1.2em] font-black text-ink">Perini<span className="text-brand">Food</span></span>

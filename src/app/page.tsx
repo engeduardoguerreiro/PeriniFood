@@ -1,5 +1,5 @@
-import { LandingExperience } from "@/components/landing-experience";
+import { LandingPage } from "@/components/landing/landing-page";
 
-export default function LandingPage() {
-  return <LandingExperience />;
+export default function Home() {
+  return <LandingPage />;
 }

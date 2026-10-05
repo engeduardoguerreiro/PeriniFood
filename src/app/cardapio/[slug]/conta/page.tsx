@@ -1,4 +1,4 @@
-﻿import { PublicCustomerAccount } from "@/components/public-customer-account";
+import { PublicCustomerAccount } from "@/components/public-customer-account";
 import { createServiceClient } from "@/lib/supabase/service";
 import { publicRestaurant } from "@/lib/public-data";
 import type { Restaurant } from "@/lib/types";
@@ -10,7 +10,7 @@ export default async function PublicCustomerAccountPage({ params }: { params: Pr
 
   if (!restaurant) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#f1f1f1] px-5 text-[#243640]">
+      <main className="grid min-h-screen place-items-center bg-[#f1f1f1] px-5 text-ink">
         <div className="rounded-lg bg-white p-8 shadow-sm">Restaurante não encontrado.</div>
       </main>
     );

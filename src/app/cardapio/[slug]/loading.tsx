@@ -3,7 +3,7 @@
 export default function Loading() {
   return (
     <main className="min-h-screen bg-[#f1f1f1]" aria-busy="true" aria-label="Carregando cardápio">
-      <div className="h-56 animate-pulse bg-[#3b1114] md:h-80" />
+      <div className="h-56 animate-pulse bg-[#2a1608] md:h-80" />
       <div className="sticky top-0 border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto h-12 max-w-[1320px] animate-pulse rounded-lg bg-slate-100" />
       </div>
