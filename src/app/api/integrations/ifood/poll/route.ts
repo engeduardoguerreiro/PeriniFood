@@ -2,7 +2,7 @@ import { requireIntegrationToken } from "@/lib/integrations/ingress";
 import { NextResponse } from "next/server";
 import { pollAndProcessIFood } from "@/lib/integrations/ifood/polling";
 
-// Chamado a cada 30 s pelo timer do servidor (deploy/ifood-poller) para puxar
+// Chamado a cada 30 s pelo pg_cron do Supabase (deploy/ifood-poller/supabase-cron.sql) para puxar
 // os pedidos/eventos do iFood e manter as lojas abertas (heartbeat).
 // Protegido por token: header Authorization: Bearer IFOOD_POLL_SECRET.
 export async function GET(request: Request) {

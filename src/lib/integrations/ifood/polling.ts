@@ -6,8 +6,8 @@ import { processIFoodEvent } from "./event-processor";
 type Result = { polled: number; processed: number; stores?: number; failedStores?: number };
 
 // Puxa a fila de eventos do iFood, processa cada um (cria/cancela pedido) e
-// confirma o recebimento. Acionado a cada 30 s pelo agendador do servidor
-// (deploy/ifood-poller). No distribuído, cada loja usa o próprio token, e o
+// confirma o recebimento. Acionado a cada 30 s pelo pg_cron do Supabase
+// (deploy/ifood-poller/supabase-cron.sql). No distribuído, cada loja usa o próprio token, e o
 // polling é também o heartbeat que mantém a loja aberta no iFood.
 export async function pollAndProcessIFood(): Promise<Result> {
   if (IFOOD_AUTH_MODE !== "distributed") return pollOnce(await getIFoodAccessToken());

@@ -82,10 +82,10 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 `.env.example` is incomplete. Besides the Supabase variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) and `DATABASE_URL`, the code reads:
 - `PLATFORM_ADMIN_EMAILS`
 - `PLATFORM_PAYMENT_URL` (optional): subscription payment link shown on `/ativacao`
-- `IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`, `IFOOD_API_BASE_URL`, `IFOOD_POLL_SECRET`; `IFOOD_AUTH_MODE=distributed` switches to per-store linking (userCode → token in `integrations.refresh_token`, `src/lib/integrations/ifood/tokens.ts`) with events by polling every 30 s from `deploy/ifood-poller` (systemd timer on the Ubuntu box); default is the centralized app + signed webhook
+- `IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`, `IFOOD_API_BASE_URL`, `IFOOD_POLL_SECRET`; `IFOOD_AUTH_MODE=distributed` switches to per-store linking (userCode → token in `integrations.refresh_token`, `src/lib/integrations/ifood/tokens.ts`) with events by polling every 30 s, triggered by Supabase pg_cron + pg_net (`deploy/ifood-poller/supabase-cron.sql`; systemd timer there as an alternative); default is the centralized app + signed webhook
 - `CRON_SECRET`
 - WhatsApp of the store (Evolution API server in `deploy/whatsapp-server`, runs on the owner's Ubuntu box, not Vercel): `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `WHATSAPP_WEBHOOK_SECRET`; optional `NEXT_PUBLIC_APP_URL` (links in messages, default `https://perinifood.com.br`)
 - AI attendant module (`atendimento_ia`, paid add-on enabled per store in `/admin`): `ANTHROPIC_API_KEY`; optional `AI_MODEL` (default `claude-opus-5-5`) and `ANTHROPIC_WORKSPACE_ID` (only for org-level keys not scoped to a workspace)
 - desktop/agent only: `PERINIFOOD_APP_URL` and `PRINT_BRIDGE_*`
 
-`vercel.json` schedules only `/api/keep-alive`, daily. iFood polling at `/api/integrations/ifood/poll` is called by the `deploy/ifood-poller` timer.
+`vercel.json` schedules only `/api/keep-alive`, daily. iFood polling at `/api/integrations/ifood/poll` is called every 30 s by Supabase pg_cron (`deploy/ifood-poller/supabase-cron.sql`).
