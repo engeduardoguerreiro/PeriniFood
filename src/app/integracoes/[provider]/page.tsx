@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { MarketplaceIntegrationSettings, type IntegrationRecord } from "@/components/integrations/integration-ui";
 import { requireRestaurant } from "@/lib/auth";
 import { isAdminRole } from "@/lib/integrations/security";
+import { IFOOD_AUTH_MODE } from "@/lib/integrations/ifood/config";
 
 const providers = ["99food", "ifood", "keeta"] as const;
 
@@ -48,6 +49,7 @@ export default async function MarketplacePage({ params, searchParams }: { params
       origin={origin}
       status={sp.status}
       error={sp.error}
+      ifoodLink={provider === "ifood" && IFOOD_AUTH_MODE === "distributed"}
     />
   );
 }

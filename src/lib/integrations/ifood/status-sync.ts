@@ -13,8 +13,8 @@ export type StatusSyncResult = { ok: boolean; action: string; detail?: string };
 
 // Empurra o novo status do PeriniFood para o iFood.
 // Fluxo iFood: PLACED → (confirm) CONFIRMED → (startPreparation) → (readyToPickup) → (dispatch).
-export async function syncOrderStatusToIFood(externalOrderId: string, status: OrderStatus): Promise<StatusSyncResult> {
-  const token = await getIFoodAccessToken();
+export async function syncOrderStatusToIFood(externalOrderId: string, status: OrderStatus, integrationId?: string): Promise<StatusSyncResult> {
+  const token = await getIFoodAccessToken(integrationId);
 
   switch (status) {
     case "accepted": {

@@ -90,7 +90,7 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
     return;
   }
 
-  const token = await getIFoodAccessToken();
+  const token = await getIFoodAccessToken(integration.id);
   const details = await getOrderDetails(orderId, token);
   const mapped = mapIFoodOrder(details);
 

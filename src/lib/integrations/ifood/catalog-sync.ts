@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getClientCredentialsToken } from "./auth";
+import { getIFoodAccessToken } from "./client";
 import { getCatalogId, ensureCategory, uploadImage, upsertItem } from "./catalog";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
@@ -13,7 +13,7 @@ export async function ifoodContext(supabase: ServiceClient, restaurantId: string
     .eq("provider", "ifood")
     .maybeSingle();
   if (!integration?.external_store_id) return { error: "iFood não conectado nesta loja." as const };
-  const token = (await getClientCredentialsToken()).accessToken;
+  const token = await getIFoodAccessToken(integration.id);
   const catalogId = await getCatalogId(integration.external_store_id, token);
   if (!catalogId) return { error: "Catálogo do iFood não encontrado." as const };
   return { integration, merchantId: integration.external_store_id, token, catalogId };

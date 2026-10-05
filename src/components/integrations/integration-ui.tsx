@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActionFeedback } from "@/components/action-feedback";
+import { IFoodLinkCard } from "./ifood-link-card";
 import { saveIntegration, savePaymentMap, saveProductMap, testIntegration } from "@/app/actions";
 import { integrationProviders, providerInfo, statusClass, statusLabel } from "@/lib/integrations/catalog";
 import { maskSecret } from "@/lib/integrations/security";
@@ -75,6 +76,7 @@ export function MarketplaceIntegrationSettings({
   origin,
   status,
   error,
+  ifoodLink = false,
 }: {
   provider: "99food" | "ifood" | "keeta";
   integration: IntegrationRecord | null;
@@ -87,6 +89,7 @@ export function MarketplaceIntegrationSettings({
   origin: string;
   status: string;
   error: string;
+  ifoodLink?: boolean;
 }) {
   const info = providerInfo(provider);
   const webhookUrl = `${origin}/api/integrations/${provider}/webhook`;
@@ -107,6 +110,8 @@ export function MarketplaceIntegrationSettings({
           </span>
         </div>
       </header>
+
+      {ifoodLink && <IFoodLinkCard integration={integration} canEdit={canEdit} />}
 
       <form action={saveIntegration} className="grid gap-5 xl:grid-cols-2">
         <input type="hidden" name="provider" value={provider} />

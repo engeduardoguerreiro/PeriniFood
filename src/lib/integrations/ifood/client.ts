@@ -1,11 +1,18 @@
 import { IFOOD_BASE_URL } from "./config";
 import { getClientCredentialsToken } from "./auth";
+import { integrationToken } from "./tokens";
 
-// Token para chamadas à API. No modo centralizado (homologação atual) usamos
-// client_credentials. Distribuído usará o refresh token por loja (fase futura).
-export async function getIFoodAccessToken(): Promise<string> {
+// Token para chamadas à API: o da loja (distribuído) quando há integração;
+// sem ela, client_credentials do app (centralizado).
+export async function getIFoodAccessToken(integrationId?: string): Promise<string> {
+  if (integrationId) return integrationToken(integrationId);
   const token = await getClientCredentialsToken();
   return token.accessToken;
+}
+
+// Lojas que o token acessa (no distribuído: as que o lojista autorizou).
+export async function listMerchants(token: string): Promise<Array<{ id: string; name?: string }>> {
+  return ifoodGet("/merchant/v1.0/merchants", token);
 }
 
 async function ifoodGet(path: string, token: string) {
@@ -46,10 +53,11 @@ export async function getCancellationReasons(orderId: string, token: string): Pr
   }
 }
 
-// Polling de eventos: puxa os eventos pendentes (204 = fila vazia).
-export async function pollEvents(token: string): Promise<Array<Record<string, unknown>>> {
+// Polling de eventos: puxa os eventos pendentes (204 = fila vazia). Cada chamada
+// também mantém a loja aberta no iFood (heartbeat); merchants filtra as lojas.
+export async function pollEvents(token: string, merchants?: string[]): Promise<Array<Record<string, unknown>>> {
   const res = await fetch(`${IFOOD_BASE_URL}/events/v1.0/events:polling`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json", ...(merchants?.length ? { "x-polling-merchants": merchants.join(",") } : {}) },
     cache: "no-store",
   });
   if (res.status === 204) return [];

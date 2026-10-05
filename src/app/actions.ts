@@ -910,7 +910,8 @@ export async function updateOrderStatus(formData: FormData) {
     });
   } else if (order?.external_order_id && order.external_platform === "ifood") {
     try {
-      const result = await syncOrderStatusToIFood(order.external_order_id, status);
+      const { data: ifoodIntegration } = await createServiceClient().from("integrations").select("id").eq("restaurant_id", restaurant.id).eq("provider", "ifood").maybeSingle();
+      const result = await syncOrderStatusToIFood(order.external_order_id, status, ifoodIntegration?.id);
       await logIntegrationEvent({
         restaurantId: restaurant.id,
         provider: "ifood",
@@ -1169,12 +1170,15 @@ export async function saveIntegration(formData: FormData) {
     .maybeSingle();
   const keepSecret = (key: string, column: string) => {
     const value = text(formData, column);
-    if (value.includes("****************")) {
+    // Campo vazio = "não mudar": os inputs de segredo vêm sempre vazios e antes
+    // apagavam o token salvo (no iFood distribuído, desligava a loja).
+    if (!value || value.includes("****************")) {
       return existingIntegration?.[column] ?? existingIntegration?.credentials?.[key] ?? "";
     }
     return value;
   };
   const credentials = {
+    ...((existingIntegration?.credentials as Record<string, unknown> | null) ?? {}),
     clientId: text(formData, "client_id"),
     clientSecret: keepSecret("clientSecret", "client_secret"),
     accessToken: keepSecret("accessToken", "access_token"),
@@ -1208,7 +1212,7 @@ export async function saveIntegration(formData: FormData) {
     restaurant_id: restaurant.id,
     provider,
     name: text(formData, "name", provider),
-    status: enabled ? "pending" : "disabled",
+    status: enabled ? (existingIntegration?.status === "connected" ? "connected" : "pending") : "disabled",
     environment: settings.environment,
     auth_type: settings.authType,
     external_store_id: credentials.externalStoreId || null,
