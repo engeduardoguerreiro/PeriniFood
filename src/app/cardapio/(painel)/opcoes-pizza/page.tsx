@@ -1,8 +1,9 @@
-import { Power, Trash2 } from "lucide-react";
+import { Power, Trash2, Pizza } from "lucide-react";
 import { deletePizzaOption, savePizzaOption, togglePizzaOption } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
 import { requireRestaurant } from "@/lib/auth";
 import type { PizzaOption, PizzaOptionKind } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const rowInput = "h-9 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
 const saveBtn = "h-9 shrink-0 rounded-lg bg-btn px-4 text-xs font-medium text-white transition hover:bg-btn-hover";
@@ -88,7 +89,7 @@ async function PizzaOptionsPage({ searchParams }: { searchParams: Promise<{ stat
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Opções de pizza</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={Pizza} tone="red" size="sm" /><span className="min-w-0">Opções de pizza</span></h1>
         <p className="text-sm text-ink-faint">Tamanhos, massas, bordas e adicionais usados nas pizzas.</p>
       </div>
       <ActionFeedback status={sp.status} error={sp.error} />

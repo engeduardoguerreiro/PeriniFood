@@ -3,6 +3,8 @@ import { ActionFeedback } from "@/components/action-feedback";
 import { saveIntegration, testIntegration } from "@/app/actions";
 import { requireRestaurant } from "@/lib/auth";
 import { generateWhatsAppLink, isAdminRole } from "@/lib/integrations/security";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { MessageCircle } from "lucide-react";
 
 export default async function WhatsAppIntegrationPage({ searchParams }: { searchParams: Promise<{ status: string; error: string }> }) {
   const sp = await searchParams;
@@ -18,7 +20,7 @@ export default async function WhatsAppIntegrationPage({ searchParams }: { search
       <ActionFeedback status={sp.status} error={sp.error} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">Atendimento</p>
-        <h1 className="text-3xl font-black">WhatsApp</h1>
+        <h1 className="text-3xl font-black flex items-center gap-3"><Icon3D icon={MessageCircle} tone="green" size="sm" /><span className="min-w-0">WhatsApp</span></h1>
         <p className="mt-2 text-ink-faint">Configure mensagens manuais. A integração oficial WhatsApp Business API fica para etapa futura.</p>
       </header>
       <form action={saveIntegration} className="rounded-2xl bg-white p-5 shadow-sm">

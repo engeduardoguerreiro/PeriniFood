@@ -1,7 +1,9 @@
-﻿import { saveAddon, toggleAddon } from "@/app/actions";
+import { saveAddon, toggleAddon } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
 import { requireRestaurant } from "@/lib/auth";
 import type { ProductAddon } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { CirclePlus } from "lucide-react";
 
 async function AddonsPage() {
   const { supabase, restaurant } = await requireRestaurant();
@@ -19,7 +21,7 @@ async function AddonsPage() {
         </div>
       </form>
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-black">Adicionais</h2>
+        <h2 className="text-xl font-black flex items-center gap-3"><Icon3D icon={CirclePlus} tone="red" size="sm" /><span className="min-w-0">Adicionais</span></h2>
         <div className="mt-4 overflow-hidden rounded-xl border border-line">
           <div className="grid grid-cols-[minmax(160px,1fr)_92px_82px_92px_104px] gap-3 border-b border-line bg-[#faf9f6]/80 px-4 py-2 text-[11px] font-black uppercase text-ink-faint max-lg:hidden">
             <span>Nome</span>

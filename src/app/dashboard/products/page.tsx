@@ -3,6 +3,8 @@ import { requireRestaurant } from "@/lib/auth";
 import { ProductList } from "@/components/product-list";
 import { ActionFeedback } from "@/components/action-feedback";
 import type { Product } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { Package } from "lucide-react";
 
 export default async function ProductsPage({ status = "", error = "" }: { status?: string; error?: string } = {}) {
   const { supabase, restaurant } = await requireRestaurant();
@@ -20,7 +22,7 @@ export default async function ProductsPage({ status = "", error = "" }: { status
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Produtos</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={Package} tone="red" size="sm" /><span className="min-w-0">Produtos</span></h1>
           <p className="text-sm text-ink-faint">{products.length} {products.length === 1 ? "item cadastrado" : "itens cadastrados"} no cardápio.</p>
         </div>
         <Link href="/cardapio/produtos/novo" className="rounded-xl bg-btn px-4 py-2.5 text-sm font-medium text-white transition hover:bg-btn-hover">

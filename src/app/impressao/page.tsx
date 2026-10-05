@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Download, Printer, Zap } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 export const metadata = { title: "Configurar impressão · PeriniFood" };
 
@@ -19,7 +20,7 @@ export default async function PrintSetupPage() {
         <Link href="/configuracoes#impressao" className="text-xs font-medium text-ink-faint transition hover:text-brand">
           ← Voltar às configurações
         </Link>
-        <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">Configurar a impressora</h1>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={Printer} tone="slate" size="sm" /><span className="min-w-0">Configurar a impressora</span></h1>
         <p className="text-sm text-ink-faint">Siga o passo 1. Os outros são opcionais.</p>
       </div>
 

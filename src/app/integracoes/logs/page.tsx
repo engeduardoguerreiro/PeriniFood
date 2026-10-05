@@ -3,6 +3,8 @@ import { requireRestaurant } from "@/lib/auth";
 import { integrationProviders, providerInfo } from "@/lib/integrations/catalog";
 import { isAdminRole } from "@/lib/integrations/security";
 import { formatStoreDateTime } from "@/lib/timezone";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { ScrollText } from "lucide-react";
 
 function safeJson(value: unknown) {
   if (!value) return "";
@@ -25,7 +27,7 @@ export default async function IntegrationLogsPage({ searchParams }: { searchPara
   if (!canSeeLogs) {
     return (
       <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-black">Logs de integração</h1>
+        <h1 className="text-3xl font-black flex items-center gap-3"><Icon3D icon={ScrollText} tone="violet" size="sm" /><span className="min-w-0">Logs de integração</span></h1>
         <p className="mt-2 text-ink-faint">Seu perfil pode visualizar status das integrações, mas não tem acesso aos logs técnicos.</p>
       </section>
     );
@@ -36,7 +38,7 @@ export default async function IntegrationLogsPage({ searchParams }: { searchPara
       <ActionFeedback status={sp.status} error={sp.error ?? error?.message} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">Auditoria</p>
-        <h1 className="text-3xl font-black">Logs de integração</h1>
+        <h1 className="text-3xl font-black flex items-center gap-3"><Icon3D icon={ScrollText} tone="violet" size="sm" /><span className="min-w-0">Logs de integração</span></h1>
         <p className="mt-2 text-ink-faint">Eventos inbound, outbound, testes mockados e erros controlados.</p>
       </header>
 

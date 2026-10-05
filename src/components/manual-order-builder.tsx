@@ -1,12 +1,13 @@
-﻿"use client";
+"use client";
 
-import { MapPin, Minus, Pencil, Plus, Printer, Search, ShoppingCart, Trash2, X } from "lucide-react";
+import { MapPin, Minus, Pencil, Plus, Printer, Search, ShoppingCart, Trash2, X, ShoppingBag } from "lucide-react";
 import { useEffectEvent, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { createPdvOrder } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
 import { decimalInputValue, money, parseDecimal } from "@/lib/utils";
 import type { Category, Customer, DeliveryFeeRule, PizzaOption, Product, ProductOption, ProductOptionItem, ProductType, ProductVariant, Restaurant } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 type SelectedOption = { name: string; price: number };
 type CartItem = {
@@ -550,7 +551,7 @@ export function ManualOrderBuilder({
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-black">{mode === "edit" ? "Editar pedido" : "Novo pedido manual"}</h2>
+            <h2 className="text-xl font-black flex items-center gap-3"><Icon3D icon={ShoppingBag} tone="green" size="sm" /><span className="min-w-0">{mode === "edit" ? "Editar pedido" : "Novo pedido manual"}</span></h2>
             <p className="text-sm text-ink-faint">{mode === "edit" ? "Ajuste cliente, entrega, pagamento e itens do pedido." : "Use para balcão, retirada e delivery manual."}</p>
           </div>
           <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand">Taxa atual: {money(defaultDeliveryFee)}</span>

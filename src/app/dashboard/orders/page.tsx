@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bike, Check, Clock3, Flame, PackageCheck, Pencil, Printer, Trash2, X, XCircle } from "lucide-react";
+import { Bike, Check, Clock3, Flame, PackageCheck, Pencil, Printer, Trash2, X, XCircle, ClipboardList } from "lucide-react";
 import { deleteOrder, updateOrderStatus } from "@/app/actions";
 import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode, statusLabel } from "@/lib/utils";
@@ -9,19 +9,20 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { OrdersAutoRefresh } from "@/components/orders-auto-refresh";
 import type { Order, OrderStatus } from "@/lib/types";
 import { formatStoreTime, storeDayRange } from "@/lib/timezone";
+import { Icon3D, type Tone } from "@/components/ui/icon-3d";
 
 type OperationColumn = {
   title: string;
   statuses: OrderStatus[];
-  tone: string;
+  tone: Tone;
   icon: typeof Clock3;
 };
 
 const operationColumns: OperationColumn[] = [
-  { title: "Pendentes", statuses: ["pending", "accepted"], tone: "bg-rose-100 text-rose-700", icon: Clock3 },
-  { title: "Em produção", statuses: ["preparing"], tone: "bg-amber-100 text-amber-700", icon: Flame },
-  { title: "Pronto", statuses: ["ready"], tone: "bg-emerald-100 text-emerald-700", icon: Check },
-  { title: "Saiu p/ entrega", statuses: ["out_for_delivery"], tone: "bg-indigo-100 text-indigo-700", icon: Bike },
+  { title: "Pendentes", statuses: ["pending", "accepted"], tone: "pink", icon: Clock3 },
+  { title: "Em produção", statuses: ["preparing"], tone: "amber", icon: Flame },
+  { title: "Pronto", statuses: ["ready"], tone: "green", icon: Check },
+  { title: "Saiu p/ entrega", statuses: ["out_for_delivery"], tone: "indigo", icon: Bike },
 ];
 
 const historyStatuses: OrderStatus[] = ["completed", "canceled"];
@@ -159,12 +160,12 @@ function HistoryRow({ order }: { order: Order }) {
   );
 }
 
-function HistorySection({ title, icon: Icon, tone, rows, emptyText }: { title: string; icon: typeof PackageCheck; tone: string; rows: Order[]; emptyText: string }) {
+function HistorySection({ title, icon: Icon, tone, rows, emptyText }: { title: string; icon: typeof PackageCheck; tone: Tone; rows: Order[]; emptyText: string }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_1px_2px_rgba(27,26,23,0.04)]">
       <div className="flex items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className={`grid h-6 w-6 place-items-center rounded-full ${tone}`}><Icon size={13} /></span>
+          <Icon3D icon={Icon} tone={tone} size="xs" />
           <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{title}</h2>
         </div>
         <span className="rounded-full bg-[#f1efea] px-2 py-0.5 text-[0.7rem] font-semibold text-ink-soft [font-variant-numeric:tabular-nums]">{rows.length}</span>
@@ -215,7 +216,7 @@ export default async function OrdersPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-ink">Pedidos</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={ClipboardList} tone="blue" size="sm" /><span className="min-w-0">Pedidos</span></h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
               <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" /></span>
               Ao vivo
@@ -237,7 +238,7 @@ export default async function OrdersPage() {
             <div key={column.title} className="rounded-2xl border border-line bg-[#faf9f6] p-2.5">
               <div className="mb-2.5 flex items-center justify-between px-1.5 pt-1">
                 <div className="flex items-center gap-2">
-                  <span className={`grid h-6 w-6 place-items-center rounded-full ${column.tone}`}><Icon size={13} /></span>
+                  <Icon3D icon={Icon} tone={column.tone} size="xs" />
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{column.title}</h2>
                 </div>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[0.7rem] font-semibold text-ink-soft [font-variant-numeric:tabular-nums]">{columnOrders.length}</span>
@@ -256,8 +257,8 @@ export default async function OrdersPage() {
         })}
       </section>
 
-      <HistorySection title="Pedidos entregues do dia" icon={PackageCheck} tone="bg-emerald-100 text-emerald-700" rows={todayDelivered} emptyText="Nenhum pedido entregue hoje." />
-      <HistorySection title="Pedidos cancelados do dia" icon={XCircle} tone="bg-rose-100 text-rose-700" rows={todayCanceled} emptyText="Nenhum pedido cancelado hoje." />
+      <HistorySection title="Pedidos entregues do dia" icon={PackageCheck} tone="green" rows={todayDelivered} emptyText="Nenhum pedido entregue hoje." />
+      <HistorySection title="Pedidos cancelados do dia" icon={XCircle} tone="red" rows={todayCanceled} emptyText="Nenhum pedido cancelado hoje." />
     </div>
   );
 }

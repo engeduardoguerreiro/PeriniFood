@@ -1,10 +1,12 @@
-﻿import { deleteCoupon, saveCoupon, saveLoyaltyProgram } from "@/app/actions";
+import { deleteCoupon, saveCoupon, saveLoyaltyProgram } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
 import { MoneyInput } from "@/components/money-input";
 import { requireRestaurant } from "@/lib/auth";
 import { loyaltyCampaignFromOpeningHours } from "@/lib/loyalty";
 import { money } from "@/lib/utils";
 import type { Coupon, LoyaltyProgram } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { TicketPercent } from "lucide-react";
 
 function discountLabel(coupon: Coupon) {
   return coupon.discount_type === "percent" ? `${Number(coupon.discount_value)}%` : money(coupon.discount_value);
@@ -39,7 +41,7 @@ async function CouponsContent({ searchParams }: { searchParams: Promise<{ status
       <section className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black text-ink">Cupons e fidelidade</h1>
+            <h1 className="text-3xl font-black text-ink flex items-center gap-3"><Icon3D icon={TicketPercent} tone="pink" size="sm" /><span className="min-w-0">Cupons e fidelidade</span></h1>
             <p className="mt-1 text-ink-faint">Crie descontos e regras simples para incentivar recompra no cardápio online.</p>
           </div>
           {canEdit && (

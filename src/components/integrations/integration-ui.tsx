@@ -1,9 +1,13 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ActionFeedback } from "@/components/action-feedback";
 import { saveIntegration, savePaymentMap, saveProductMap, testIntegration } from "@/app/actions";
 import { integrationProviders, providerInfo, statusClass, statusLabel } from "@/lib/integrations/catalog";
 import { maskSecret } from "@/lib/integrations/security";
 import { money } from "@/lib/utils";
+import { Icon3D, type Tone } from "@/components/ui/icon-3d";
+
+const providerTone: Record<string, Tone> = { "99food": "amber", ifood: "red", keeta: "orange", whatsapp: "green", webhook: "violet" };
+import { Cable } from "lucide-react";
 
 export type IntegrationRecord = Record<string, unknown> & {
     id?:string;provider?:string;status?:string;is_enabled?:boolean;enabled?:boolean;name?:string;price?:number;created_at?:string;
@@ -17,7 +21,7 @@ export function IntegrationOverview({ integrations }: { integrations: Integratio
     <div className="space-y-5">
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">Canais externos</p>
-        <h1 className="mt-1 text-3xl font-black text-ink">Integrações</h1>
+        <h1 className="mt-1 text-3xl font-black text-ink flex items-center gap-3"><Icon3D icon={Cable} tone="violet" size="sm" /><span className="min-w-0">Integrações</span></h1>
         <p className="mt-2 max-w-3xl text-ink-faint">Configure marketplaces, WhatsApp e webhooks por restaurante. As chamadas reais às APIs externas ficam preparadas para plugar depois.</p>
       </header>
       <div className="grid gap-4 xl:grid-cols-2">
@@ -28,7 +32,7 @@ export function IntegrationOverview({ integrations }: { integrations: Integratio
             <Link key={item.provider} href={item.provider === "webhook" ? "/integracoes/webhooks" : `/integracoes/${item.provider}`} className="group rounded-2xl border border-line bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-line hover:shadow-md">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-soft text-brand"><Icon className="h-6 w-6" /></span>
+                  <Icon3D icon={Icon} tone={providerTone[item.provider] ?? "violet"} />
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-black">{item.name}</h2>
@@ -95,7 +99,7 @@ export function MarketplaceIntegrationSettings({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase text-ink-faint">Marketplace</p>
-            <h1 className="text-3xl font-black">{info.name}</h1>
+            <h1 className="text-3xl font-black flex items-center gap-3"><Icon3D icon={Cable} tone="violet" size="sm" /><span className="min-w-0">{info.name}</span></h1>
             <p className="mt-2 max-w-3xl text-ink-faint">{info.description}</p>
           </div>
           <span className={`rounded-full px-4 py-2 text-sm font-black ${statusClass(integration?.status, enabled)}`}>

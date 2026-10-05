@@ -4,6 +4,8 @@ import { ActionFeedback } from "@/components/action-feedback";
 import { saveIntegration, testIntegration } from "@/app/actions";
 import { requireRestaurant } from "@/lib/auth";
 import { isAdminRole, maskSecret } from "@/lib/integrations/security";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { Webhook } from "lucide-react";
 
 const samplePayload = `{
   "externalOrderId": "123456",
@@ -56,7 +58,7 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
       <ActionFeedback status={sp.status} error={sp.error} />
       <header className="rounded-2xl bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase text-ink-faint">API externa</p>
-        <h1 className="text-3xl font-black">Webhooks / API</h1>
+        <h1 className="text-3xl font-black flex items-center gap-3"><Icon3D icon={Webhook} tone="violet" size="sm" /><span className="min-w-0">Webhooks / API</span></h1>
         <p className="mt-2 max-w-3xl text-ink-faint">Receba pedidos de sistemas externos por um webhook genérico. O token deve ser enviado no header Authorization: Bearer TOKEN ou x-webhook-secret.</p>
       </header>
 

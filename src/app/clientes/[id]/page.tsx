@@ -10,6 +10,8 @@ import { loyaltySummary, withLoyaltyCampaign } from "@/lib/loyalty";
 import { money, orderCode, statusLabel } from "@/lib/utils";
 import type { Customer, Order, OrderStatus } from "@/lib/types";
 import { formatStoreDateTime } from "@/lib/timezone";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { UserRound } from "lucide-react";
 
 const inputClass = "h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
 const cardClass = "rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(27,26,23,0.04)]";
@@ -94,7 +96,7 @@ async function CustomerDetail({ id, status, error }: { id: string; status: strin
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <Link href="/clientes" className="text-sm font-medium text-brand transition hover:text-[#9f2b24]">← Voltar para clientes</Link>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{current.name}</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={UserRound} tone="teal" size="sm" /><span className="min-w-0">{current.name}</span></h1>
             <p className="text-sm text-ink-faint">{current.phone || current.whatsapp || "Sem telefone"}</p>
             <p className="mt-1 text-sm text-ink-faint">{fullAddress || "Endereço não informado."}</p>
           </div>

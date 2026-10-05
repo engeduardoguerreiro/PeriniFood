@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { AlertTriangle, ClipboardList, Pencil, Printer } from "lucide-react";
+import { AlertTriangle, ClipboardList, Pencil, Printer, ClipboardCheck } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
 import { ActionFeedback } from "@/components/action-feedback";
 import { isMissingRecipesTable, isRecipeFilled, parseRecipe } from "@/lib/recipes";
 import type { Product } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 // Lista TODOS os produtos do cardápio automaticamente: a ficha não é um
 // cadastro à parte, é um complemento do produto que já existe.
@@ -34,7 +35,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Fichas técnicas</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={ClipboardCheck} tone="amber" size="sm" /><span className="min-w-0">Fichas técnicas</span></h1>
           <p className="text-sm text-ink-faint">
             {preenchidas} de {products.length} produtos com ficha preenchida. Todo produto do cardápio aparece aqui automaticamente.
           </p>

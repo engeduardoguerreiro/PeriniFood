@@ -5,6 +5,8 @@ import { ActionFeedback } from "@/components/action-feedback";
 import { requireRestaurant } from "@/lib/auth";
 import { calculateLoyaltyPoints, withLoyaltyCampaign } from "@/lib/loyalty";
 import type { Customer, Order } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { Users } from "lucide-react";
 
 type CustomersSearchParams = {
   q?: string;
@@ -41,7 +43,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black">Clientes</h2>
+          <h2 className="text-2xl font-black flex items-center gap-3"><Icon3D icon={Users} tone="teal" size="sm" /><span className="min-w-0">Clientes</span></h2>
           <p className="text-sm text-ink-faint">Clientes são cadastrados automaticamente ao criar pedidos.</p>
         </div>
         <form className="flex flex-wrap gap-2">

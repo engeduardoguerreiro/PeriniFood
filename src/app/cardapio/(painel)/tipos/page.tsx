@@ -1,8 +1,9 @@
-import { Power, Trash2 } from "lucide-react";
+import { Power, Trash2, Tags } from "lucide-react";
 import { deleteProductType, saveProductType, toggleProductType } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
 import { requireRestaurant } from "@/lib/auth";
 import type { ProductType } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const rowInput = "h-9 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
 const saveBtn = "h-9 shrink-0 rounded-lg bg-btn px-4 text-xs font-medium text-white transition hover:bg-btn-hover";
@@ -22,7 +23,7 @@ async function TypesPage({ searchParams }: { searchParams: Promise<{ status: str
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Tipos</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={Tags} tone="red" size="sm" /><span className="min-w-0">Tipos</span></h1>
           <p className="text-sm text-ink-faint">Classifique produtos como pizza, esfiha, bebida, combo e sobremesa.</p>
         </div>
         <details className="group relative">

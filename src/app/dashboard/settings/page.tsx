@@ -12,6 +12,8 @@ import { requireRestaurant } from "@/lib/auth";
 import { deliveryRulesFromRestaurant } from "@/lib/delivery-fee-rules";
 import { isRestaurantOpen } from "@/lib/opening-hours";
 import type { DeliveryFeeRule } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
+import { Cog } from "lucide-react";
 
 // Campos auto-contidos (altura fixa + padding só horizontal) evitam o corte
 // de letra que acontecia com o .field-light + h-10.
@@ -79,7 +81,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Configurações</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={Cog} tone="slate" size="sm" /><span className="min-w-0">Configurações</span></h1>
         <p className="text-sm text-ink-faint">Dados da empresa, cardápio online, impressão e entrega.</p>
       </div>
 

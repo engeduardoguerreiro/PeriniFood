@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, BarChart3 } from "lucide-react";
 import { reportLinks, type ReportKind, type ReportSearchParams } from "@/lib/reports";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const pillActive = "shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-medium text-ink shadow-[0_1px_2px_rgba(27,26,23,0.06)]";
 const pillIdle = "shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-medium text-ink-faint transition hover:text-[#403d38]";
@@ -26,7 +27,7 @@ export function ReportHeader({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={BarChart3} tone="indigo" size="sm" /><span className="min-w-0">{title}</span></h1>
           <p className="mt-0.5 max-w-2xl text-sm text-ink-faint">{description}</p>
         </div>
         {active !== "exportacoes" ? (

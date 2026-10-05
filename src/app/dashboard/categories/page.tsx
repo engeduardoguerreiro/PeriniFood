@@ -1,8 +1,9 @@
-import { Power, Trash2 } from "lucide-react";
+import { Power, Trash2, LayoutGrid } from "lucide-react";
 import { deleteCategory, saveCategory, toggleCategory } from "@/app/actions";
 import { ActionFeedback } from "@/components/action-feedback";
 import { requireRestaurant } from "@/lib/auth";
 import type { Category } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const rowInput = "h-9 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/12";
 const saveBtn = "h-9 shrink-0 rounded-lg bg-btn px-4 text-xs font-medium text-white transition hover:bg-btn-hover";
@@ -21,7 +22,7 @@ export default async function CategoriesPage({ searchParams, returnTo = "/dashbo
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Categorias</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={LayoutGrid} tone="red" size="sm" /><span className="min-w-0">Categorias</span></h1>
           <p className="text-sm text-ink-faint">Organize o cardápio por grupos e ordem de exibição.</p>
         </div>
         <details className="group relative">

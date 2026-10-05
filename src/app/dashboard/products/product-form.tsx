@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 
 import Link from "next/link";
-import { CheckCircle2, Eye, ImagePlus, Pizza, Save, Settings2, ShoppingBag, X } from "lucide-react";
+import { CheckCircle2, Eye, ImagePlus, Pizza, Save, Settings2, ShoppingBag, X, Package } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ImagePicker } from "@/components/image-picker";
 import { SubmitButton } from "@/components/submit-button";
@@ -10,6 +10,7 @@ import { MoneyInput } from "@/components/money-input";
 import { saveProduct } from "@/app/actions";
 import { decimalInputValue, money, parseDecimal } from "@/lib/utils";
 import type { Category, PizzaOption, Product, ProductOption, ProductType, ProductVariant } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const preparationOptions = [20, 30, 40, 50, 60, 70, 80];
 
@@ -34,11 +35,9 @@ function optionNames(options: ProductOption[] | undefined, groupName: string) {
 
 function Card({ title, subtitle, icon: Icon, children }: { title: string; subtitle: string; icon: typeof Settings2; children: React.ReactNode }) {
   return (
-    <section className="rounded border border-line bg-white shadow-sm">
+    <section className="rounded-2xl border border-line bg-white">
       <div className="flex items-start gap-3 border-b border-line-soft px-5 py-4">
-        <span className="grid h-10 w-10 place-items-center rounded bg-[#f1efea] text-[#403d38]">
-          <Icon className="h-5 w-5" />
-        </span>
+        <Icon3D icon={Icon} tone="orange" size="sm" />
         <div>
           <h2 className="text-base font-black text-ink">{title}</h2>
           {subtitle && <p className="mt-1 text-sm text-ink-faint">{subtitle}</p>}
@@ -162,7 +161,7 @@ export function ProductForm({
       <header className="flex flex-wrap items-center justify-between gap-4 rounded border border-line bg-white p-5 shadow-sm">
         <div>
           <p className="text-xs font-bold uppercase text-ink-faint">Cadastro de produto</p>
-          <h1 className="text-2xl font-black text-ink">{product.id ? "Editar Produto" : "Novo Produto"}</h1>
+          <h1 className="text-2xl font-black text-ink flex items-center gap-3"><Icon3D icon={Package} tone="red" size="sm" /><span className="min-w-0">{product.id ? "Editar Produto" : "Novo Produto"}</span></h1>
           <p className="mt-1 text-sm text-ink-faint">Configure preço, tamanhos, massas, bordas, adicionais e canais de venda.</p>
         </div>
         <div className="flex flex-wrap gap-2">

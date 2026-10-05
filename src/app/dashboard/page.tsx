@@ -1,12 +1,13 @@
 import { CUSTOMER_FIELDS } from "@/lib/public-data";
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays, ChefHat, CircleDollarSign, Clock3, ClipboardList, Package, Radio, ReceiptText, ShoppingBag, Timer, Trophy, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays, ChefHat, CircleDollarSign, Clock3, ClipboardList, Package, Radio, ReceiptText, ShoppingBag, Timer, Trophy, TrendingUp, Users, type LucideIcon, Home } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
 import { money, orderCode } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
 import { addDaysToDateParts, formatStoreTime, keyFromParts, storeDayKey as dayKey, zonedDateParts, zonedLocalTimeToUtc } from "@/lib/timezone";
 import { ChannelDonut, HourColumns, RevenueColumns } from "@/components/dashboard/charts";
 import { StatusBadge } from "@/components/status-badge";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 function sourceName(order: Order) {
   const labels: Record<string, string> = {
@@ -198,7 +199,7 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Visão geral</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Olá, {restaurant.name}</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={Home} tone="orange" size="sm" /><span className="min-w-0">Olá, {restaurant.name}</span></h1>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-faint">
             <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Últimos 14 dias</span>
             <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> Atualizado às {formatStoreTime(now)}</span>

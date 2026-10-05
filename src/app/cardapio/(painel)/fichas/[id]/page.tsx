@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, ClipboardCheck } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
 import { ActionFeedback } from "@/components/action-feedback";
 import { SubmitButton } from "@/components/submit-button";
 import { saveRecipe } from "@/app/actions";
 import { isMissingRecipesTable, listToLines, parseRecipe } from "@/lib/recipes";
 import type { Product } from "@/lib/types";
+import { Icon3D } from "@/components/ui/icon-3d";
 
 const field = "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-body outline-none transition focus:border-brand";
 const label = "text-[0.65rem] font-semibold uppercase tracking-wide text-ink-faint";
@@ -44,7 +45,7 @@ export default async function RecipeEditPage({
           <Link href="/cardapio/fichas" className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-faint transition hover:text-brand">
             <ArrowLeft size={13} /> Todas as fichas
           </Link>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{item.name}</h1>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={ClipboardCheck} tone="amber" size="sm" /><span className="min-w-0">{item.name}</span></h1>
           <p className="text-sm text-ink-faint">Ficha técnica de produção — usada pela cozinha, não aparece no cardápio.</p>
         </div>
         <a
