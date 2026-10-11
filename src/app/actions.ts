@@ -18,6 +18,7 @@ import { isAdminRole } from "@/lib/integrations/security";
 import { mergeDeliveryRulesIntoOpeningHours } from "@/lib/delivery-fee-rules";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
 import { syncOrderStatusToIFood } from "@/lib/integrations/ifood/status-sync";
+import { dispatchBlocked, ifoodSchedule, scheduleLabel } from "@/lib/integrations/ifood/schedule";
 import { openingHourDays } from "@/lib/opening-hours";
 import { digits, slugify } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
@@ -887,6 +888,29 @@ export async function updateOrderStatus(formData: FormData) {
     revalidatePath("/pedidos");
     revalidatePath("/dashboard/orders");
     return;
+  }
+
+  // Pedido agendado do iFood só pode sair para entrega dentro da janela escolhida
+  // pelo cliente; antes disso o iFood cancela o pedido.
+  if (status === "out_for_delivery" && order.external_platform === "ifood") {
+    const { data: link } = await createServiceClient().from("integration_orders").select("raw_payload").eq("order_id", id).eq("restaurant_id", restaurant.id).limit(1).maybeSingle();
+    const schedule = ifoodSchedule(link?.raw_payload);
+    if (schedule && dispatchBlocked(schedule)) {
+      await logIntegrationEvent({
+        restaurantId: restaurant.id,
+        provider: "ifood",
+        direction: "OUTBOUND",
+        eventType: "status_dispatch_blocked",
+        externalId: order.external_order_id,
+        status: "error",
+        requestPayload: { orderId: id, status },
+        responsePayload: { error: `${scheduleLabel(schedule)}. Despacho liberado a partir do início da janela.` },
+      });
+      revalidatePath("/pedidos");
+      revalidatePath("/dashboard/orders");
+      revalidatePath(`/pedidos/${id}`);
+      return;
+    }
   }
 
   const { error: updateError } = await supabase.from("orders").update({ status }).eq("id", id).eq("restaurant_id", restaurant.id);

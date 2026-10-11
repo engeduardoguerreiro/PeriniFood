@@ -2,6 +2,7 @@ import type { createServiceClient } from "@/lib/supabase/service";
 import type { OrderStatus } from "@/lib/types";
 import { getIFoodAccessToken, getOrderDetails } from "./client";
 import { mapIFoodOrder } from "./order-mapper";
+import { ifoodSchedule, scheduleLabel } from "./schedule";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 type IFoodEvent = { id?: string; code?: string; fullCode?: string; orderId?: string; merchantId?: string };
@@ -93,6 +94,7 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
   const token = await getIFoodAccessToken(integration.id);
   const details = await getOrderDetails(orderId, token);
   const mapped = mapIFoodOrder(details);
+  const schedule = ifoodSchedule(details);
 
   const { data: order, error } = await supabase
     .from("orders")
@@ -113,6 +115,7 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
       external_order_id: mapped.externalOrderId,
       external_order_code: mapped.displayId,
       external_platform: "ifood",
+      notes: schedule ? scheduleLabel(schedule) : null,
     })
     .select("id")
     .single();

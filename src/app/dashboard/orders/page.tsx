@@ -11,6 +11,7 @@ import type { Order, OrderStatus } from "@/lib/types";
 import { formatStoreTime, storeDayRange } from "@/lib/timezone";
 import { Icon3D, type Tone } from "@/components/ui/icon-3d";
 import { createServiceClient } from "@/lib/supabase/service";
+import { dispatchBlocked, ifoodSchedule, scheduleLabel, type IFoodSchedule } from "@/lib/integrations/ifood/schedule";
 
 type OperationColumn = {
   title: string;
@@ -81,8 +82,10 @@ function nextStep(order: Order): { status: OrderStatus; label: string } | null {
 const iconBtn =
   "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-soft transition hover:border-brand hover:text-brand";
 
-function OrderCard({ order }: { order: Order }) {
-  const step = nextStep(order);
+function OrderCard({ order, schedule }: { order: Order; schedule: IFoodSchedule | null }) {
+  // Agendado do iFood: "Saiu" só aparece quando a janela de entrega abre.
+  const held = order.status === "ready" && order.type === "delivery" && dispatchBlocked(schedule);
+  const step = held ? null : nextStep(order);
   return (
     <article className="rounded-xl border border-line bg-white p-3 transition hover:border-[#dcd8cf] hover:shadow-[0_1px_2px_rgba(27,26,23,0.05)]">
       <div className="flex items-center justify-between gap-2">
@@ -96,6 +99,7 @@ function OrderCard({ order }: { order: Order }) {
       <p className="mt-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-ink-faint">
         {orderSource(order)} • {typeLabel[order.type]} • {orderTime(order)}
       </p>
+      {schedule && <p className="mt-1.5 rounded-md bg-amber-50 px-2 py-1 text-[0.7rem] font-medium text-amber-800">{scheduleLabel(schedule)}</p>}
 
       <div className="mt-3 flex items-center gap-1.5">
         {step ? (
@@ -106,6 +110,10 @@ function OrderCard({ order }: { order: Order }) {
               {step.label}
             </button>
           </form>
+        ) : held ? (
+          <span className="flex h-9 flex-1 items-center justify-center rounded-lg bg-[#faf9f6] px-2 text-center text-[0.68rem] font-medium text-ink-faint">
+            Aguardando janela de entrega
+          </span>
         ) : isIFoodOrder(order) && (order.status === "out_for_delivery" || order.status === "ready") ? (
           <span className="flex h-9 flex-1 items-center justify-center rounded-lg bg-[#faf9f6] px-2 text-center text-[0.68rem] font-medium text-ink-faint">
             iFood finaliza a entrega
@@ -217,6 +225,15 @@ export default async function OrdersPage() {
   ]);
 
   const activeOrders = (activeData ?? []) as Order[];
+  const ifoodIds = activeOrders.filter(isIFoodOrder).map((order) => order.id);
+  const { data: ifoodLinks } = ifoodIds.length
+    ? await createServiceClient()
+        .from("integration_orders")
+        .select("order_id, orderTiming:raw_payload->>orderTiming, schedule:raw_payload->schedule")
+        .eq("restaurant_id", restaurant.id)
+        .in("order_id", ifoodIds)
+    : { data: [] };
+  const schedules = new Map((ifoodLinks ?? []).map((link) => [link.order_id as string, ifoodSchedule(link)]));
   const history = (historyData ?? []) as Order[];
   const todayDelivered = history.filter((order) => order.status === "completed");
   const todayCanceled = history.filter((order) => order.status === "canceled");
@@ -264,7 +281,7 @@ export default async function OrdersPage() {
               </div>
 
               <div className="space-y-2.5">
-                {columnOrders.map((order) => <OrderCard key={order.id} order={order} />)}
+                {columnOrders.map((order) => <OrderCard key={order.id} order={order} schedule={schedules.get(order.id) ?? null} />)}
                 {!columnOrders.length && (
                   <div className="grid min-h-[110px] place-items-center rounded-xl border border-dashed border-[#e2ddd3] text-center">
                     <p className="text-xs text-ink-faint">Sem pedidos</p>

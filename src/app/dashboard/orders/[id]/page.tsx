@@ -9,6 +9,8 @@ import { headers } from "next/headers";
 import { CourierPanel } from "@/components/tracking/courier-panel";
 import { trackingByOrder } from "@/lib/delivery-tracking";
 import { isTrackingToken } from "@/lib/utils";
+import { createServiceClient } from "@/lib/supabase/service";
+import { dispatchBlocked, ifoodSchedule, scheduleLabel } from "@/lib/integrations/ifood/schedule";
 
 const flow: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delivery", "completed", "canceled"];
 const sourceLabel: Record<string, string> = {
@@ -50,6 +52,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (!order) notFound();
   const current = order as Order;
   const tracking = current.type === "delivery" ? await trackingByOrder(current.id, restaurant.id) : null;
+  const { data: ifoodLink } = current.external_platform === "ifood"
+    ? await createServiceClient().from("integration_orders").select("raw_payload").eq("order_id", current.id).eq("restaurant_id", restaurant.id).limit(1).maybeSingle()
+    : { data: null };
+  const schedule = ifoodSchedule(ifoodLink?.raw_payload);
+  const dispatchHeld = dispatchBlocked(schedule);
   const requestHeaders = await headers();
   const host = requestHeaders.get("host") ?? "perinifood.com.br";
   const origin = `${requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
@@ -120,7 +127,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <a className="btn-muted w-full text-sm" href={`/pedidos/${current.id}/editar`}>Editar pedido</a>
           <a className="btn-primary w-full text-sm" href={whatsappLink(current.customer_phone, message)} target="_blank" rel="noreferrer">Enviar WhatsApp</a>
           <a className="btn-muted w-full text-sm" href={`/pedidos/${current.id}/print`} target="_blank">Imprimir pedido</a>
-          {flow.map((status) => (
+          {schedule && <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">{scheduleLabel(schedule)}{dispatchHeld && " · saída liberada no início da janela"}</p>}
+          {flow.filter((status) => !(dispatchHeld && status === "out_for_delivery")).map((status) => (
             <form key={status} action={updateOrderStatus}>
               <input type="hidden" name="id" value={current.id} />
               <input type="hidden" name="status" value={status} />
