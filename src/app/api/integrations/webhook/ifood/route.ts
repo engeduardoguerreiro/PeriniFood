@@ -28,7 +28,11 @@ function signatureMatches(raw: Buffer, supplied: string | null) {
 export async function POST(request: Request) {
   if (!IFOOD_CLIENT_SECRET) return NextResponse.json({ ok: false, message: "iFood não configurado." }, { status: 503 });
   const raw = Buffer.from(await request.arrayBuffer());
-  if (!signatureMatches(raw, request.headers.get("x-ifood-signature"))) {
+  const supplied = request.headers.get("x-ifood-signature");
+  if (!signatureMatches(raw, supplied)) {
+    // Diagnóstico sem expor segredo: assinatura veio? formato? qual evento?
+    const code = raw.toString("utf8").match(/"(?:fullCode|code)"\s*:\s*"([A-Z_]+)"/)?.[1] ?? "?";
+    console.warn("[ifood webhook] assinatura inválida", { header: supplied === null ? "ausente" : `${supplied.trim().length} chars`, bytes: raw.length, code });
     return NextResponse.json({ ok: false, message: "Assinatura inválida." }, { status: 401 });
   }
   let events: IFoodEvent[] = [];
