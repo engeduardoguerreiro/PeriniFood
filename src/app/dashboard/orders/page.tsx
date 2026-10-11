@@ -10,6 +10,7 @@ import { OrdersAutoRefresh } from "@/components/orders-auto-refresh";
 import type { Order, OrderStatus } from "@/lib/types";
 import { formatStoreTime, storeDayRange } from "@/lib/timezone";
 import { Icon3D, type Tone } from "@/components/ui/icon-3d";
+import { createServiceClient } from "@/lib/supabase/service";
 
 type OperationColumn = {
   title: string;
@@ -184,7 +185,7 @@ export default async function OrdersPage() {
 
   // Ativos e histórico do dia em consultas separadas: com um limite único, num
   // dia cheio os pedidos ativos mais antigos sumiam do quadro.
-  const [{ data: activeData }, { data: historyData }] = await Promise.all([
+  const [{ data: activeData }, { data: historyData }, { data: lastNotice }] = await Promise.all([
     supabase
       .from("orders")
       .select("*")
@@ -201,6 +202,18 @@ export default async function OrdersPage() {
       .lt("created_at", end.toISOString())
       .order("created_at", { ascending: false })
       .limit(500),
+    // Último aviso automático de WhatsApp: se falhou, o cliente não está sendo
+    // avisado e a loja só descobria quando alguém reclamava.
+    createServiceClient()
+      .from("integration_logs")
+      .select("status, error_message, created_at")
+      .eq("restaurant_id", restaurant.id)
+      .eq("provider", "whatsapp")
+      .like("event_type", "auto_%")
+      .gte("created_at", start.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const activeOrders = (activeData ?? []) as Order[];
@@ -212,6 +225,12 @@ export default async function OrdersPage() {
     <div className="space-y-5">
       <Suspense fallback={null}><PrintToast /></Suspense>
       <OrdersAutoRefresh />
+      {lastNotice?.status === "error" && (
+        <Link href="/integracoes/whatsapp" className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <span><strong className="block">Os clientes não estão recebendo os avisos de WhatsApp.</strong>O WhatsApp da loja parece desconectado. Toque aqui e leia o QR Code para reconectar.</span>
+          <span className="shrink-0 font-semibold underline">Reconectar</span>
+        </Link>
+      )}
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>

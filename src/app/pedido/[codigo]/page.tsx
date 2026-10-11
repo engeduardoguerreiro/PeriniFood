@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { CustomerTracking } from "@/components/tracking/customer-tracking";
+import { RememberOrder, SaveAccountCard } from "@/components/tracking/order-follow-up";
 import { createServiceClient } from "@/lib/supabase/service";
 import { money, orderCode, whatsappLink } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
@@ -14,7 +15,7 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
   const supabase = createServiceClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("id,code,order_number,status,type,total,subtotal,delivery_fee,restaurant_id")
+    .select("id,code,order_number,status,type,total,subtotal,delivery_fee,restaurant_id,source,customer_id")
     .eq("code", codigo)
     .maybeSingle();
   if (!order) notFound();
@@ -60,11 +61,14 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
           </div>
         </section>
 
+        {restaurant?.slug && current.source === "site" && !current.customer_id && current.status !== "canceled" && <SaveAccountCard slug={restaurant.slug} code={codigo} />}
+
         {contact && (
           <a href={whatsappLink(contact, `Olá! Tenho uma dúvida sobre o pedido #${orderCode(current)}.`)} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-500 font-bold text-white shadow-[0_10px_24px_-10px_rgba(16,185,129,0.8)]">
             <MessageCircle className="h-5 w-5" /> Falar com a loja
           </a>
         )}
+        {restaurant?.slug && current.source === "site" && <RememberOrder slug={restaurant.slug} code={codigo} number={orderCode(current)} />}
       </div>
     </main>
   );

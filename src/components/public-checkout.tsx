@@ -9,6 +9,7 @@ import { MoneyInput } from "@/components/money-input";
 import { StoreTopBar } from "@/components/storefront/store-top-bar";
 import { Icon3D } from "@/components/ui/icon-3d";
 import { money } from "@/lib/utils";
+import { rememberCheckoutEmail } from "@/lib/recent-orders";
 import type { Restaurant } from "@/lib/types";
 
 type SelectedOption = { name: string; price: number };
@@ -254,7 +255,7 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
         {checkoutError && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{checkoutError}</p>}
         {!restaurant.is_open && <p className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">A loja está fechada agora. Você pode revisar o pedido, mas ele só pode ser enviado quando a loja abrir.</p>}
       </div>
-      <form action={createPublicOrder} className="mx-auto grid max-w-5xl gap-5 px-4 pb-10 lg:grid-cols-[1fr_360px] lg:items-start">
+      <form action={createPublicOrder} onSubmit={() => rememberCheckoutEmail(restaurant.slug, customerDraft.email)} className="mx-auto grid max-w-5xl gap-5 px-4 pb-10 lg:grid-cols-[1fr_360px] lg:items-start">
         {Object.entries(address).map(([key,value]) => <input key={key} type="hidden" name={key} value={value} />)}
         <input type="hidden" name="restaurant_id" value={restaurant.id} />
         <input type="hidden" name="slug" value={restaurant.slug} />

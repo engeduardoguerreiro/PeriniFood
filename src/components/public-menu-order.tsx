@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { Minus, Plus, Search, TicketPercent, UserCircle2, X } from "lucide-react";
 import { CartPanel, CategoryTabs, FeaturedCard, ProductRow, type CartView } from "@/components/storefront/menu-parts";
+import { ActiveOrders } from "@/components/storefront/active-orders";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { money } from "@/lib/utils";
@@ -387,6 +388,7 @@ export function PublicMenuOrder({
 
       <div className={`mx-auto max-w-6xl gap-6 px-4 pt-4 lg:grid lg:grid-cols-[1fr_340px] ${itemCount ? "pb-28 lg:pb-10" : "pb-10"}`}>
         <div className="min-w-0 space-y-7">
+          <ActiveOrders slug={restaurant.slug} />
           {!searchTerm && featured.length > 0 && (
             <section aria-labelledby="destaques">
               <h2 id="destaques" className="mb-3 text-lg font-black text-ink">Destaques</h2>
