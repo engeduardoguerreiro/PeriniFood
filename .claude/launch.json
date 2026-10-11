@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "perini-dev",
-      "runtimeExecutable": "npm.cmd",
+      "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
