@@ -54,22 +54,25 @@ function ProductImage({ src, className }: { src: string | null; className: strin
   return <img src={src} alt="" loading="lazy" decoding="async" onError={() => setBroken(true)} className={`bg-white object-contain ${className}`} />;
 }
 
-export function ProductRow({ product, price, fromPrice, open, onSelect }: { product: Product; price: number; fromPrice: boolean; open: boolean; onSelect: () => void }) {
+// price null = produto com tamanhos e nenhum tamanho escolhido (ou indisponível nele):
+// mostramos o motivo em vez de um "a partir de" que o cliente lia como preço final.
+type PriceProps = { price: number | null; priceNote?: string };
+
+export function ProductRow({ product, price, priceNote, open, onSelect }: { product: Product; open: boolean; onSelect: () => void } & PriceProps) {
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={!open}
-      aria-label={`${product.name}, ${fromPrice ? "a partir de " : ""}${money(price)}`}
+      aria-label={`${product.name}, ${price != null ? money(price) : priceNote ?? ""}`}
       className="group flex w-full gap-3 rounded-2xl bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_18px_-12px_rgba(0,0,0,0.25)] ring-1 ring-black/[0.04] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-14px_rgba(0,0,0,0.35)] disabled:cursor-default disabled:hover:translate-y-0"
     >
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="line-clamp-2 text-[0.95rem] font-semibold leading-snug text-ink">{product.name}</span>
         <span className="mt-1 line-clamp-2 text-[0.82rem] leading-snug text-slate-500">{product.description || " "}</span>
-        <span className="mt-auto pt-2 text-[0.95rem] font-semibold text-ink">
-          {fromPrice && <span className="mr-1 text-xs font-medium text-slate-500">a partir de</span>}
-          {money(price)}
-        </span>
+        {price != null
+          ? <span className="mt-auto pt-2 text-[0.95rem] font-semibold text-ink">{money(price)}</span>
+          : <span className="mt-auto pt-2 text-xs font-semibold text-slate-500">{priceNote}</span>}
       </span>
       <span className="relative shrink-0">
         <ProductImage src={product.image_url} className="h-24 w-24 rounded-xl" />
@@ -83,13 +86,15 @@ export function ProductRow({ product, price, fromPrice, open, onSelect }: { prod
   );
 }
 
-export function FeaturedCard({ product, price, fromPrice, open, onSelect }: { product: Product; price: number; fromPrice: boolean; open: boolean; onSelect: () => void }) {
+export function FeaturedCard({ product, price, priceNote, open, onSelect }: { product: Product; open: boolean; onSelect: () => void } & PriceProps) {
   return (
     <button type="button" onClick={onSelect} disabled={!open} className="group w-40 shrink-0 snap-start overflow-hidden rounded-2xl bg-white text-left shadow-[0_8px_24px_-14px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.04] transition hover:-translate-y-0.5 disabled:cursor-default sm:w-48">
       <ProductImage src={product.image_url} className="aspect-square w-full" />
       <span className="block p-2.5">
         <span className="line-clamp-1 text-sm font-semibold text-ink">{product.name}</span>
-        <span className="mt-0.5 block text-sm font-semibold text-brand">{fromPrice && <span className="mr-1 text-[0.7rem] font-medium text-slate-500">a partir de</span>}{money(price)}</span>
+        {price != null
+          ? <span className="mt-0.5 block text-sm font-semibold text-brand">{money(price)}</span>
+          : <span className="mt-0.5 block text-xs font-semibold text-slate-500">{priceNote}</span>}
       </span>
     </button>
   );

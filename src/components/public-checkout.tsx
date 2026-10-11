@@ -9,7 +9,7 @@ import { MoneyInput } from "@/components/money-input";
 import { StoreTopBar } from "@/components/storefront/store-top-bar";
 import { Icon3D } from "@/components/ui/icon-3d";
 import { money } from "@/lib/utils";
-import type { DeliveryFeeRule, Restaurant } from "@/lib/types";
+import type { Restaurant } from "@/lib/types";
 
 type SelectedOption = { name: string; price: number };
 type CartLine = {
@@ -79,12 +79,15 @@ function lineTotal(item: CartLine) {
   return (Number(item.price) + extras) * item.quantity;
 }
 
-export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { restaurant: Restaurant; deliveryRules: DeliveryFeeRule[]; checkoutError?: string }) {
+export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Restaurant; checkoutError?: string }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [addressStatus, setAddressStatus] = useState("");
   const [type, setType] = useState("delivery");
-  const [deliveryRuleId, setDeliveryRuleId] = useState(deliveryRules[0]?.id ?? "");
+  // Frete cotado pelo servidor para o endereço atual (key). Antes a tela usava a
+  // primeira faixa como padrão e, se a cotação falhasse, enviava um valor que o
+  // servidor recusava sem o cliente entender por quê.
+  const [quote, setQuote] = useState<{ key: string; fee: number } | null>(null);
   const [deliveryCalculating, setDeliveryCalculating] = useState(false);
   const [customerId, setCustomerId] = useState("");
   const [customerDraft, setCustomerDraft] = useState({ name: "", phone: "", email: "", cpf: "", birthDate: "" });
@@ -168,13 +171,10 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
   }
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
-  const selectedDeliveryRule = deliveryRules.find((rule) => rule.id === deliveryRuleId);
   const addressIsComplete = Boolean(address.street && address.number && address.neighborhood && address.city && address.state);
-  const deliveryFee = type === "delivery" && addressIsComplete
-    ? selectedDeliveryRule
-      ? selectedDeliveryRule.free_delivery ? 0 : Number(selectedDeliveryRule.fee ?? 0)
-      : Number(restaurant.delivery_fee ?? 0)
-    : 0;
+  const addressKey = JSON.stringify([address.cep, address.street, address.number, address.neighborhood, address.city, address.state]);
+  const quoted = quote?.key === addressKey ? quote : null;
+  const deliveryFee = type === "delivery" && quoted ? quoted.fee : 0;
   const total = subtotal + deliveryFee;
   const checkoutBlockReason = !restaurant.is_open ?
      "A loja está fechada no momento."
@@ -182,7 +182,9 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
        "Seu carrinho está vazio."
       : type === "delivery" && !addressIsComplete ?
          "Informe o endereço completo, incluindo o número."
-        : "";
+        : type === "delivery" && !quoted ?
+           deliveryCalculating ? "Calculando a taxa de entrega…" : "Não conseguimos calcular a entrega para este endereço. Confira o CEP e o endereço ou escolha retirada."
+          : "";
   const canSubmit = !checkoutBlockReason;
 
   const calculateDeliveryRule = useCallback(async (nextAddress: Address, messagePrefix = "Endereço informado.") => {
@@ -191,9 +193,9 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
       const response = await fetch("/api/shipping/quote", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({restaurantId:restaurant.id,address:nextAddress}) });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.message ?? "Não foi possível calcular o frete.");
-      setDeliveryRuleId(data.ruleId);
+      setQuote({ key: JSON.stringify([nextAddress.cep, nextAddress.street, nextAddress.number, nextAddress.neighborhood, nextAddress.city, nextAddress.state]), fee: Number(data.fee) });
       setAddressStatus(messagePrefix + " Frete calculado: " + money(data.fee));
-    } catch (error) { setAddressStatus(error instanceof Error ? error.message : "Não foi possível calcular o frete."); }
+    } catch (error) { setQuote(null); setAddressStatus(error instanceof Error ? error.message : "Não foi possível calcular o frete."); }
     finally { setDeliveryCalculating(false); }
   }, [restaurant.id]);
 
@@ -230,7 +232,9 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
         ...current,
         ...nextAddress,
       }));
-      await calculateDeliveryRule(nextAddress);
+      // Sem o número o servidor recusa a cotação; o efeito acima cota quando o endereço ficar completo.
+      if (nextAddress.number) await calculateDeliveryRule(nextAddress);
+      else setAddressStatus("Endereço encontrado. Informe o número para calcular a entrega.");
     } catch {
       setAddressStatus("Não foi possível consultar o CEP agora.");
     }
@@ -345,9 +349,9 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
                 <div className="col-span-2 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                   <span className="text-sm text-slate-600">Taxa de entrega</span>
                   <strong className="text-right">
-                    {deliveryCalculating ? "Calculando…" : addressIsComplete
-                      ? selectedDeliveryRule ? (selectedDeliveryRule.free_delivery ? "Grátis" : money(selectedDeliveryRule.fee)) : money(restaurant.delivery_fee ?? 0)
-                      : "Informe o endereço"}
+                    {deliveryCalculating ? "Calculando…" : quoted
+                      ? quoted.fee ? money(quoted.fee) : "Grátis"
+                      : addressIsComplete ? "Não calculada" : "Informe o endereço"}
                   </strong>
                 </div>
                 {addressStatus && <p className="col-span-2 text-sm text-slate-600">{addressStatus}</p>}
@@ -407,7 +411,7 @@ export function PublicCheckout({ restaurant, deliveryRules, checkoutError }: { r
             </ul>
             <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-sm">
               <p className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(subtotal)}</span></p>
-              <p className="flex justify-between text-slate-600"><span>Entrega</span><span>{type === "pickup" ? "Retirada" : money(deliveryFee)}</span></p>
+              <p className="flex justify-between text-slate-600"><span>Entrega</span><span>{type === "pickup" ? "Retirada" : quoted ? money(deliveryFee) : "—"}</span></p>
               <p className="flex justify-between pt-1 text-xl font-black"><span>Total</span><span>{money(total)}</span></p>
             </div>
             {checkoutBlockReason && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">{checkoutBlockReason}</p>}

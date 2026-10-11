@@ -1034,6 +1034,8 @@ export async function createPublicOrder(formData: FormData) {
     queueOrderNotification(order.id);
     destination = '/pedido/' + order.code;
   } catch (error) {
+    // Sem este log a recusa só aparecia como um 303 nos logs da Vercel.
+    console.error("[checkout] pedido do site recusado:", error instanceof Error ? error.message : error);
     const slug = encodeURIComponent(boundedText(formData.get("slug"),100,true));
     const message = error instanceof PublicError ? error.message : "Não foi possível finalizar. Tente novamente.";
     destination = '/cardapio/' + slug + '/checkout?error=' + encodeURIComponent(message);

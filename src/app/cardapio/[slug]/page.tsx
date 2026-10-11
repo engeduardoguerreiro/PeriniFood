@@ -66,9 +66,13 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
   const notPassed = (value: string) => (value.length === 10 ? value >= today : value >= nowIso);
   const activeCoupons = ((coupons ?? []) as Coupon[]).filter((coupon) => (!coupon.starts_at || reached(coupon.starts_at)) && (!coupon.ends_at || notPassed(coupon.ends_at)));
 
+  const rules = (((deliveryRules ?? []).length ? deliveryRules : deliveryRulesFromRestaurant(current)) ?? []) as DeliveryFeeRule[];
+  const ruleFees = rules.filter((rule) => rule.active !== false).map((rule) => (rule.free_delivery ? 0 : Number(rule.fee ?? 0)));
+  const deliveryFees = ruleFees.length ? { min: Math.min(...ruleFees), max: Math.max(...ruleFees) } : { min: Number(current.delivery_fee ?? 0), max: Number(current.delivery_fee ?? 0) };
+
   return (
     <main className="min-h-screen bg-[#f6f5f2] text-ink">
-      <StoreHeader restaurant={current} />
+      <StoreHeader restaurant={current} deliveryFees={deliveryFees} />
       {sp.success && <div role="status" className="mx-4 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700 md:mx-auto md:max-w-6xl">Pedido enviado com sucesso.</div>}
       <PublicMenuOrder
         restaurant={storefront}
@@ -76,7 +80,7 @@ export default async function PublicMenuPage({ params, searchParams }: { params:
         products={sortProductsByCategoryPrice((products ?? []) as Product[], (variants ?? []) as ProductVariant[])}
         variants={(variants ?? []) as ProductVariant[]}
         options={(options ?? []) as ProductOption[]}
-        deliveryRules={(((deliveryRules ?? []).length ? deliveryRules : deliveryRulesFromRestaurant(current)) ?? []) as DeliveryFeeRule[]}
+        deliveryRules={rules}
         pizzaOptions={(pizzaOptions ?? []) as PizzaOption[]}
         coupons={activeCoupons}
         loyalty={loyalty as LoyaltyProgram | null}

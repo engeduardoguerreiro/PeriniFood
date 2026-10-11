@@ -8,7 +8,7 @@ const paymentLabels: Record<string, string> = { cash: "Dinheiro", pix: "Pix", cr
 
 // Topo do cardápio público: compacto no celular (o cliente vê produtos já na
 // primeira tela) e com as informações que decidem a compra num painel recolhível.
-export function StoreHeader({ restaurant }: { restaurant: Restaurant }) {
+export function StoreHeader({ restaurant, deliveryFees }: { restaurant: Restaurant; deliveryFees: { min: number; max: number } }) {
   const cover = restaurant.site_cover_url ?? restaurant.banner_url ?? restaurant.cover_url;
   const status = storeStatusLabel(restaurant);
   const address = [restaurant.address && `${restaurant.address}${restaurant.address_number ? `, ${restaurant.address_number}` : ""}`, restaurant.neighborhood, restaurant.city && `${restaurant.city}${restaurant.state ? `/${restaurant.state}` : ""}`].filter(Boolean).join(" · ");
@@ -38,7 +38,7 @@ export function StoreHeader({ restaurant }: { restaurant: Restaurant }) {
 
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
           {restaurant.delivery_enabled !== false && <li className="inline-flex items-center gap-1.5"><Bike className="h-4 w-4 text-brand" /> {restaurant.estimated_delivery_time ?? "40-50 min"}</li>}
-          {restaurant.delivery_enabled !== false && <li className="inline-flex items-center gap-1.5"><ShoppingBag className="h-4 w-4 text-brand" /> Entrega a partir de {money(restaurant.delivery_fee ?? 0)}</li>}
+          {restaurant.delivery_enabled !== false && <li className="inline-flex items-center gap-1.5"><ShoppingBag className="h-4 w-4 text-brand" /> {deliveryFees.min === deliveryFees.max ? `Entrega ${deliveryFees.min ? money(deliveryFees.min) : "grátis"}` : `Entrega de ${deliveryFees.min ? money(deliveryFees.min) : "grátis"} a ${money(deliveryFees.max)}, conforme a distância`}</li>}
           {Number(restaurant.minimum_order ?? 0) > 0 && <li className="text-slate-500">Pedido mínimo {money(restaurant.minimum_order)}</li>}
           {restaurant.pickup_enabled && <li className="text-slate-500">Retirada no local</li>}
         </ul>

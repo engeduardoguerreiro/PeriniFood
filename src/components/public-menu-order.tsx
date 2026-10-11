@@ -86,6 +86,11 @@ function normalizeLabel(value: string | null | undefined) {
   return (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
+// "BROTO" → "Broto": os tamanhos costumam ser cadastrados em caixa alta.
+function sizeLabel(value: string) {
+  return value === value.toUpperCase() ? value.toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()) : value;
+}
+
 export function PublicMenuOrder({
   restaurant,
   categories,
@@ -115,6 +120,14 @@ export function PublicMenuOrder({
   // rolar a lista inteira no celular é o que mais trava o pedido.
   const [flavorSearch, setFlavorSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
+  // Tamanho escolhido antes de ver preços: com tamanhos, o card mostrava "a partir de"
+  // o menor preço (broto) e o cliente entendia que a pizza custava aquilo.
+  const [size, setSizeState] = useState<string | null>(null);
+  const sizeKey = `perinifood_size_${restaurant.slug}`;
+  function setSize(next: string) {
+    setSizeState(next);
+    try { window.sessionStorage.setItem(sizeKey, next); } catch {}
+  }
   const router = useRouter();
   const closeDraftRef = useRef<HTMLButtonElement>(null);
 
@@ -143,15 +156,24 @@ export function PublicMenuOrder({
         || groupOptions(options, product.id, "Adicionais", pizzaOptions).length,
       );
       const basePrice = productVariants.length ? Math.min(...productVariants.map((variant) => Number(variant.price))) : Number(product.price);
-      return [product.id, { hasVariants: productVariants.length > 0, hasOptions, basePrice, searchText: normalizeLabel(`${product.name} ${product.description ?? ""}`) }];
+      const priceBySize = new Map(productVariants.map((variant) => [variant.name, Number(variant.price)]));
+      return [product.id, { hasVariants: productVariants.length > 0, hasOptions, basePrice, priceBySize, searchText: normalizeLabel(`${product.name} ${product.description ?? ""}`) }];
     }));
+    // Tamanhos da loja, do mais barato ao mais caro (Broto, Média, Grande…).
+    const sizeFloor = new Map<string, number>();
+    for (const product of products) {
+      for (const variant of variantsByProduct.get(product.id) ?? []) {
+        sizeFloor.set(variant.name, Math.min(sizeFloor.get(variant.name) ?? Infinity, Number(variant.price)));
+      }
+    }
+    const sizes = [...sizeFloor.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name);
     const byCategory = new Map(categories.map((category) => [
       category.id,
       products
         .filter((product) => product.category_id === category.id)
         .sort((a, b) => (info.get(a.id)!.basePrice - info.get(b.id)!.basePrice) || a.name.localeCompare(b.name, "pt-BR")),
     ]));
-    return { info, byCategory };
+    return { info, byCategory, sizes };
   }, [categories, categoryById, options, pizzaOptions, products, variants]);
 
   const deferredSearch = useDeferredValue(search);
@@ -172,6 +194,21 @@ export function PublicMenuOrder({
   }, [draft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(sizeKey);
+      if (saved && catalog.sizes.includes(saved)) Promise.resolve().then(() => setSizeState(saved));
+    } catch {}
+  }, [sizeKey, catalog.sizes]);
+
+  function priceView(product: Product) {
+    const info = catalog.info.get(product.id)!;
+    if (!info.hasVariants) return { price: info.basePrice };
+    if (!size) return { price: null, priceNote: "Escolha o tamanho para ver o preço" };
+    const price = info.priceBySize.get(size);
+    return price != null ? { price } : { price: null, priceNote: `Não disponível em ${sizeLabel(size)}` };
+  }
+
+  useEffect(() => {
     window.localStorage.removeItem('gastroflow_customer_' + restaurant.slug);
     const controller = new AbortController();
     fetch('/api/customer-auth/profile?restaurantId=' + restaurant.id, { signal: controller.signal })
@@ -190,16 +227,17 @@ export function PublicMenuOrder({
     setFlavorSearch("");
     const isPizza = isPizzaProduct(product);
     const productVariants = variants.filter((item) => item.product_id === product.id && item.active);
-    // Produto sem tamanhos (bebida, por exemplo) não tem variante: sem o
-    // optional chaining aqui a função quebrava e o modal nunca abria.
-    const selectedVariant = productVariants[0];
+    // Já abre no tamanho escolhido no topo. Sem tamanho escolhido, nada vem
+    // marcado: o cliente vê os preços de cada tamanho e escolhe no modal.
+    // Produto sem tamanhos (bebida, por exemplo) não tem variante.
+    const selectedVariant = productVariants.find((variant) => variant.name === size);
     const dough = isPizza ? groupOptions(options, product.id, "Tipos de Massas", pizzaOptions) : [];
     setDraft({
       id: product.id,
       variantId: selectedVariant?.id ?? null,
       variantName: selectedVariant?.name ?? null,
       name: product.name,
-      price: Number(selectedVariant?.price ?? product.price),
+      price: isPizza && selectedVariant ? highestFlavorPrice([product.name], selectedVariant.name, products, variants, Number(selectedVariant.price)) : Number(selectedVariant?.price ?? product.price),
       quantity: 1,
       dough: dough.length === 1 ? { name: dough[0].name, price: Number(dough[0].additional_price) } : null,
       crust: null,
@@ -317,6 +355,25 @@ export function PublicMenuOrder({
               <span className="hidden max-w-28 truncate sm:inline">{customerName ? customerName.split(" ")[0] : "Entrar"}</span>
             </a>
           </div>
+          {catalog.sizes.length > 0 && (
+            <div className={`mx-4 mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl px-3 py-2 transition ${size ? "bg-slate-50" : "bg-amber-50 ring-1 ring-amber-200"}`}>
+              <span className={`shrink-0 text-xs font-bold ${size ? "text-slate-500" : "text-amber-900"}`}>{size ? "Tamanho:" : "Escolha o tamanho da pizza para ver os preços"}</span>
+              <div role="radiogroup" aria-label="Tamanho da pizza" className="flex flex-wrap gap-1.5">
+                {catalog.sizes.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    role="radio"
+                    aria-checked={size === name}
+                    onClick={() => setSize(name)}
+                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-bold transition ${size === name ? "bg-brand text-white shadow-[0_6px_14px_-6px_rgba(207,74,10,0.8)]" : "bg-white text-ink ring-1 ring-slate-200 hover:ring-brand"}`}
+                  >
+                    {sizeLabel(name)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {!searchTerm && <CategoryTabs categories={categories.filter((category) => catalog.byCategory.get(category.id)?.length)} />}
           {searchTerm && <p className="px-4 pb-2.5 pt-1.5 text-sm text-slate-500">Resultados para “{deferredSearch.trim()}”</p>}
         </div>
@@ -335,8 +392,7 @@ export function PublicMenuOrder({
               <h2 id="destaques" className="mb-3 text-lg font-black text-ink">Destaques</h2>
               <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
                 {featured.map((product) => {
-                  const info = catalog.info.get(product.id)!;
-                  return <FeaturedCard key={product.id} product={product} price={info.basePrice} fromPrice={info.hasVariants} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
+                  return <FeaturedCard key={product.id} product={product} {...priceView(product)} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
                 })}
               </div>
             </section>
@@ -352,8 +408,7 @@ export function PublicMenuOrder({
                 </h2>
                 <div className="grid gap-3 md:grid-cols-2">
                   {categoryProducts.map((product) => {
-                    const info = catalog.info.get(product.id)!;
-                    return <ProductRow key={product.id} product={product} price={info.basePrice} fromPrice={info.hasVariants} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
+                    return <ProductRow key={product.id} product={product} {...priceView(product)} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
                   })}
                 </div>
               </section>
@@ -456,6 +511,36 @@ export function PublicMenuOrder({
                   const flavors = isPizza ? flavorChoices(draftProduct, products) : [];
                   return (
                     <>
+                      {!!productVariants.length && (
+                        <section className="border-b border-slate-100 p-5">
+                          <h3 className="font-black">Tamanho</h3>
+                          <p className="text-sm text-slate-500">{draft.variantId ? "Escolha uma opção." : "Obrigatório: escolha o tamanho."}</p>
+                          <div className="mt-4 divide-y divide-slate-100">
+                            {productVariants.map((variant) => (
+                              <label key={variant.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
+                                <span>
+                                  <strong>{sizeLabel(variant.name)}</strong>
+                                  <span className="block text-sm text-slate-500">{money(variant.price)}</span>
+                                </span>
+                                <input
+                                  type="radio"
+                                  checked={draft.variantId === variant.id}
+                                  onChange={() => {
+                                    setDraft({
+                                      ...draft,
+                                      variantId: variant.id,
+                                      variantName: variant.name,
+                                      price: isPizza ? highestFlavorPrice(draft.flavors, variant.name, products, variants, Number(variant.price)) : Number(variant.price),
+                                    });
+                                    if (!size && catalog.sizes.includes(variant.name)) setSize(variant.name);
+                                  }}
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
                       {isPizza && maxFlavors > 1 && (() => {
                         const limit = Number(draft.flavorCount ?? 1);
                         const term = flavorSearch.trim().toLowerCase();
@@ -468,7 +553,7 @@ export function PublicMenuOrder({
                                 {draft.flavors.length}/{limit} escolhido{limit > 1 ? "s" : ""}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-500">Escolha se esta pizza terá 1, 2, 3 ou {maxFlavors} sabores.</p>
+                            <p className="text-sm text-slate-500">Até {maxFlavors} sabores. O valor da pizza é o do sabor mais caro.</p>
 
                             <div className="mt-4 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
                               {Array.from({ length: maxFlavors }, (_, index) => index + 1).map((count) => (
@@ -528,7 +613,8 @@ export function PublicMenuOrder({
                                       }}
                                       disabled={atLimit}
                                     />
-                                    <span className="font-medium">{flavor.name}</span>
+                                    <span className="flex-1 font-medium">{flavor.name}</span>
+                                    {draft.variantName && <span className="shrink-0 text-xs font-semibold text-slate-500">{money(flavorPrice(flavor.name, draft.variantName, products, variants, draft.price))}</span>}
                                   </label>
                                 );
                               })}
@@ -543,33 +629,6 @@ export function PublicMenuOrder({
                           </section>
                         );
                       })()}
-
-                      {!!productVariants.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Tamanho</h3>
-                          <p className="text-sm text-slate-500">Escolha uma opção.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {productVariants.map((variant) => (
-                              <label key={variant.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  <strong>{variant.name}</strong>
-                                  <span className="block text-sm text-slate-500">{money(variant.price)}</span>
-                                </span>
-                                <input
-                                  type="radio"
-                                  checked={draft.variantId === variant.id}
-                                  onChange={() => setDraft({
-                                    ...draft,
-                                    variantId: variant.id,
-                                    variantName: variant.name,
-                                    price: isPizza ? highestFlavorPrice(draft.flavors, variant.name, products, variants, Number(variant.price)) : Number(variant.price),
-                                  })}
-                                />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
 
                       {!!dough.length && (
                         <section className="border-b border-slate-100 p-5">
@@ -661,10 +720,10 @@ export function PublicMenuOrder({
                 <button
                   type="button"
                   onClick={confirmDraft}
-                  disabled={isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1)}
+                  disabled={(catalog.info.get(draft.id)?.hasVariants && !draft.variantId) || (isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1))}
                   className="ml-auto h-12 flex-1 rounded-lg bg-brand px-5 text-sm font-black uppercase text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  Adicionar - {money(lineTotal(draft))}
+                  {catalog.info.get(draft.id)?.hasVariants && !draft.variantId ? "Escolha o tamanho" : `Adicionar - ${money(lineTotal(draft))}`}
                 </button>
               </div>
           </div>
