@@ -23,7 +23,7 @@ export default async function CourierPage({ params }: { params: Promise<{ token:
   }
   const service = createServiceClient();
   const [{ data: order }, { data: restaurant }, { count: items }] = await Promise.all([
-    service.from("orders").select("id, code, order_number, status, customer_name, customer_phone, delivery_address, notes, total, payment_method, payment_status, change_for, external_platform").eq("id", row.order_id).maybeSingle(),
+    service.from("orders").select("id, code, order_number, status, customer_name, customer_phone, delivery_address, notes, total, payment_method, payment_status, change_for, source, external_platform, external_order_code").eq("id", row.order_id).maybeSingle(),
     service.from("restaurants").select("name, phone, whatsapp").eq("id", row.restaurant_id).maybeSingle(),
     service.from("order_items").select("id", { count: "exact", head: true }).eq("order_id", row.order_id),
   ]);

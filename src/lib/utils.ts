@@ -111,10 +111,26 @@ export function isTrackingToken(code: string | null | undefined) {
   return Boolean(code && /^[a-f0-9]{48}$/.test(code));
 }
 
-export function orderCode(order: { code: string | null; order_number: number | null; id: string }) {
-  if (order.code && !isTrackingToken(order.code)) return order.code;
-  if (order.order_number) return String(order.order_number).padStart(4, "0");
-  return String(order.id ?? "").replace(/-/g, "").slice(0, 8).toUpperCase();
+// Sigla do canal antes do número: IF-3267 (iFood, número que o cliente vê no app),
+// 99-…, KT-…; pedidos da própria loja (site, PDV, balcão) saem como LJ-0042.
+const CHANNEL_PREFIX: Record<string, string> = { ifood: "IF", "99food": "99", keeta: "KT", rappi: "RP" };
+
+export type OrderCodeFields = {
+  id: string;
+  code: string | null;
+  order_number: number | null;
+  source?: string | null;
+  external_platform?: string | null;
+  external_order_code?: string | null;
+};
+
+export function orderCode(order: OrderCodeFields) {
+  const channel = order.external_platform ?? (order.source && order.source in CHANNEL_PREFIX ? order.source : null);
+  const prefix = channel ? CHANNEL_PREFIX[channel] ?? channel.slice(0, 2).toUpperCase() : "LJ";
+  const number = (channel && order.external_order_code)
+    || (order.code && !isTrackingToken(order.code) && !channel ? order.code : null)
+    || (order.order_number ? String(order.order_number).padStart(4, "0") : String(order.id ?? "").replace(/-/g, "").slice(0, 8).toUpperCase());
+  return `${prefix}-${number}`;
 }
 
 export function nextStatus(status: OrderStatus): OrderStatus | null {

@@ -2,7 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
-import { isTrackingToken, money, orderCode } from "@/lib/utils";
+import { isTrackingToken, money, orderCode, type OrderCodeFields } from "@/lib/utils";
 import { sendText, whatsappNumber } from "./evolution";
 import { appendConversation } from "@/lib/ai/attendant";
 import { DEFAULT_TEMPLATES, renderTemplate, type TemplateKey } from "./templates";
@@ -23,7 +23,7 @@ export async function notifyOrderStatus(orderId: string) {
   const service = createServiceClient();
   const { data: order } = await service
     .from("orders")
-    .select("id, restaurant_id, status, type, code, order_number, customer_name, customer_phone, total, external_platform")
+    .select("id, restaurant_id, status, type, code, order_number, customer_name, customer_phone, total, source, external_platform, external_order_code")
     .eq("id", orderId)
     .maybeSingle();
   if (!order || !order.customer_phone || order.external_platform === "ifood") return;
@@ -66,7 +66,7 @@ export async function notifyOrderStatus(orderId: string) {
 
   const text = renderTemplate(template, {
     nome: String(order.customer_name ?? "").trim().split(/\s+/)[0] || "cliente",
-    pedido: orderCode(order as { code: string | null; order_number: number | null; id: string }),
+    pedido: orderCode(order as OrderCodeFields),
     loja: restaurant?.name ?? "",
     link,
     codigo: code,

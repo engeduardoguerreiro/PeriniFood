@@ -244,6 +244,7 @@ export type Order = {
   notes: string | null;
   external_order_id: string | null;
   external_platform: string | null;
+  external_order_code?: string | null;
   created_at: string;
   updated_at: string;
 };

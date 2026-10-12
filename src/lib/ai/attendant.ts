@@ -100,7 +100,7 @@ async function latestOrderFor(restaurantId: string, phone: string) {
   const since = new Date(Date.now() - 2 * 24 * 3600_000).toISOString();
   const { data } = await createServiceClient()
     .from("orders")
-    .select("id, code, order_number, status, total, created_at, customer_phone")
+    .select("id, code, order_number, status, total, created_at, customer_phone, source, external_platform, external_order_code")
     .eq("restaurant_id", restaurantId)
     .gte("created_at", since)
     .order("created_at", { ascending: false })

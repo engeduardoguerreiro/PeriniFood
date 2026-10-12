@@ -15,7 +15,7 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
   const supabase = createServiceClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("id,code,order_number,status,type,total,subtotal,delivery_fee,restaurant_id,source,customer_id")
+    .select("id,code,order_number,status,type,total,subtotal,delivery_fee,restaurant_id,source,customer_id,external_platform,external_order_code")
     .eq("code", codigo)
     .maybeSingle();
   if (!order) notFound();
