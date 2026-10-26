@@ -98,12 +98,16 @@ export async function ifoodFinishLink(formData: FormData) {
   // A listagem pode vir vazia mesmo com a loja autorizada no app; nesse caso
   // tentamos as lojas que o próprio token cita e a que já estava vinculada antes.
   if (!merchants.length) {
-    const candidates = [...new Set([...tokenMerchantIds(token.accessToken), existing.external_store_id].filter((id): id is string => Boolean(id)))];
+    const scoped = tokenMerchantIds(token.accessToken);
+    const candidates = [...new Set([...scoped, existing.external_store_id].filter((id): id is string => Boolean(id)))];
     console.warn("[ifood] listagem de lojas vazia; tentando", candidates.length ? candidates : "nenhuma loja conhecida");
     for (const id of candidates) {
       const known = await getMerchant(token.accessToken, id);
       if (known) { merchants = [known]; break; }
     }
+    // App sem o módulo Merchant: o token só dá order/events, mas já diz qual loja
+    // o lojista autorizou — e pedidos/eventos são tudo o que a integração usa.
+    if (!merchants.length && scoped.length) merchants = [{ id: scoped[0] }];
   }
   const merchant = merchants[0];
   if (!merchant) back("A conta autorizada não tem nenhuma loja no iFood.");
