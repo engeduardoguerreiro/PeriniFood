@@ -25,7 +25,7 @@ node scripts/replay-migrations.mjs [supabase/migrations/<file>.sql] # replay sch
 node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-deploy smoke checks against prod (reads .env.local)
 ```
 
-- There is **no test suite**. To verify a change, use a type check or build, `replay-migrations.mjs` for SQL, and the running app.
+- There is no full test suite. `npm test` runs `scripts/test-pizza-builder.mjs` (node:test on `src/lib/pizza-builder.ts`, the public menu's step-by-step builder rules; Node strips the TS types itself). Otherwise verify with a type check or build, `replay-migrations.mjs` for SQL, and the running app.
 - `print-agent:*` (PowerShell) and `desktop:*` (Electron/NSIS) build Windows deliverables and do not run on Linux.
 - Prisma is **not** used at runtime: no PrismaClient in `src/`. `prisma/schema.prisma` is partial and stale. `prisma/seed.mjs` uses the Supabase SDK.
 
@@ -64,11 +64,17 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 - Panel colors use the Tailwind tokens from the `@theme` block in `globals.css` (`text-ink`, `text-ink-soft`, `text-ink-faint`, `border-line`, `bg-btn`, `text-brand`, …), not hex literals.
 - In Next 16, `error.tsx` receives `unstable_retry`, not `reset`.
 
-**Orders.** Site checkout and the POS both go through `saveValidatedOrder` (`src/lib/order-service.ts`). It reloads the catalog server-side, prices the cart with `src/lib/order-pricing.ts` (pizza = highest price among base and selected flavors, plus crust, edge and add-ons), computes shipping with `shipping.ts` / `delivery-fee-rules.ts`, and persists atomically through the RPC. Never trust client-sent prices or fees. Money fields arrive as the user typed them (`"89,90"`), so parse them with `parseDecimal` (`src/lib/utils.ts`), not `Number()`. Statuses are `pending → accepted → preparing → ready → out_for_delivery → completed | canceled`.
+**Orders.** Site checkout and the POS both go through `saveValidatedOrder` (`src/lib/order-service.ts`). It reloads the catalog server-side, prices the cart with `src/lib/order-pricing.ts` (pizza = highest price among base and selected flavors, plus crust, edge and add-ons). The public menu's preview of that rule lives in `src/lib/pizza-builder.ts` (the cart line's product is the 1st flavor); keep both in sync, computes shipping with `shipping.ts` / `delivery-fee-rules.ts`, and persists atomically through the RPC. Never trust client-sent prices or fees. Money fields arrive as the user typed them (`"89,90"`), so parse them with `parseDecimal` (`src/lib/utils.ts`), not `Number()`. Statuses are `pending → accepted → preparing → ready → out_for_delivery → completed | canceled`.
 
 **Duplicate route families.** The English `/dashboard/...` routes and the Portuguese `/pedidos`, `/cardapio`, `/clientes`, `/relatorios`, `/configuracoes`, `/integracoes` routes are parallel implementations, not aliases. The `(painel)` route groups give the dashboard layout without affecting the URL. The public menu is `/cardapio/[slug]`, with `/checkout` and `/conta`; public order tracking is `/pedido/[codigo]`.
 
 **Integrations.** The real iFood implementation is in `src/lib/integrations/ifood/` (OAuth, polling, event processor, order mapper, status sync, catalog push including native pizza templates). The code in `src/lib/integrations/providers/*` and `src/integrations/*` is mostly mocks, mappers and facades for 99Food, Keeta and Rappi. Externally created orders go through `src/lib/integrations/external-order.ts`. Webhook and maintenance endpoints must authenticate with `requireIntegrationToken` (`ingress.ts`), which fails closed with 503 when the secret is missing or shorter than 32 characters.
+
+**Site order rules and alerts.**
+- `restaurants.crust_choice_rule` / `addon_choice_rule` (`optional` | `ask` | `required`, set in Cardápio > Opções de pizza) drive the menu builder and are enforced by `priceCart` for site orders only (cart lines carry `noCrust` / `noAdditions` answers). Edges/add-ons offered are the ones ticked on each product (`product_options` groups); `pizza_options.image_url` gives them photos.
+- `NewOrderAlerts` (panel header) polls `/api/pedidos/alertas` every 10 s: sound + toast for new site and iFood orders; on a device marked as print station (localStorage, or auto when the local print agent answers) it claims the order (`orders.auto_printed_at`, so only one device prints) and prints `/pedidos/[id]/print?auto=1&embed=1` in a hidden iframe. That route alone allows same-origin framing (`next.config.ts`).
+
+**Site payments** (`src/lib/payments.ts`, Configurações > Pagamento). Nothing is charged online. `payment_methods` holds site options (`pix_online`, `pix_delivery`, `cash`, `credit_card`, `debit_card`; legacy `pix` = `pix_delivery`); `publicRestaurant` exposes them already filtered (`pix_online` only with a valid `restaurants.pix_key` of the chosen `pix_key_type`). The order keeps the enum `payment_method` plus `orders.payment_detail` (written right after the RPC). "Pix agora" shows a static BR Code (EMV + CRC16) with the order total on `/pedido/[codigo]`; the store checks receipt in its bank.
 
 **Delivery tracking, WhatsApp and AI.** `src/lib/delivery-tracking.ts` (courier link per order, delivery code), `src/lib/whatsapp/` (Evolution client, status templates, `queueOrderNotification` via `after()`), `src/lib/ai/attendant.ts` (Claude, store menu in a cached system block, short history in `ai_conversations`). Inbound WhatsApp → `/api/whatsapp/webhook`; site chat → `/api/ai/chat`.
 

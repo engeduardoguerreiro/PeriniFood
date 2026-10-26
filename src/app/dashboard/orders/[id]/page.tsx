@@ -1,4 +1,5 @@
 import { updateOrderStatus } from "@/app/actions";
+import { paymentDetailNote } from "@/lib/payments";
 import { requireRestaurant } from "@/lib/auth";
 import { money, statusLabel } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
@@ -28,6 +29,7 @@ type DetailSelectedOptions = {
   flavors: string[];
   dough: { name: string; price: number | string | null } | null;
   crust: { name: string; price: number | string | null } | null;
+  noCrust?: boolean;
   addons: Array<{ name: string; price: number | string | null }>;
 };
 
@@ -80,7 +82,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Cliente</strong><p>{current.customer_name}</p><p>{current.customer_phone}</p></div>
           <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Entrega</strong><p>{current.delivery_address || "Retirada/balcão/mesa"}</p></div>
-          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Pagamento</strong><p>{current.payment_method}  {current.payment_status}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Pagamento</strong><p>{current.payment_method}  {current.payment_status}</p>{paymentDetailNote(current.payment_detail, current.type === "pickup") && <p className="mt-1 text-sm font-semibold text-brand">{paymentDetailNote(current.payment_detail, current.type === "pickup")}</p>}</div>
           <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Observações</strong><p>{current.notes || "Sem observações"}</p></div>
         </div>
         <h3 className="mt-6 font-black">Itens</h3>
@@ -90,7 +92,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             const lines = [
               selected.flavors && selected.flavors.length > 1 ? `Sabores: ${selected.flavors.join(" / ")}` : null,
               optionLine("Massa", selected.dough),
-              optionLine("Borda", selected.crust),
+              optionLine("Borda", selected.crust) ?? (selected.noCrust ? "Borda: Sem borda" : null),
               ...(selected.addons ?? []).map((addon) => optionLine("Adicional", addon)),
             ].filter(Boolean) as string[];
             return (

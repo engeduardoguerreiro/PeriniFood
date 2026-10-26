@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { OrderPrintClient } from "@/components/order-print-client";
+import { paymentDetailNote } from "@/lib/payments";
 import { BrowserAutoPrint } from "@/components/browser-auto-print";
 import { loyaltySummary, withLoyaltyCampaign } from "@/lib/loyalty";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -54,6 +55,8 @@ type PrintedSelectedOptions = {
   flavors: string[];
   dough: PrintedOption | null;
   crust: PrintedOption | null;
+  // Cliente do site respondeu "sem borda recheada" na etapa de borda.
+  noCrust?: boolean;
   addons: PrintedOption[];
 };
 
@@ -112,7 +115,7 @@ function itemOptionLines(item: OrderItem) {
   return [
     selected.flavors && selected.flavors.length > 1 ? `Sabores: ${selected.flavors.join(" / ")}` : null,
     optionLine("Massa", selected.dough),
-    optionLine("Borda", selected.crust),
+    optionLine("Borda", selected.crust) ?? (selected.noCrust ? "Borda: Sem borda" : null),
     ...addons,
     item.notes ? `Obs.: ${item.notes}` : null,
   ].filter(Boolean) as string[];
@@ -149,6 +152,7 @@ function printableReceipt(order: Order, items: OrderItem[], restaurantName: stri
     `Desconto: ${money(order.discount)}`,
     `TOTAL: ${money(order.total)}`,
     `Pagamento: ${paymentLabel(order.payment_method)}`,
+    ...(paymentDetailNote(order.payment_detail, order.type === "pickup") ? [`>> ${paymentDetailNote(order.payment_detail, order.type === "pickup")}`] : []),
     `Observações: ${order.notes || "Sem observações"}`,
     "==========================================",
     footerMessage,
@@ -160,11 +164,14 @@ function printableReceipt(order: Order, items: OrderItem[], restaurantName: stri
   return lines.join("\n");
 }
 
-export default async function PrintOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ auto?: string }> }) {
+export default async function PrintOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ auto?: string; embed?: string }> }) {
   const { restaurant: session } = await requireRestaurant();
   const { id } = await params;
   try { uuid(id); } catch { notFound(); }
-  const auto = (await searchParams)?.auto === "1";
+  const query = await searchParams;
+  const auto = query?.auto === "1";
+  // Aberta num quadro invisível pelo alerta de pedido novo: avisa o painel ao terminar.
+  const embedded = auto && query?.embed === "1";
   const supabase = createServiceClient();
   const [{ data: order }, { data: items }] = await Promise.all([
     supabase.from("orders").select("*").eq("id", id).eq("restaurant_id", session.id).maybeSingle(),
@@ -275,6 +282,7 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
 
       <div className="space-y-0.5 py-2 text-[13px]">
         <p><strong>Pagamento:</strong> {paymentLabel(current.payment_method)}</p>
+        {paymentDetailNote(current.payment_detail, current.type === "pickup") && <p className="font-black">» {paymentDetailNote(current.payment_detail, current.type === "pickup")}</p>}
         <p><strong>Obs.:</strong> {current.notes || "Sem observações"}</p>
       </div>
 
@@ -303,7 +311,7 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
     return (
       <main className="min-h-screen bg-white print:bg-white">
         <style>{printStyles}</style>
-        <BrowserAutoPrint />
+        <BrowserAutoPrint embedded={embedded} />
         <div className="mx-auto w-[80mm] max-w-full">{comanda}</div>
       </main>
     );
@@ -317,7 +325,7 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
       <main className="min-h-screen bg-white py-4 print:py-0">
         <style>{printStyles}</style>
         <div className="print-hide mx-auto mb-4 w-[80mm] max-w-full">
-          <OrderPrintClient content={receiptText} settings={printerSettings} auto />
+          <OrderPrintClient content={receiptText} settings={printerSettings} auto embedded={embedded} />
         </div>
         <div className="mx-auto w-[80mm] max-w-full">{comanda}</div>
       </main>

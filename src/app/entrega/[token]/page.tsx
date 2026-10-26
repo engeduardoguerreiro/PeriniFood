@@ -34,7 +34,11 @@ export default async function CourierPage({ params }: { params: Promise<{ token:
   }
 
   const destination = row.dest_lat !== null && row.dest_lng !== null ? `${row.dest_lat},${row.dest_lng}` : current.delivery_address ?? "";
-  const toCollect = current.payment_status !== "paid" && current.payment_method !== "online";
+  // Lido à parte: sem a migration 20261026000400 a coluna não existe e a página segue normal.
+  const { data: detailRow } = await service.from("orders").select("payment_detail").eq("id", current.id).maybeSingle();
+  const detail = (detailRow as { payment_detail?: string | null } | null)?.payment_detail ?? null;
+  // Pix pelo código do site: o cliente paga direto para a loja, o motoboy não cobra.
+  const toCollect = current.payment_status !== "paid" && current.payment_method !== "online" && detail !== "pix_online";
 
   return (
     <Shell>
@@ -67,7 +71,11 @@ export default async function CourierPage({ params }: { params: Promise<{ token:
         {toCollect ? (
           <p className="rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">
             Cobrar do cliente: {money(current.total)}{current.payment_method === "cash" && current.change_for ? ` · troco para ${money(current.change_for)}` : ""}
+            {detail === "maquininha" && <span className="mt-1 block">Leve a maquininha de cartão.</span>}
+            {detail === "pix_entrega" && <span className="mt-1 block">Cliente paga com Pix na entrega.</span>}
           </p>
+        ) : detail === "pix_online" && current.payment_status !== "paid" ? (
+          <p className="rounded-xl bg-sky-50 p-3 text-sm font-bold text-sky-900">Pix pelo código do site: não cobrar. Confirme com a loja se o Pix já caiu.</p>
         ) : (
           <p className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">Pedido já pago · não cobrar</p>
         )}

@@ -77,21 +77,8 @@ function optionKind(groupName: string) {
   return "adicional";
 }
 
+// Só as opções marcadas no cadastro da pizza (inclusive bordas), como o servidor exige.
 function groupOptions(options: ProductOption[], productId: string, groupName: string, pizzaOptions: PizzaOption[]) {
-  if (groupName === "Bordas") {
-    return pizzaOptions
-      .filter((option) => option.active && option.kind === "borda")
-      .map((option) => ({
-        id: option.id,
-        restaurant_id: option.restaurant_id,
-        option_id: option.id,
-        name: option.name,
-        additional_price: option.price,
-        active: option.active,
-        created_at: option.created_at,
-      })) as ProductOptionItem[];
-  }
-
   const group = options.find((option) => option.product_id === productId && option.name === groupName);
   const activeOptions = new Map(pizzaOptions.filter((option) => option.active && option.kind === optionKind(groupName)).map((option) => [option.name, option]));
   return (group?.product_option_items ?? [])

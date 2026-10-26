@@ -22,6 +22,7 @@ import { dispatchBlocked, ifoodSchedule, scheduleLabel } from "@/lib/integration
 import { openingHourDays } from "@/lib/opening-hours";
 import { digits, slugify } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
+import { SITE_PAYMENTS, normalizePixKey, pixKeyType, pixKeyTypeLabels, type SitePayment } from "@/lib/payments";
 
 // Ações destrutivas ou de configuração: mesma regra que as telas usam para
 // esconder os botões (owner/admin/manager). Sem isso, caixa e cozinha chamavam
@@ -210,6 +211,7 @@ async function replaceProductOptionGroup(
 const UPLOAD_MAX_WIDTH: Record<string, number> = {
   logos: 512,
   products: 640,
+  "pizza-options": 480,
   banners: 1600,
   "site-covers": 1920,
 };
@@ -507,24 +509,58 @@ export async function deleteProductType(formData: FormData) {
   redirectWithFeedback(formData, "/cardapio/tipos", "deleted");
 }
 
+// Chave Pix da loja (Configurações > Pagamento): validada pelo tipo escolhido e
+// gravada já no formato do código Pix. "Pix agora" sem chave válida é recusado.
+function pixSettings(formData: FormData) {
+  const rawKey = text(formData, "pix_key");
+  const type = pixKeyType(text(formData, "pix_key_type"));
+  const key = normalizePixKey(rawKey, type);
+  const wantsOnline = formData.getAll("payment_methods").map(String).includes("pix_online");
+  if (rawKey && !key) {
+    redirectWithFeedback(formData, "/configuracoes", "saved", type ? `Chave Pix inválida para o tipo ${pixKeyTypeLabels[type]}. Confira a chave.` : "Escolha o tipo da chave Pix.");
+  }
+  if (wantsOnline && !key) redirectWithFeedback(formData, "/configuracoes", "saved", "Para oferecer “Pix agora”, cadastre a chave Pix da loja.");
+  return {
+    pix_key: key,
+    pix_key_type: key ? type : null,
+    pix_receiver_name: text(formData, "pix_receiver_name").slice(0, 25) || null,
+    pix_city: text(formData, "pix_city").slice(0, 15) || null,
+  };
+}
+
 export async function savePizzaOption(formData: FormData) {
   const { supabase, restaurant } = await requireRestaurant();
   const id = text(formData, "id");
   const previous = id ?
      await supabase.from("pizza_options").select("kind, name").eq("id", id).eq("restaurant_id", restaurant.id).maybeSingle()
     : { data: null };
-  const payload = {
+  const payload: Record<string, string | number | boolean | null> = {
     restaurant_id: restaurant.id,
     kind: text(formData, "kind"),
     name: text(formData, "name"),
     price: num(formData, "price"),
     active: formData.get("active") === "on",
   };
+  // Foto só para borda e adicional (aparecem em cartões no cardápio). image_url só
+  // entra no payload quando muda: sem a migration 20261026000100 o resto ainda salva.
+  if (payload.kind === "borda" || payload.kind === "adicional") {
+    let upload: string | null = null;
+    try {
+      upload = await saveUpload(formData.get("image_file"), "pizza-options");
+    } catch (error) {
+      redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved", error instanceof Error ? error.message : "Não foi possível enviar a foto.");
+    }
+    if (upload) payload.image_url = upload;
+    else if (formData.get("remove_image") === "on") payload.image_url = null;
+  }
+  const schemaHint = (message: string) => missingSchemaColumn({ message }) === "image_url"
+    ? "Para salvar fotos, aplique supabase/migrations/20261026000100_pizza_option_images.sql no Supabase."
+    : message;
   if (id) {
     const result = await supabase.from("pizza_options").update(payload).eq("id", id).eq("restaurant_id", restaurant.id);
-    if (result.error) redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved", result.error.message);
-    const groupName = pizzaOptionGroupName(payload.kind);
-    const previousName = previous.data?.name ?? payload.name;
+    if (result.error) redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved", schemaHint(result.error.message));
+    const groupName = pizzaOptionGroupName(String(payload.kind));
+    const previousName = previous.data?.name ?? String(payload.name);
     if (groupName) {
       const { data: groups } = await supabase
         .from("product_options")
@@ -543,7 +579,7 @@ export async function savePizzaOption(formData: FormData) {
     }
   } else {
     const result = await supabase.from("pizza_options").insert(payload);
-    if (result.error) redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved", result.error.message);
+    if (result.error) redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved", schemaHint(result.error.message));
   }
   revalidatePath("/cardapio/opcoes-pizza");
   revalidatePath("/cardapio/produtos");
@@ -551,6 +587,23 @@ export async function savePizzaOption(formData: FormData) {
   revalidatePath("/cardapio");
   revalidatePath(`/cardapio/${restaurant.slug}`);
   revalidatePath(`/r/${restaurant.slug}`);
+  redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved");
+}
+
+// Regras da loja para borda e adicionais no pedido do site (o servidor as confere no checkout).
+export async function savePizzaChoiceRules(formData: FormData) {
+  const { supabase, restaurant } = await requireManager();
+  const rule = (key: string) => {
+    const value = text(formData, key);
+    return value === "optional" || value === "required" ? value : "ask";
+  };
+  const result = await supabase.from("restaurants").update({ crust_choice_rule: rule("crust_choice_rule"), addon_choice_rule: rule("addon_choice_rule") }).eq("id", restaurant.id);
+  if (result.error) {
+    const missing = missingSchemaColumn(result.error);
+    redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved", missing ? "Para salvar as regras, aplique supabase/migrations/20261026000200_pizza_choice_rules.sql no Supabase." : result.error.message);
+  }
+  revalidatePath("/cardapio/opcoes-pizza");
+  revalidatePath(`/cardapio/${restaurant.slug}`);
   redirectWithFeedback(formData, "/cardapio/opcoes-pizza", "saved");
 }
 
@@ -797,13 +850,18 @@ export async function updateRestaurant(formData: FormData) {
     pickup_enabled: formData.get("pickup_enabled") === "on",
     table_service_enabled: formData.get("table_service_enabled") === "on",
     max_pizza_flavors: Math.min(4, Math.max(1, num(formData, "max_pizza_flavors", 1))),
-    payment_methods: formData.getAll("payment_methods").map(String),
+    payment_methods: formData.getAll("payment_methods").map(String).filter((value) => SITE_PAYMENTS.includes(value as SitePayment)),
+    ...pixSettings(formData),
   };
   const restaurantPayload: Record<string, string | number | boolean | string[] | Record<string, unknown> | null | undefined> = { ...payload };
   for (let attempt = 0; attempt < 4; attempt++) {
     const update = await supabase.from("restaurants").update(restaurantPayload).eq("id", restaurant.id);
     if (!update.error) break;
     const missingColumn = missingSchemaColumn(update.error);
+    // Sem a migration do Pix: só avisa se a loja tentou cadastrar a chave; senão salva o resto.
+    if (missingColumn?.startsWith("pix_") && restaurantPayload.pix_key) {
+      redirectWithFeedback(formData, "/configuracoes", "saved", "Para salvar a chave Pix, aplique supabase/migrations/20261026000400_site_payments.sql no Supabase.");
+    }
     if (missingColumn && ["legal_name", "cnpj", "state_registration", "address_number", "neighborhood", "manual_open_status"].includes(missingColumn)) {
       redirectWithFeedback(formData, "/configuracoes", "saved", `O campo ${missingColumn} ainda não existe no banco. Execute a migration de configurações.`);
     }

@@ -20,7 +20,14 @@ const nextConfig: NextConfig = {
       { key: "Referrer-Policy", value: "no-referrer" },
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
       { key: "Content-Security-Policy", value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" },
-    ] }, { source: "/pedido/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+    ] },
+    // A comanda é impressa num quadro invisível do próprio painel (alerta de pedido
+    // novo do site): só esta rota aceita quadro, e só do mesmo domínio.
+    { source: "/pedidos/:id/print", headers: [
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      { key: "Content-Security-Policy", value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'" },
+    ] },
+    { source: "/pedido/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     { source: "/entrega/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" }] },
     { source: "/api/customer-auth/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] }];
   },

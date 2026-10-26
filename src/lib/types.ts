@@ -3,6 +3,9 @@ export type OrderStatus = "pending" | "accepted" | "preparing" | "ready" | "out_
 export type OrderSource = "pdv" | "mesa" | "delivery" | "site" | "ifood" | "99food" | "keeta" | "rappi" | "manual";
 export type PublicOrderStatus = "NEW" | "CONFIRMED" | "PREPARING" | "READY" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELED";
 
+// Regra da loja para borda/adicionais no pedido do site (migration 20261026000200).
+export type ChoiceRule = "optional" | "ask" | "required";
+
 export type Restaurant = {
   id: string;
   owner_id: string;
@@ -32,6 +35,13 @@ export type Restaurant = {
   estimated_delivery_time: string | null;
   menu_footer_message: string | null;
   max_pizza_flavors: number | null;
+  crust_choice_rule?: ChoiceRule | null;
+  addon_choice_rule?: ChoiceRule | null;
+  // Chave Pix da loja para o "Pix agora" do site (migration 20261026000400).
+  pix_key?: string | null;
+  pix_key_type?: string | null;
+  pix_receiver_name?: string | null;
+  pix_city?: string | null;
   payment_methods: string[] | null;
   opening_hours: Record<string, unknown> | null;
   delivery_enabled: boolean;
@@ -118,6 +128,8 @@ export type PizzaOption = {
   kind: PizzaOptionKind;
   name: string;
   price: number;
+  // Foto de borda/adicional (migration 20261026000100); ausente em bancos sem ela.
+  image_url?: string | null;
   active: boolean;
   created_at: string;
 };
@@ -232,6 +244,8 @@ export type Order = {
   status: OrderStatus;
   payment_status: "pending" | "paid" | "refunded";
   payment_method: "cash" | "credit_card" | "debit_card" | "pix" | "online" | "other";
+  // pix_online | pix_entrega | maquininha | dinheiro (pedidos do site, migration 20261026000400).
+  payment_detail?: string | null;
   change_for: number | null;
   subtotal: number;
   delivery_fee: number;

@@ -32,6 +32,7 @@ import { isRestaurantOpen } from "@/lib/opening-hours";
 import type { Restaurant } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PrinterAgentIndicator } from "./printer-agent-indicator";
+import { NewOrderAlerts } from "./new-order-alerts";
 import { toneGradient } from "./ui/icon-3d";
 
 const navGroups = [
@@ -236,6 +237,7 @@ export function AppFrame({ restaurant, children }: { restaurant: FrameRestaurant
 
         <div className="flex justify-end gap-2 sm:gap-3">
           <PrinterAgentIndicator />
+          <NewOrderAlerts />
           <a href={`tel:+55${supportPhone}`} title="Telefone do suporte" aria-label="Ligar para o suporte" className="hidden h-12 w-12 place-items-center md:grid rounded-2xl border border-line bg-white text-[#403d38] shadow-sm transition hover:-translate-y-0.5 hover:border-brand hover:text-brand">
             <Phone className="h-5 w-5" />
           </a>

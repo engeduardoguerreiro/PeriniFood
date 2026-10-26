@@ -1,3 +1,4 @@
+import { pixKeyType, sitePayments } from "./payments";
 import type { Product, Restaurant } from "./types";
 
 // Explicit allowlist: never serialize printer tokens, legal/company fields or owner IDs.
@@ -11,7 +12,11 @@ export function publicRestaurant(row: Restaurant): Restaurant {
     neighborhood: row.neighborhood, city: row.city, state: row.state, zip_code: row.zip_code,
     is_open: row.is_open, manual_open_status: row.manual_open_status, minimum_order: row.minimum_order,
     delivery_fee: row.delivery_fee, estimated_delivery_time: row.estimated_delivery_time,
-    menu_footer_message: row.menu_footer_message, max_pizza_flavors: row.max_pizza_flavors, payment_methods: row.payment_methods,
+    menu_footer_message: row.menu_footer_message, max_pizza_flavors: row.max_pizza_flavors,
+    crust_choice_rule: row.crust_choice_rule ?? "ask", addon_choice_rule: row.addon_choice_rule ?? "ask",
+    // Já nas opções do site ("pix" antigo → Pix na entrega; "Pix agora" só com chave válida).
+    // A chave em si não vai para o cardápio: o código aparece só no acompanhamento do pedido.
+    payment_methods: sitePayments(row.payment_methods, row.pix_key, pixKeyType(row.pix_key_type)),
     opening_hours: hours, delivery_enabled: row.delivery_enabled, pickup_enabled: row.pickup_enabled, table_service_enabled: row.table_service_enabled,
   } as Restaurant;
 }

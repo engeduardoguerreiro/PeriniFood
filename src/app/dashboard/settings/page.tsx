@@ -14,6 +14,7 @@ import { isRestaurantOpen } from "@/lib/opening-hours";
 import type { DeliveryFeeRule } from "@/lib/types";
 import { Icon3D } from "@/components/ui/icon-3d";
 import { Cog } from "lucide-react";
+import { SITE_PAYMENTS, pixKeyTypeLabels, sitePaymentHint, sitePaymentLabels } from "@/lib/payments";
 
 // Campos auto-contidos (altura fixa + padding só horizontal) evitam o corte
 // de letra que acontecia com o .field-light + h-10.
@@ -76,6 +77,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     .order("min_km");
   const rules = ((deliveryRules ?? []).length ? deliveryRules : deliveryRulesFromRestaurant(restaurant)) as DeliveryFeeRule[];
   const storeOpen = isRestaurantOpen(restaurant);
+  // Marcadas como foram salvas ("pix" antigo aparece como Pix na entrega).
+  const enabledPayments = (Array.isArray(restaurant.payment_methods) && restaurant.payment_methods.length ? restaurant.payment_methods : ["pix", "cash", "credit_card", "debit_card"])
+    .map((value) => (value === "pix" ? "pix_delivery" : value));
   const printerSettings = (((restaurant.opening_hours as Record<string, unknown> | null) ?? {})._printer_settings ?? {}) as PrinterSettings;
 
   return (
@@ -93,6 +97,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           { id: "imagens", label: "Imagens" },
           { id: "horario", label: "Horário" },
           { id: "regras", label: "Regras" },
+          { id: "pagamento", label: "Pagamento" },
           { id: "impressao", label: "Impressão" },
           { id: "entrega", label: "Entrega" },
           { id: "seguranca", label: "Segurança" },
@@ -250,28 +255,47 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <p className={`mt-3 ${noteClass}`}>
             Para pizzas com mais de um sabor, o sistema sempre cobra o maior valor entre os sabores escolhidos.
           </p>
-          <div className="mt-4">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-ink-faint">Formas de pagamento aceitas no site</p>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                ["pix", "Pix"],
-                ["cash", "Dinheiro"],
-                ["credit_card", "Cartão de crédito"],
-                ["debit_card", "Cartão de débito"],
-              ].map(([value, label]) => (
-                <label key={value} className={checkboxRowClass}>
-                  <input
-                    name="payment_methods"
-                    type="checkbox"
-                    value={value}
-                    defaultChecked={(restaurant.payment_methods ?? ["pix", "cash", "credit_card", "debit_card"]).includes(value)}
-                  />{" "}
-                  {label}
-                </label>
-              ))}
-            </div>
-          </div>
           <SaveBar label="Salvar regras" />
+            </ConfigSection>
+          </TabPanel>
+
+          <TabPanel id="pagamento">
+            <ConfigSection title="Pagamento no site" description="Nada é cobrado online: o cliente paga direto para a loja. Cartão é sempre na entrega ou retirada, com a maquininha.">
+              <p className="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-ink-faint">Formas aceitas no cardápio online</p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {SITE_PAYMENTS.map((value) => (
+                  <label key={value} className={checkboxRowClass}>
+                    <input name="payment_methods" type="checkbox" value={value} defaultChecked={enabledPayments.includes(value)} />
+                    <span>
+                      <span className="block">{sitePaymentLabels[value]}</span>
+                      <span className="block text-xs text-ink-faint">{sitePaymentHint(value, false)}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <p className="mb-3 mt-5 text-xs font-medium uppercase tracking-[0.08em] text-ink-faint">Chave Pix para o “Pix agora”</p>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <Field label="Tipo da chave">
+                  <select className={inputClass} name="pix_key_type" defaultValue={restaurant.pix_key_type ?? ""}>
+                    <option value="">Selecione</option>
+                    {Object.entries(pixKeyTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Chave Pix">
+                  <input className={inputClass} name="pix_key" defaultValue={restaurant.pix_key ?? ""} placeholder="CPF, CNPJ, celular, e-mail ou aleatória" autoComplete="off" />
+                </Field>
+                <Field label="Nome do recebedor">
+                  <input className={inputClass} name="pix_receiver_name" defaultValue={restaurant.pix_receiver_name ?? restaurant.legal_name ?? restaurant.name} maxLength={25} />
+                </Field>
+                <Field label="Cidade do recebedor">
+                  <input className={inputClass} name="pix_city" defaultValue={restaurant.pix_city ?? restaurant.city ?? ""} maxLength={15} />
+                </Field>
+              </div>
+              <p className={`mt-3 ${noteClass}`}>
+                No “Pix agora”, o cliente recebe o código Pix (copia e cola e QR Code) com o valor exato do pedido, gerado com esta chave. O dinheiro cai direto na conta da loja; confira o recebimento no app do banco antes de despachar. Nome e cidade aparecem no app do cliente na hora de pagar.
+              </p>
+              <SaveBar label="Salvar pagamento" />
             </ConfigSection>
           </TabPanel>
 

@@ -6,7 +6,9 @@ import { RefreshCw } from "lucide-react";
 // Impressão automática pelo navegador. Com o Chrome aberto em modo
 // --kiosk-printing, window.print() sai direto no papel, sem diálogo.
 // Em um navegador comum, aparece o diálogo do sistema (fallback).
-export function BrowserAutoPrint() {
+// embedded: aberta pelo alerta de pedido novo num quadro invisível do painel; ao
+// terminar avisa o painel (postMessage) em vez de navegar para /pedidos.
+export function BrowserAutoPrint({ embedded = false }: { embedded?: boolean }) {
   const [status, setStatus] = useState("Imprimindo comanda…");
 
   useEffect(() => {
@@ -14,7 +16,8 @@ export function BrowserAutoPrint() {
     const finish = () => {
       if (done) return;
       done = true;
-      window.location.href = "/pedidos?status=printed";
+      if (embedded) window.parent.postMessage({ type: "perinifood-printed" }, window.location.origin);
+      else window.location.href = "/pedidos?status=printed";
     };
 
     window.addEventListener("afterprint", finish);
@@ -35,7 +38,7 @@ export function BrowserAutoPrint() {
       window.clearTimeout(printTimer);
       window.clearTimeout(safety);
     };
-  }, []);
+  }, [embedded]);
 
   return (
     <div className="print-hide flex flex-col items-center gap-2 py-6 text-center">

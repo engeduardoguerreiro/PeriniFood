@@ -4,6 +4,8 @@ import { randomBytes } from "node:crypto";
 import { createServiceClient } from "./supabase/service";
 import { customerSession, rateLimit } from "./customer-session";
 import { priceCart, amount, type PricingCatalog } from "./order-pricing";
+import { choiceRule } from "./pizza-builder";
+import { orderPayment, pixKeyType, sitePayments, type PaymentDetail, type SitePayment } from "./payments";
 import { boundedText, PublicError, uuid } from "./security";
 import { parseDecimal } from "./utils";
 import { getAccessState } from "./platform-billing";
@@ -30,8 +32,18 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
   const type = boundedText(form.get("type") ?? "pickup",20);
   if (!["delivery","pickup",...(source==="pdv" ? ["dine_in"] : [])].includes(type)) throw new PublicError("Modalidade inválida.");
   if (source==="site" && (!isRestaurantOpen(store) || (type==="delivery" ? !store.delivery_enabled : !store.pickup_enabled))) throw new PublicError("Loja indisponível para esta modalidade.");
-  const payment = boundedText(form.get("payment_method") ?? "pix",20);
-  if (!["cash","pix","credit_card","debit_card","online","other"].includes(payment) || (source==="site" && !(store.payment_methods?.length ? store.payment_methods : ["cash","pix","credit_card","debit_card"]).includes(payment))) throw new PublicError("Forma de pagamento inválida.");
+  const sent = boundedText(form.get("payment_method") ?? "pix",20);
+  // Aba aberta antes do deploy ainda manda "pix": vale como Pix na entrega, como era.
+  const chosen = source==="site" && sent==="pix" ? "pix_delivery" : sent;
+  // Site: a escolha é uma opção do site (Pix agora/na entrega, dinheiro, cartões) e
+  // precisa estar habilitada na loja ("Pix agora" só com chave Pix válida).
+  let payment = chosen;
+  let paymentDetail: PaymentDetail | null = null;
+  if (source==="site") {
+    const allowed = sitePayments(store.payment_methods, store.pix_key, pixKeyType(store.pix_key_type));
+    if (!allowed.includes(chosen as SitePayment)) throw new PublicError("Forma de pagamento inválida.");
+    ({ method: payment, detail: paymentDetail } = orderPayment(chosen as SitePayment));
+  } else if (!["cash","pix","credit_card","debit_card","online","other"].includes(payment)) throw new PublicError("Forma de pagamento inválida.");
   const raw = boundedText(form.get("cart"),100_000,true);
   let input: unknown;
   try { input=JSON.parse(raw); } catch { throw new PublicError("Carrinho inválido."); }
@@ -43,7 +55,8 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     service.from("pizza_options").select("*").eq("restaurant_id",restaurantId).eq("active",true),
   ]);
   if ([products,variants,addons,options,pizzaOptions].some(r=>r.error)) throw new PublicError("Catálogo temporariamente indisponível.",503);
-  const catalog = { products:products.data, variants:variants.data, addons:addons.data, options:options.data, pizzaOptions:pizzaOptions.data, maxFlavors:store.max_pizza_flavors ?? 4 } as PricingCatalog;
+  const catalog = { products:products.data, variants:variants.data, addons:addons.data, options:options.data, pizzaOptions:pizzaOptions.data, maxFlavors:store.max_pizza_flavors ?? 4,
+    rules: source==="site" ? { crust:choiceRule(store.crust_choice_rule), addons:choiceRule(store.addon_choice_rule) } : undefined } as PricingCatalog;
   const cart = priceCart(input,catalog,type);
   const subtotal = amount(cart.reduce((sum,item)=>sum+item.total,0));
   if (source==="site" && subtotal<amount(store.minimum_order ?? 0)) throw new PublicError("O pedido não atingiu o valor mínimo da loja.");
@@ -90,11 +103,17 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
     change_for:boundedText(form.get("change_for"),20) ? money(form,"change_for") : null,
   };
   const items=cart.map(item=>({ product_id:item.id,product_name:item.name,quantity:item.quantity,unit_price:item.price,total_price:item.total,notes:item.notes,
-    selected_options:{variantId:item.variantId,flavorCount:item.flavorCount,flavors:item.flavors,dough:item.dough,crust:item.crust,addons:item.addons,changeFor:order.change_for},addons:item.addons }));
+    selected_options:{variantId:item.variantId,flavorCount:item.flavorCount,flavors:item.flavors,dough:item.dough,crust:item.crust,...(item.noCrust ? {noCrust:true} : {}),...(item.noAdditions ? {noAdditions:true} : {}),addons:item.addons,changeFor:order.change_for},addons:item.addons }));
   const {data:id,error:saveError}=await service.rpc("save_order_atomic",{order_data:order,item_data:items,existing_id:existingId ? uuid(existingId) : null});
   if (saveError || !id) {
     if (/Order unavailable for edit/.test(saveError?.message ?? "")) throw new PublicError("Pedidos importados de integrações (iFood) não podem ser editados pelo PDV.",409);
     throw new PublicError("Não foi possível salvar o pedido. Nenhum item foi confirmado.",503);
+  }
+  // O RPC grava colunas fixas; o detalhe do pagamento vai num update logo depois. Se
+  // falhar (ex.: migration 20261026000400 ainda não aplicada) o pedido continua válido.
+  if (paymentDetail) {
+    const { error: detailError } = await service.from("orders").update({ payment_detail:paymentDetail }).eq("id",String(id)).eq("restaurant_id",restaurantId);
+    if (detailError) console.warn("[checkout] payment_detail não gravado:", detailError.message);
   }
   // Na edição a RPC não troca o code do pedido; devolver o gerado aqui apontaria para um /pedido/<code> inexistente.
   return { id:String(id),code:existingId ? null : order.code,slug:store.slug };

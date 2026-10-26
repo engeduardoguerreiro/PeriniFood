@@ -1,96 +1,20 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-import { Minus, Plus, Search, TicketPercent, UserCircle2, X } from "lucide-react";
-import { CartPanel, CategoryTabs, FeaturedCard, ProductRow, type CartView } from "@/components/storefront/menu-parts";
+import { Search, TicketPercent, UserCircle2, X } from "lucide-react";
+import { BuildPizzaBanner, CartPanel, CategoryTabs, FeaturedCard, ProductRow, type CartSuggestion, type CartView } from "@/components/storefront/menu-parts";
 import { ActiveOrders } from "@/components/storefront/active-orders";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { PizzaBuilder } from "@/components/storefront/pizza-builder";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { money } from "@/lib/utils";
-import type { Category, Coupon, DeliveryFeeRule, LoyaltyProgram, PizzaOption, Product, ProductOption, ProductOptionItem, ProductVariant, Restaurant } from "@/lib/types";
+import {
+  builderSteps, cartStorageKey, choiceRule, createBuilderContext, draftFromLine, draftToLine, firstIncompleteStep, groupOptions, lineDetails, lineTotal,
+  newDraft, normalizeLabel, parseStoredCart, sizeLabel,
+  type BuilderCatalog, type BuilderContext, type BuilderDraft, type CartLine, type StepId,
+} from "@/lib/pizza-builder";
+import type { Category, Coupon, DeliveryFeeRule, LoyaltyProgram, PizzaOption, Product, ProductOption, ProductVariant, Restaurant } from "@/lib/types";
 
-type SelectedOption = { name: string; price: number };
-
-type CartLine = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  variantId: string | null;
-  variantName: string | null;
-  dough: SelectedOption | null;
-  crust: SelectedOption | null;
-  additions: SelectedOption[];
-  flavorCount: number;
-  flavors: string[];
-  notes: string;
-};
-function optionKind(groupName: string) {
-  if (groupName === "Tipos de Massas") return "massa";
-  if (groupName === "Bordas") return "borda";
-  return "adicional";
-}
-
-function groupOptions(options: ProductOption[], productId: string, groupName: string, pizzaOptions: PizzaOption[]) {
-  if (groupName === "Bordas") {
-    return pizzaOptions
-      .filter((option) => option.active && option.kind === "borda")
-      .map((option) => ({
-        id: option.id,
-        restaurant_id: option.restaurant_id,
-        option_id: option.id,
-        name: option.name,
-        additional_price: option.price,
-        active: option.active,
-        created_at: option.created_at,
-      })) as ProductOptionItem[];
-  }
-
-  const group = options.find((option) => option.product_id === productId && option.name === groupName);
-  const activeOptions = new Map(pizzaOptions.filter((option) => option.active && option.kind === optionKind(groupName)).map((option) => [option.name, option]));
-  return (group?.product_option_items ?? [])
-    .filter((item) => item.active && activeOptions.has(item.name))
-    .map((item) => ({
-      ...item,
-      additional_price: activeOptions.get(item.name)?.price ?? item.additional_price,
-    })) as ProductOptionItem[];
-}
-
-function lineTotal(item: CartLine) {
-  const extras = Number(item.dough?.price ?? 0) + Number(item.crust?.price ?? 0) + item.additions.reduce((sum, addition) => sum + Number(addition.price), 0);
-  return (Number(item.price) + extras) * item.quantity;
-}
-
-function flavorChoices(product: Product, products: Product[]) {
-  return products
-    .filter((item) => item.category_id === product.category_id && item.active)
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function flavorPrice(flavorName: string, variantName: string | null | undefined, products: Product[], variants: ProductVariant[], fallback: number) {
-  const flavorProduct = products.find((product) => product.name === flavorName);
-  if (!flavorProduct) return fallback;
-  const flavorVariants = variants.filter((variant) => variant.product_id === flavorProduct.id && variant.active);
-  const sameSize = flavorVariants.find((variant) => variant.name === variantName);
-  if (sameSize) return Number(sameSize.price);
-  if (flavorVariants.length) return Math.min(...flavorVariants.map((variant) => Number(variant.price)));
-  return Number(flavorProduct.price ?? fallback);
-}
-
-function highestFlavorPrice(flavors: string[] | undefined, variantName: string | null | undefined, products: Product[], variants: ProductVariant[], fallback: number) {
-  const selected = flavors?.length ? flavors : [];
-  if (!selected.length) return fallback;
-  return Math.max(...selected.map((flavor) => flavorPrice(flavor, variantName, products, variants, fallback)));
-}
-
-function normalizeLabel(value: string | null | undefined) {
-  return (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
-
-// "BROTO" → "Broto": os tamanhos costumam ser cadastrados em caixa alta.
-function sizeLabel(value: string) {
-  return value === value.toUpperCase() ? value.toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()) : value;
-}
+type BuilderState = { product: Product; ctx: BuilderContext; initial: BuilderDraft; startStep: StepId; editIndex: number | null };
 
 export function PublicMenuOrder({
   restaurant,
@@ -113,13 +37,13 @@ export function PublicMenuOrder({
   loyalty: LoyaltyProgram | null;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [draft, setDraft] = useState<CartLine | null>(null);
+  // Carrinho só é gravado depois de lido: senão o [] inicial apagaria o salvo.
+  const [cartLoaded, setCartLoaded] = useState(false);
+  const [cartNotice, setCartNotice] = useState<string | null>(null);
+  const [builder, setBuilder] = useState<BuilderState | null>(null);
   const [search, setSearch] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [couponsOpen, setCouponsOpen] = useState(false);
-  // Busca de sabor: mesma facilidade do PDV interno. Com dezenas de sabores,
-  // rolar a lista inteira no celular é o que mais trava o pedido.
-  const [flavorSearch, setFlavorSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
   // Tamanho escolhido antes de ver preços: com tamanhos, o card mostrava "a partir de"
   // o menor preço (broto) e o cliente entendia que a pizza custava aquilo.
@@ -130,12 +54,19 @@ export function PublicMenuOrder({
     try { window.sessionStorage.setItem(sizeKey, next); } catch {}
   }
   const router = useRouter();
-  const closeDraftRef = useRef<HTMLButtonElement>(null);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
   const itemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
-  const draftProduct = draft ? products.find((product) => product.id === draft.id) : null;
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
+  const builderCatalog = useMemo<BuilderCatalog>(() => ({
+    products, variants, options, pizzaOptions, maxFlavors: Number(restaurant.max_pizza_flavors ?? 1),
+    rules: { crust: choiceRule(restaurant.crust_choice_rule), addons: choiceRule(restaurant.addon_choice_rule) },
+  }), [options, pizzaOptions, products, restaurant.addon_choice_rule, restaurant.crust_choice_rule, restaurant.max_pizza_flavors, variants]);
+
+  const isPizzaProduct = useCallback((product: Product | undefined | null) => {
+    if (!product?.category_id) return false;
+    return normalizeLabel(categoryById.get(product.category_id)?.name ?? "").includes("pizza");
+  }, [categoryById]);
 
   // Tudo que depende só do catálogo é calculado uma vez. Antes, cada tecla na
   // busca ou na observação do item refazia filtros/ordenações por produto.
@@ -147,10 +78,9 @@ export function PublicMenuOrder({
       list.push(variant);
       variantsByProduct.set(variant.product_id, list);
     }
-    const isPizza = (product: Product) => Boolean(product.category_id && normalizeLabel(categoryById.get(product.category_id)?.name ?? "").includes("pizza"));
     const info = new Map(products.map((product) => {
       const productVariants = variantsByProduct.get(product.id) ?? [];
-      const pizza = isPizza(product);
+      const pizza = isPizzaProduct(product);
       const hasOptions = Boolean(
         productVariants.length
         || (pizza && (groupOptions(options, product.id, "Bordas", pizzaOptions).length || groupOptions(options, product.id, "Tipos de Massas", pizzaOptions).length))
@@ -158,7 +88,7 @@ export function PublicMenuOrder({
       );
       const basePrice = productVariants.length ? Math.min(...productVariants.map((variant) => Number(variant.price))) : Number(product.price);
       const priceBySize = new Map(productVariants.map((variant) => [variant.name, Number(variant.price)]));
-      return [product.id, { hasVariants: productVariants.length > 0, hasOptions, basePrice, priceBySize, searchText: normalizeLabel(`${product.name} ${product.description ?? ""}`) }];
+      return [product.id, { pizza, hasVariants: productVariants.length > 0, hasOptions, basePrice, priceBySize, searchText: normalizeLabel(`${product.name} ${product.description ?? ""}`) }];
     }));
     // Tamanhos da loja, do mais barato ao mais caro (Broto, Média, Grande…).
     const sizeFloor = new Map<string, number>();
@@ -175,24 +105,10 @@ export function PublicMenuOrder({
         .sort((a, b) => (info.get(a.id)!.basePrice - info.get(b.id)!.basePrice) || a.name.localeCompare(b.name, "pt-BR")),
     ]));
     return { info, byCategory, sizes };
-  }, [categories, categoryById, options, pizzaOptions, products, variants]);
+  }, [categories, isPizzaProduct, options, pizzaOptions, products, variants]);
 
   const deferredSearch = useDeferredValue(search);
   const searchTerm = normalizeLabel(deferredSearch.trim());
-
-  // Modal de produto: Esc fecha, a página por trás não rola e o foco vai para o modal.
-  useEffect(() => {
-    if (!draft) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setDraft(null); };
-    document.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeDraftRef.current?.focus();
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
-    };
-  }, [draft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     try {
@@ -200,6 +116,42 @@ export function PublicMenuOrder({
       if (saved && catalog.sizes.includes(saved)) Promise.resolve().then(() => setSizeState(saved));
     } catch {}
   }, [sizeKey, catalog.sizes]);
+
+  // Carrinho do aparelho (o mesmo que o checkout lê): voltar do checkout não o
+  // esvazia mais. Cada item é refeito com o catálogo atual; o que saiu do
+  // cardápio ou mudou de preço é avisado em vez de chegar errado no envio.
+  useEffect(() => {
+    let saved: CartLine[] = [];
+    try { saved = parseStoredCart(window.sessionStorage.getItem(cartStorageKey(restaurant.slug))); } catch {}
+    const kept: CartLine[] = [];
+    let removed = 0;
+    let repriced = false;
+    for (const line of saved) {
+      const product = products.find((item) => item.id === line.id);
+      if (!product) { removed += 1; continue; }
+      const ctx = createBuilderContext(builderCatalog, product, isPizzaProduct(product));
+      const rebuilt = draftToLine(ctx, draftFromLine(ctx, line));
+      if (!rebuilt) { removed += 1; continue; }
+      if (lineTotal(rebuilt) !== lineTotal(line)) repriced = true;
+      kept.push(rebuilt);
+    }
+    const notice = removed
+      ? `${removed} item${removed > 1 ? "s foram retirados" : " foi retirado"} do carrinho: saiu do cardápio, ficou indisponível ou precisa ser montado de novo.`
+      : repriced ? "Os preços do seu carrinho foram atualizados." : null;
+    Promise.resolve().then(() => {
+      setCart(kept);
+      setCartNotice(notice);
+      setCartLoaded(true);
+    });
+  }, [builderCatalog, isPizzaProduct, products, restaurant.slug]);
+
+  useEffect(() => {
+    if (!cartLoaded) return;
+    try {
+      if (cart.length) window.sessionStorage.setItem(cartStorageKey(restaurant.slug), JSON.stringify(cart));
+      else window.sessionStorage.removeItem(cartStorageKey(restaurant.slug));
+    } catch {}
+  }, [cart, cartLoaded, restaurant.slug]);
 
   function priceView(product: Product) {
     const info = catalog.info.get(product.id)!;
@@ -218,81 +170,65 @@ export function PublicMenuOrder({
     return () => controller.abort();
   }, [restaurant.id, restaurant.slug]);
 
-  function isPizzaProduct(product: Product | undefined | null) {
-    if (!product?.category_id) return false;
-    return normalizeLabel(categoryById.get(product.category_id)?.name ?? "").includes("pizza");
-  }
-
-  function openProduct(product: Product) {
+  // Pizza clicada = 1º sabor; "Monte sua pizza" (firstFlavor null) começa sem sabor.
+  // Com o tamanho já escolhido no topo, a montagem abre direto nos sabores.
+  function openBuilder(product: Product, firstFlavor: string | null) {
     if (!restaurant.is_open) return;
-    setFlavorSearch("");
-    const isPizza = isPizzaProduct(product);
-    const productVariants = variants.filter((item) => item.product_id === product.id && item.active);
-    // Já abre no tamanho escolhido no topo. Sem tamanho escolhido, nada vem
-    // marcado: o cliente vê os preços de cada tamanho e escolhe no modal.
-    // Produto sem tamanhos (bebida, por exemplo) não tem variante.
-    const selectedVariant = productVariants.find((variant) => variant.name === size);
-    const dough = isPizza ? groupOptions(options, product.id, "Tipos de Massas", pizzaOptions) : [];
-    setDraft({
-      id: product.id,
-      variantId: selectedVariant?.id ?? null,
-      variantName: selectedVariant?.name ?? null,
-      name: product.name,
-      price: isPizza && selectedVariant ? highestFlavorPrice([product.name], selectedVariant.name, products, variants, Number(selectedVariant.price)) : Number(selectedVariant?.price ?? product.price),
-      quantity: 1,
-      dough: dough.length === 1 ? { name: dough[0].name, price: Number(dough[0].additional_price) } : null,
-      crust: null,
-      additions: [],
-      flavorCount: isPizza ? 1 : 0,
-      flavors: isPizza ? [product.name] : [],
-      notes: "",
-    });
+    const pizza = isPizzaProduct(product);
+    const ctx = createBuilderContext(builderCatalog, product, pizza);
+    const initial = newDraft(ctx, { firstFlavor, sizeName: size });
+    const steps = builderSteps(ctx, initial);
+    const startStep: StepId = pizza ? (initial.sizeName ? "sabores" : steps[0]) : firstIncompleteStep(ctx, initial);
+    setBuilder({ product, ctx, initial, startStep, editIndex: null });
   }
 
-  function confirmDraft() {
-    if (!draft) return;
-    setCart((current) => [...current, draft]);
-    setDraft(null);
-    notifyAdded(draft.name);
+  function editLine(index: number) {
+    const line = cart[index];
+    const product = line && products.find((item) => item.id === line.id);
+    if (!product) return;
+    const ctx = createBuilderContext(builderCatalog, product, isPizzaProduct(product));
+    setCartOpen(false);
+    setBuilder({ product, ctx, initial: draftFromLine(ctx, line), startStep: "revisao", editIndex: index });
+  }
+
+  const closeBuilder = useCallback(() => setBuilder(null), []);
+
+  function confirmBuilder(line: CartLine) {
+    if (!builder) return;
+    const editIndex = builder.editIndex;
+    setCart((current) => editIndex == null ? [...current, line] : current.map((item, index) => index === editIndex ? line : item));
+    if (!size && line.variantName && catalog.sizes.includes(line.variantName)) setSize(line.variantName);
+    setBuilder(null);
+    setCartNotice(null);
+    notifyAdded(editIndex == null ? `${line.flavors.length > 1 ? "Pizza" : line.name} adicionad${line.flavors.length > 1 ? "a" : "o"}` : "Item atualizado");
   }
 
   // Produto sem nada para escolher (bebida, sobremesa) vai direto para o
   // carrinho: abrir um modal só com "quantidade" é atrito à toa.
   function addSimpleToCart(product: Product) {
     if (!restaurant.is_open) return;
-    setCart((current) => [
-      ...current,
-      {
-        id: product.id,
-        variantId: null,
-        variantName: null,
-        name: product.name,
-        price: Number(product.price),
-        quantity: 1,
-        dough: null,
-        crust: null,
-        additions: [],
-        flavorCount: 0,
-        flavors: [],
-        notes: "",
-      },
-    ]);
-    notifyAdded(product.name);
+    setCart((current) => {
+      // Mesma bebida de novo soma na linha existente.
+      const same = current.findIndex((item) => item.id === product.id && !item.variantId && !item.notes && !item.additions.length);
+      if (same >= 0) return current.map((item, index) => index === same ? { ...item, quantity: Math.min(100, item.quantity + 1) } : item);
+      return [...current, { id: product.id, variantId: null, variantName: null, name: product.name, price: Number(product.price), quantity: 1, dough: null, crust: null, additions: [], flavorCount: 0, flavors: [], notes: "" }];
+    });
+    notifyAdded(`${product.name} adicionado`);
   }
 
   // Confirmação discreta ao adicionar (antes o carrinho abria por cima a cada item).
   const [addedName, setAddedName] = useState<string | null>(null);
   const justAdded = Boolean(addedName);
   const addedTimer = useRef<number | null>(null);
-  function notifyAdded(name: string) {
-    setAddedName(name);
+  function notifyAdded(message: string) {
+    setAddedName(message);
     if (addedTimer.current) window.clearTimeout(addedTimer.current);
     addedTimer.current = window.setTimeout(() => setAddedName(null), 1800);
   }
 
   function goToCheckout() {
     if (!cart.length || !restaurant.is_open) return;
-    window.sessionStorage.setItem(`gastroflow_cart_${restaurant.slug}`, JSON.stringify(cart));
+    try { window.sessionStorage.setItem(cartStorageKey(restaurant.slug), JSON.stringify(cart)); } catch {}
     router.push(`/cardapio/${restaurant.slug}/checkout`);
   }
 
@@ -300,21 +236,30 @@ export function PublicMenuOrder({
     setCart((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item).filter((item) => item.quantity > 0));
   }
 
-  const cartLines: CartView[] = cart.map((item, index) => ({
-    key: `${item.id}-${index}`,
-    title: `${item.name}${item.variantName ? ` · ${item.variantName}` : ""}`,
-    details: [
-      item.flavors && item.flavors.length > 1 ? `Sabores: ${item.flavors.join(" / ")}` : "",
-      item.dough?.name ? `Massa: ${item.dough.name}` : "",
-      item.crust?.name ? `Borda: ${item.crust.name}` : "",
-      item.additions.length ? `Adicionais: ${item.additions.map((a) => a.name).join(", ")}` : "",
-      item.notes ? `Obs.: ${item.notes}` : "",
-    ].filter(Boolean),
-    quantity: item.quantity,
-    total: lineTotal(item),
-  }));
+  const cartLines: CartView[] = cart.map((item, index) => {
+    const product = products.find((entry) => entry.id === item.id);
+    return {
+      key: `${item.id}-${index}`,
+      title: item.flavors.length > 1 ? `Pizza ${item.flavors.length} sabores${item.variantName ? ` · ${sizeLabel(item.variantName)}` : ""}` : `${item.name}${item.variantName ? ` · ${sizeLabel(item.variantName)}` : ""}`,
+      details: lineDetails(item),
+      quantity: item.quantity,
+      total: lineTotal(item),
+      image: product?.image_url ?? null,
+      editable: Boolean(product && catalog.info.get(product.id)?.hasOptions),
+    };
+  });
+  // Sugestão discreta de bebida: só com pizza no carrinho e nenhuma bebida ainda.
+  const drinkCategory = categories.find((category) => normalizeLabel(category.name).includes("bebida"));
+  const drinks = drinkCategory ? (catalog.byCategory.get(drinkCategory.id) ?? []).filter((product) => !catalog.info.get(product.id)?.hasOptions) : [];
+  const suggestions: CartSuggestion[] = drinks.length && cart.some((item) => item.flavors.length) && !cart.some((item) => drinks.some((drink) => drink.id === item.id))
+    ? drinks.slice(0, 6).map((product) => ({ id: product.id, name: product.name, price: Number(product.price), image: product.image_url }))
+    : [];
   const featured = products.filter((product) => product.featured);
-  const selectProduct = (product: Product) => (catalog.info.get(product.id)?.hasOptions ? openProduct(product) : addSimpleToCart(product));
+  const selectProduct = (product: Product) => {
+    const info = catalog.info.get(product.id);
+    if (info?.pizza || info?.hasOptions) openBuilder(product, info?.pizza ? product.name : null);
+    else addSimpleToCart(product);
+  };
   const anyResult = !searchTerm || [...catalog.byCategory.values()].some((list) => list.some((product) => catalog.info.get(product.id)?.searchText.includes(searchTerm)));
   const cartPanel = (onClose?: () => void) => (
     <CartPanel
@@ -322,7 +267,11 @@ export function PublicMenuOrder({
       subtotal={subtotal}
       open={restaurant.is_open}
       minimum={Number(restaurant.minimum_order ?? 0)}
-      onQuantity={(index, quantity) => updateCart(index, { quantity })}
+      notice={cartNotice}
+      suggestions={restaurant.is_open ? suggestions : []}
+      onAddSuggestion={(id) => { const product = products.find((item) => item.id === id); if (product) addSimpleToCart(product); }}
+      onQuantity={(index, quantity) => updateCart(index, { quantity: Math.min(100, quantity) })}
+      onEdit={restaurant.is_open ? editLine : undefined}
       onCheckout={goToCheckout}
       onClose={onClose}
     />
@@ -408,6 +357,9 @@ export function PublicMenuOrder({
                 <h2 id={`titulo-${category.id}`} className="mb-3 flex items-baseline gap-2 text-lg font-black text-ink">
                   {category.name} <span className="text-sm font-medium text-slate-400">{categoryProducts.length}</span>
                 </h2>
+                {!searchTerm && restaurant.is_open && catalog.info.get(categoryProducts[0].id)?.pizza && categoryProducts.length > 1 && Number(restaurant.max_pizza_flavors ?? 1) > 1 && (
+                  <BuildPizzaBanner maxFlavors={Math.min(4, Number(restaurant.max_pizza_flavors ?? 1))} onStart={() => openBuilder(categoryProducts[0], null)} />
+                )}
                 <div className="grid gap-3 md:grid-cols-2">
                   {categoryProducts.map((product) => {
                     return <ProductRow key={product.id} product={product} {...priceView(product)} open={restaurant.is_open} onSelect={() => selectProduct(product)} />;
@@ -428,7 +380,7 @@ export function PublicMenuOrder({
       </div>
 
       {/* Celular: barra fixa do carrinho que abre o painel por baixo. */}
-      {itemCount > 0 && !draft && !cartOpen && (
+      {itemCount > 0 && !builder && !cartOpen && (
         <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 lg:hidden">
           <button
             type="button"
@@ -479,257 +431,20 @@ export function PublicMenuOrder({
       )}
 
       {addedName && (
-        <p role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink lg:bottom-auto lg:top-4 px-4 py-2 text-sm font-semibold text-white shadow-xl">✓ {addedName} adicionado</p>
+        <p role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink lg:bottom-auto lg:top-4 px-4 py-2 text-sm font-semibold text-white shadow-xl">✓ {addedName}</p>
       )}
 
-      {draft && draftProduct && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/65 md:items-center md:px-4 md:py-8" onClick={(event) => { if (event.target === event.currentTarget) setDraft(null); }}>
-          {/* Celular: tela cheia com rodapé fixo (antes o botão "Adicionar" ficava
-              cortado abaixo da foto e não dava para pôr o item no carrinho). */}
-          <div role="dialog" aria-modal="true" aria-labelledby="produto-titulo" className="relative flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:rounded-lg">
-            <button ref={closeDraftRef} type="button" onClick={() => setDraft(null)} aria-label="Fechar" className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-white/90 text-slate-700 shadow md:bg-slate-100">
-              <X className="h-6 w-6" />
-            </button>
-            {/* Corpo rola inteiro no celular; no desktop cada coluna rola sozinha. */}
-            <div className="min-h-0 flex-1 overflow-y-auto md:flex md:overflow-hidden">
-            <div className="space-y-4 p-4 md:w-[310px] md:shrink-0 md:space-y-5 md:overflow-y-auto md:p-5">
-              <div className="aspect-video overflow-hidden rounded-lg bg-slate-100 md:aspect-square">
-                {draftProduct.image_url ? <img src={draftProduct.image_url} alt="" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center font-bold text-slate-400">Sem foto</div>}
-              </div>
-              <div>
-                <h2 id="produto-titulo" className="pr-12 text-2xl font-black text-brand md:pr-0 md:text-3xl">{draftProduct.name}</h2>
-                <p className="mt-3 text-sm leading-5 text-slate-600">{draftProduct.description || "Produto disponível para pedido."}</p>
-              </div>
-            </div>
-
-              <div className="md:min-h-0 md:flex-1 md:overflow-y-auto md:border-l md:border-slate-100">
-                {(() => {
-                  const isPizza = isPizzaProduct(draftProduct);
-                  const productVariants = variants.filter((variant) => variant.product_id === draft.id && variant.active);
-                  const dough = isPizza ? groupOptions(options, draft.id, "Tipos de Massas", pizzaOptions) : [];
-                  const crusts = isPizza ? groupOptions(options, draft.id, "Bordas", pizzaOptions) : [];
-                  const additions = groupOptions(options, draft.id, "Adicionais", pizzaOptions);
-                  const maxFlavors = isPizza ? Math.min(4, Math.max(1, Number(restaurant.max_pizza_flavors ?? 1))) : 1;
-                  const flavors = isPizza ? flavorChoices(draftProduct, products) : [];
-                  return (
-                    <>
-                      {!!productVariants.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Tamanho</h3>
-                          <p className="text-sm text-slate-500">{draft.variantId ? "Escolha uma opção." : "Obrigatório: escolha o tamanho."}</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {productVariants.map((variant) => (
-                              <label key={variant.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  <strong>{sizeLabel(variant.name)}</strong>
-                                  <span className="block text-sm text-slate-500">{money(variant.price)}</span>
-                                </span>
-                                <input
-                                  type="radio"
-                                  checked={draft.variantId === variant.id}
-                                  onChange={() => {
-                                    setDraft({
-                                      ...draft,
-                                      variantId: variant.id,
-                                      variantName: variant.name,
-                                      price: isPizza ? highestFlavorPrice(draft.flavors, variant.name, products, variants, Number(variant.price)) : Number(variant.price),
-                                    });
-                                    if (!size && catalog.sizes.includes(variant.name)) setSize(variant.name);
-                                  }}
-                                />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
-
-                      {isPizza && maxFlavors > 1 && (() => {
-                        const limit = Number(draft.flavorCount ?? 1);
-                        const term = flavorSearch.trim().toLowerCase();
-                        const filteredFlavors = term ? flavors.filter((flavor) => flavor.name.toLowerCase().includes(term)) : flavors;
-                        return (
-                          <section className="border-b border-slate-100 p-5">
-                            <div className="flex items-center justify-between gap-3">
-                              <h3 className="font-black">Sabores</h3>
-                              <span className="text-sm font-bold text-slate-500">
-                                {draft.flavors.length}/{limit} escolhido{limit > 1 ? "s" : ""}
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-500">Até {maxFlavors} sabores. O valor da pizza é o do sabor mais caro.</p>
-
-                            <div className="mt-4 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
-                              {Array.from({ length: maxFlavors }, (_, index) => index + 1).map((count) => (
-                                <button
-                                  key={count}
-                                  type="button"
-                                  onClick={() => {
-                                    const nextFlavors = [draftProduct.name];
-                                    setDraft({
-                                      ...draft,
-                                      flavorCount: count,
-                                      flavors: nextFlavors,
-                                      price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
-                                    });
-                                  }}
-                                  className={Number(draft.flavorCount ?? 1) === count ? "rounded-full bg-brand px-4 py-2 text-sm font-black text-white" : "rounded-full px-4 py-2 text-sm font-bold text-slate-500 transition hover:text-slate-800"}
-                                >
-                                  {count} sabor{count > 1 ? "es" : ""}
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="relative mt-4">
-                              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                              <input
-                                type="search"
-                                aria-label="Buscar sabor"
-                                value={flavorSearch}
-                                onChange={(event) => setFlavorSearch(event.target.value)}
-                                placeholder="Buscar sabor…"
-                                className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand"
-                              />
-                            </div>
-
-                            <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-slate-200">
-                              {filteredFlavors.map((flavor) => {
-                                const selected = draft.flavors.includes(flavor.name) ?? false;
-                                const atLimit = !selected && draft.flavors.length >= limit;
-                                return (
-                                  <label
-                                    key={flavor.id}
-                                    className={`flex cursor-pointer items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm transition last:border-0 hover:bg-slate-50 ${atLimit ? "opacity-40" : ""}`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      className="h-5 w-5 shrink-0 accent-brand"
-                                      checked={selected}
-                                      onChange={(event) => {
-                                        const current = (draft.flavors ?? []).filter((name) => name !== flavor.name);
-                                        const next = event.target.checked ? [...current, flavor.name].slice(0, limit) : current;
-                                        const pricedFlavors = next.length ? next : [draftProduct.name];
-                                        setDraft({
-                                          ...draft,
-                                          flavors: pricedFlavors,
-                                          price: highestFlavorPrice(pricedFlavors, draft.variantName, products, variants, draft.price),
-                                        });
-                                      }}
-                                      disabled={atLimit}
-                                    />
-                                    <span className="flex-1 font-medium">{flavor.name}</span>
-                                    {draft.variantName && <span className="shrink-0 text-xs font-semibold text-slate-500">{money(flavorPrice(flavor.name, draft.variantName, products, variants, draft.price))}</span>}
-                                  </label>
-                                );
-                              })}
-                              {!filteredFlavors.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Nenhum sabor encontrado.</p>}
-                            </div>
-
-                            {draft.flavors.length > 0 && (
-                              <p className="mt-3 text-sm text-slate-500">
-                                Selecionados: <span className="font-bold text-slate-700">{draft.flavors.join(" / ")}</span>
-                              </p>
-                            )}
-                          </section>
-                        );
-                      })()}
-
-                      {!!dough.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Massas</h3>
-                          <p className="text-sm text-slate-500">Escolha uma opção.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {dough.map((option) => (
-                              <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  {option.name}
-                                  {Number(option.additional_price) ? <strong className="block">+ {money(option.additional_price)}</strong> : null}
-                                </span>
-                                <input type="radio" checked={draft.dough?.name === option.name} onChange={() => setDraft({ ...draft, dough: { name: option.name, price: Number(option.additional_price) } })} />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
-
-                      {!!crusts.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Bordas</h3>
-                          <p className="text-sm text-slate-500">Escolha uma opção, se desejar.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            <label className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                              <span>Sem borda</span>
-                              <input type="radio" checked={!draft.crust?.name} onChange={() => setDraft({ ...draft, crust: null })} />
-                            </label>
-                            {crusts.map((option) => (
-                              <label key={option.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  {option.name}
-                                  {Number(option.additional_price) ? <strong className="block">+ {money(option.additional_price)}</strong> : null}
-                                </span>
-                                <input type="radio" checked={draft.crust?.name === option.name} onChange={() => setDraft({ ...draft, crust: { name: option.name, price: Number(option.additional_price) } })} />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
-
-                      {!!additions.length && (
-                        <section className="border-b border-slate-100 p-5">
-                          <h3 className="font-black">Adicionais</h3>
-                          <p className="text-sm text-slate-500">Selecione quantos quiser.</p>
-                          <div className="mt-4 divide-y divide-slate-100">
-                            {additions.map((addition) => (
-                              <label key={addition.id} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                                <span>
-                                  {addition.name}
-                                  {Number(addition.additional_price) ? <strong className="block">+ {money(addition.additional_price)}</strong> : null}
-                                </span>
-                                <input type="checkbox" checked={draft.additions.some((selected) => selected.name === addition.name)} onChange={(event) => {
-                                  const current = draft.additions.filter((selected) => selected.name !== addition.name);
-                                  setDraft({ ...draft, additions: event.target.checked ? [...current, { name: addition.name, price: Number(addition.additional_price) }] : current });
-                                }} />
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      )}
-                    </>
-                  );
-                })()}
-
-                <section className="p-5">
-                  <label htmlFor="observacoes-item" className="block text-sm font-black uppercase tracking-wide text-slate-500">Observações do item</label>
-                  <textarea
-                    id="observacoes-item"
-                    className="mt-2 min-h-20 w-full resize-none border-b border-slate-200 bg-white py-2 outline-none focus:border-brand"
-                    maxLength={250}
-                    value={draft.notes ?? ""}
-                    onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
-                    placeholder="Ex.: sem cebola, caprichar no molho..."
-                  />
-                  <p className="text-right text-xs text-slate-400">{draft.notes.length ?? 0}/250</p>
-                </section>
-              </div>
-            </div>
-
-              <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:gap-4 sm:p-4">
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: Math.max(1, draft.quantity - 1) })} aria-label="Diminuir quantidade" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-600">
-                  <Minus className="h-4 w-4" />
-                </button>
-                <strong className="min-w-6 text-center text-lg" aria-live="polite">{draft.quantity}</strong>
-                <button type="button" onClick={() => setDraft({ ...draft, quantity: draft.quantity + 1 })} aria-label="Aumentar quantidade" className="grid h-11 w-11 place-items-center rounded-full bg-brand text-white">
-                  <Plus className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDraft}
-                  disabled={(catalog.info.get(draft.id)?.hasVariants && !draft.variantId) || (isPizzaProduct(draftProduct) && Number(draft.flavorCount ?? 1) > 1 && (draft.flavors.length ?? 0) !== Number(draft.flavorCount ?? 1))}
-                  className="ml-auto h-12 flex-1 rounded-lg bg-brand px-5 text-sm font-black uppercase text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {catalog.info.get(draft.id)?.hasVariants && !draft.variantId ? "Escolha o tamanho" : `Adicionar - ${money(lineTotal(draft))}`}
-                </button>
-              </div>
-          </div>
-        </div>
+      {builder && (
+        <PizzaBuilder
+          key={`${builder.product.id}-${builder.editIndex ?? "novo"}`}
+          ctx={builder.ctx}
+          product={builder.product}
+          initial={builder.initial}
+          startStep={builder.startStep}
+          editing={builder.editIndex != null}
+          onClose={closeBuilder}
+          onConfirm={confirmBuilder}
+        />
       )}
     </>
   );

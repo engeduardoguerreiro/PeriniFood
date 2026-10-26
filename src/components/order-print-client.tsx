@@ -85,7 +85,12 @@ async function toMonochromePng(dataUrl: string, threshold = 175): Promise<string
   });
 }
 
-export function OrderPrintClient({ content, settings, auto = false, targetId = "pf-comanda" }: { content: string; settings: PrinterSettings; auto?: boolean; targetId?: string }) {
+export function OrderPrintClient({ content, settings, auto = false, embedded = false, targetId = "pf-comanda" }: { content: string; settings: PrinterSettings; auto?: boolean; embedded?: boolean; targetId?: string }) {
+  // Quadro invisível do alerta de pedido novo: ao terminar avisa o painel em vez de navegar.
+  const backToOrders = () => {
+    if (embedded) window.parent.postMessage({ type: "perinifood-printed" }, window.location.origin);
+    else window.location.href = "/pedidos?status=printed";
+  };
   const [status, setStatus] = useState("Preparando impressão...");
   const [agentOnline, setAgentOnline] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -159,7 +164,7 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
   // sistema operacional que lista as impressoras instaladas.
   function printViaBrowser() {
     setStatus("Abrindo a impressão do navegador…");
-    const finish = () => { window.location.href = "/pedidos?status=printed"; };
+    const finish = backToOrders;
     window.addEventListener("afterprint", finish, { once: true });
     window.setTimeout(() => {
       try {
@@ -183,7 +188,7 @@ export function OrderPrintClient({ content, settings, auto = false, targetId = "
             done = true;
             // Agente imprimiu: volta. Agente falhou/ausente: imprime pelo
             // navegador em vez de desistir — a comanda nunca fica sem sair.
-            if (ok) window.location.href = "/pedidos?status=printed";
+            if (ok) backToOrders();
             else printViaBrowser();
           })
           .catch(() => {

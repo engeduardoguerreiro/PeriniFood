@@ -1,8 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 import { notFound } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, QrCode } from "lucide-react";
+import QRCode from "qrcode";
 import { CustomerTracking } from "@/components/tracking/customer-tracking";
 import { RememberOrder, SaveAccountCard } from "@/components/tracking/order-follow-up";
+import { PixCopy } from "@/components/tracking/pix-copy";
+import { normalizePixKey, pixBrCode, pixKeyType } from "@/lib/payments";
 import { createServiceClient } from "@/lib/supabase/service";
 import { money, orderCode, whatsappLink } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
@@ -26,6 +29,7 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
     supabase.from("restaurants").select("name, logo_url, whatsapp, phone, estimated_delivery_time, slug").eq("id", current.restaurant_id).maybeSingle(),
   ]);
   const contact = restaurant?.whatsapp || restaurant?.phone;
+  const pix = await pixPayment(supabase, current, restaurant?.name ?? "");
 
   return (
     <main className="min-h-screen bg-[#f6f5f2] px-4 py-6 text-ink">
@@ -41,6 +45,22 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
         </header>
 
         <CustomerTracking code={codigo} initialStatus={current.status} delivery={current.type === "delivery"} />
+
+        {pix && (
+          <section className="rounded-2xl border-2 border-emerald-500 bg-white p-4 shadow-sm" aria-labelledby="pagar-pix">
+            <h2 id="pagar-pix" className="flex items-center gap-2 text-lg font-black"><QrCode className="h-5 w-5 text-emerald-600" /> Pague com Pix: {money(current.total)}</h2>
+            <p className="mt-1 text-sm text-slate-600">Copie o código e cole no app do seu banco (Pix copia e cola), ou leia o QR Code. O valor já vem preenchido.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-[180px_1fr] sm:items-center">
+              <div className="mx-auto w-44 rounded-xl bg-white p-2 ring-1 ring-slate-200 sm:w-full" role="img" aria-label="QR Code do Pix" dangerouslySetInnerHTML={{ __html: pix.svg }} />
+              <div className="min-w-0 space-y-3">
+                <p className="break-all rounded-xl bg-slate-50 p-3 font-mono text-xs text-slate-700">{pix.code}</p>
+                <PixCopy value={pix.code} label="Copiar código Pix" />
+                <p className="text-xs text-slate-500">Recebedor: <strong className="text-slate-700">{pix.receiver}</strong> · Chave: {pix.key}</p>
+              </div>
+            </div>
+            <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900">O pagamento vai direto para a loja. Se puder, envie o comprovante pelo WhatsApp da loja para agilizar.</p>
+          </section>
+        )}
 
         <section className="rounded-2xl bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -72,4 +92,26 @@ export default async function PublicOrderTrackingPage({ params }: { params: Prom
       </div>
     </main>
   );
+}
+
+// Código Pix do "Pix agora": só a chave da loja, com o valor do pedido. Lido à parte
+// para a página não quebrar num banco sem a migration 20261026000400.
+async function pixPayment(supabase: ReturnType<typeof createServiceClient>, order: Order, storeName: string) {
+  if (order.status === "canceled") return null;
+  const [{ data: detail }, { data: store }] = await Promise.all([
+    supabase.from("orders").select("payment_detail,payment_status").eq("id", order.id).maybeSingle(),
+    supabase.from("restaurants").select("pix_key,pix_key_type,pix_receiver_name,pix_city,city").eq("id", order.restaurant_id).maybeSingle(),
+  ]);
+  if (detail?.payment_detail !== "pix_online" || detail.payment_status === "paid" || !store) return null;
+  const keyType = pixKeyType(store.pix_key_type);
+  const key = normalizePixKey(store.pix_key, keyType);
+  if (!key || !keyType) return null;
+  const receiver = store.pix_receiver_name || storeName;
+  try {
+    const code = pixBrCode({ key, keyType, name: receiver, city: store.pix_city || store.city || "", amount: Number(order.total), txid: orderCode(order) });
+    const svg = await QRCode.toString(code, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
+    return { code, svg, key, receiver };
+  } catch {
+    return null;
+  }
 }

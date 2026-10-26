@@ -10,23 +10,9 @@ import { StoreTopBar } from "@/components/storefront/store-top-bar";
 import { Icon3D } from "@/components/ui/icon-3d";
 import { money } from "@/lib/utils";
 import { rememberCheckoutEmail } from "@/lib/recent-orders";
+import { sitePaymentHint, sitePaymentLabels, type SitePayment } from "@/lib/payments";
+import { cartStorageKey, cartSubmittedKey, lineDetails, lineTotal, parseStoredCart, sizeLabel, type CartLine } from "@/lib/pizza-builder";
 import type { Restaurant } from "@/lib/types";
-
-type SelectedOption = { name: string; price: number };
-type CartLine = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  variantId: string | null;
-  variantName: string | null;
-  dough: SelectedOption | null;
-  crust: SelectedOption | null;
-  additions: SelectedOption[];
-  flavorCount: number;
-  flavors: string[];
-  notes: string;
-};
 
 type Address = {
   cep: string;
@@ -56,12 +42,6 @@ type CustomerProfile = {
   zipCode: string;
 };
 
-const paymentLabels: Record<string, string> = {
-  pix: "Pix",
-  cash: "Dinheiro",
-  credit_card: "Cartão de crédito",
-  debit_card: "Cartão de débito",
-};
 
 function fullAddress(address: Address) {
   return [
@@ -73,11 +53,6 @@ function fullAddress(address: Address) {
     address.reference && `Ref.: ${address.reference}`,
     address.cep && `CEP ${address.cep}`,
   ].filter(Boolean).join(" - ");
-}
-
-function lineTotal(item: CartLine) {
-  const extras = Number(item.dough?.price ?? 0) + Number(item.crust?.price ?? 0) + item.additions.reduce((sum, addition) => sum + Number(addition.price), 0);
-  return (Number(item.price) + extras) * item.quantity;
 }
 
 export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Restaurant; checkoutError?: string }) {
@@ -98,15 +73,20 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
   const [authLoading, setAuthLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [saveAccount, setSaveAccount] = useState(false);
-  const paymentMethods = restaurant.payment_methods?.length ? restaurant.payment_methods : ["pix", "cash", "credit_card", "debit_card"];
-  const [payment, setPayment] = useState(paymentMethods[0] ?? "pix");
+  // Já vêm como opções do site (publicRestaurant): Pix agora, Pix na entrega, dinheiro, cartões.
+  const paymentMethods = (restaurant.payment_methods ?? []) as SitePayment[];
+  const [payment, setPayment] = useState<SitePayment>(paymentMethods[0] ?? "pix_delivery");
   const [needsChange, setNeedsChange] = useState<"no" | "yes">("no");
 
   useEffect(() => {
     window.localStorage.removeItem('gastroflow_customer_' + restaurant.slug);
     const controller = new AbortController();
     Promise.resolve().then(() => {
-      try { const saved = window.sessionStorage.getItem('gastroflow_cart_' + restaurant.slug); if (saved) setCart(JSON.parse(saved)); } catch { window.sessionStorage.removeItem('gastroflow_cart_' + restaurant.slug); }
+      try {
+        setCart(parseStoredCart(window.sessionStorage.getItem(cartStorageKey(restaurant.slug))));
+        // Voltou com erro do servidor: o envio não valeu, o carrinho continua.
+        window.sessionStorage.removeItem(cartSubmittedKey(restaurant.slug));
+      } catch {}
     });
     fetch('/api/customer-auth/profile?restaurantId=' + restaurant.id, { signal: controller.signal })
       .then(async response => response.ok ? response.json() : null)
@@ -246,7 +226,7 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
   const card = "rounded-3xl bg-white p-5 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.04] sm:p-6";
   const choice = (active: boolean) => `flex items-center gap-2.5 rounded-2xl border-2 p-3 text-left text-sm transition sm:gap-3 sm:p-4 sm:text-base ${active ? "border-brand bg-brand-soft" : "border-slate-200 bg-white hover:border-slate-300"}`;
   const authError = authStatus.includes("Não") || authStatus.includes("inválid") || authStatus.includes("senha");
-  const paymentIcons: Record<string, typeof CreditCard> = { pix: QrCode, cash: Banknote, credit_card: CreditCard, debit_card: CreditCard, online: Smartphone, other: Wallet };
+  const paymentIcons: Record<string, typeof CreditCard> = { pix_online: QrCode, pix_delivery: Smartphone, cash: Banknote, credit_card: CreditCard, debit_card: CreditCard };
 
   return (
     <main className="min-h-screen bg-[#f6f5f2] text-ink">
@@ -255,7 +235,10 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
         {checkoutError && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{checkoutError}</p>}
         {!restaurant.is_open && <p className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">A loja está fechada agora. Você pode revisar o pedido, mas ele só pode ser enviado quando a loja abrir.</p>}
       </div>
-      <form action={createPublicOrder} onSubmit={() => rememberCheckoutEmail(restaurant.slug, customerDraft.email)} className="mx-auto grid max-w-5xl gap-5 px-4 pb-10 lg:grid-cols-[1fr_360px] lg:items-start">
+      <form action={createPublicOrder} onSubmit={() => {
+        rememberCheckoutEmail(restaurant.slug, customerDraft.email);
+        try { window.sessionStorage.setItem(cartSubmittedKey(restaurant.slug), "1"); } catch {}
+      }} className="mx-auto grid max-w-5xl gap-5 px-4 pb-10 lg:grid-cols-[1fr_360px] lg:items-start">
         {Object.entries(address).map(([key,value]) => <input key={key} type="hidden" name={key} value={value} />)}
         <input type="hidden" name="restaurant_id" value={restaurant.id} />
         <input type="hidden" name="slug" value={restaurant.slug} />
@@ -362,7 +345,7 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
 
           <section className={card} aria-labelledby="etapa-pagamento">
             <h2 id="etapa-pagamento" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={CreditCard} tone="green" size="sm" /> 3. Pagamento</h2>
-            <p className="mt-1 text-sm text-slate-500">Pagamento na entrega ou retirada.</p>
+            <p className="mt-1 text-sm text-slate-500">Nada é cobrado pelo site: você paga direto para a loja.</p>
             <div role="radiogroup" aria-label="Forma de pagamento" className="mt-4 grid grid-cols-2 gap-3">
               {paymentMethods.map((method) => {
                 const Icon = paymentIcons[method] ?? Wallet;
@@ -370,11 +353,20 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
                   <label key={method} className={`${choice(payment === method)} cursor-pointer`}>
                     <input className="sr-only" type="radio" name="payment_ui" checked={payment === method} onChange={() => { setPayment(method); if (method !== "cash") setNeedsChange("no"); }} />
                     <Icon className={`h-6 w-6 shrink-0 ${payment === method ? "text-brand" : "text-slate-400"}`} />
-                    <strong>{paymentLabels[method] ?? method}</strong>
+                    <span className="min-w-0">
+                      <strong className="block">{sitePaymentLabels[method] ?? method}</strong>
+                      <span className="block text-xs text-slate-500">{sitePaymentHint(method, type === "pickup")}</span>
+                    </span>
                   </label>
                 );
               })}
             </div>
+            {payment === "pix_online" && (
+              <p className="mt-4 flex items-start gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
+                <QrCode className="mt-0.5 h-5 w-5 shrink-0" />
+                Ao enviar o pedido, você recebe o código Pix (copia e cola e QR Code) com o valor exato para pagar no app do seu banco.
+              </p>
+            )}
             {payment === "cash" && (
               <div className="mt-4 rounded-2xl bg-slate-50 p-4">
                 <span className="text-sm font-semibold text-ink">Vai precisar de troco?</span>
@@ -395,15 +387,16 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
 
         <aside className="lg:sticky lg:top-20">
           <section className={card} aria-labelledby="resumo">
-            <h2 id="resumo" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={ShoppingBag} tone="red" size="sm" /> Resumo do pedido</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="resumo" className="flex items-center gap-3 text-lg font-black"><Icon3D icon={ShoppingBag} tone="red" size="sm" /> Resumo do pedido</h2>
+              {cart.length > 0 && <Link href={`/cardapio/${restaurant.slug}`} className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-bold text-brand hover:bg-brand-soft">Editar itens</Link>}
+            </div>
             <ul className="mt-4 divide-y divide-slate-100">
               {cart.map((item, index) => (
                 <li key={`${item.id}-${index}`} className="flex justify-between gap-3 py-3 text-sm">
                   <div className="min-w-0">
-                    <p className="font-semibold">{item.quantity}x {item.name}{item.variantName ? ` · ${item.variantName}` : ""}</p>
-                    {item.flavors && item.flavors.length > 1 && <p className="text-xs text-slate-500">Sabores: {item.flavors.join(" / ")}</p>}
-                    {item.crust?.name && <p className="text-xs text-slate-500">Borda: {item.crust.name}</p>}
-                    {item.additions.length > 0 && <p className="text-xs text-slate-500">Adicionais: {item.additions.map((addition) => addition.name).join(", ")}</p>}
+                    <p className="font-semibold">{item.quantity}x {item.flavors.length > 1 ? `Pizza ${item.flavors.length} sabores` : item.name}{item.variantName ? ` · ${sizeLabel(item.variantName)}` : ""}</p>
+                    {lineDetails(item).map((detail) => <p key={detail} className="text-xs text-slate-500">{detail}</p>)}
                   </div>
                   <strong className="shrink-0">{money(lineTotal(item))}</strong>
                 </li>

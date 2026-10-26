@@ -1,10 +1,12 @@
 import { boundedText, PublicError, uuid } from "./security";
-import type { Product, ProductVariant, ProductAddon, ProductOption, PizzaOption } from "./types";
+import type { ChoiceRule, Product, ProductVariant, ProductAddon, ProductOption, PizzaOption } from "./types";
 
 type Selection = { name: string; price: number };
 export type PricedItem = { id: string; name: string; variantId: string | null; variantName: string | null; price: number; quantity: number; total: number; notes: string;
-  dough: Selection | null; crust: Selection | null; flavors: string[]; flavorCount: number; addons: { id: string | null; name: string; price: number }[] };
-export type PricingCatalog = { products: Product[]; variants: ProductVariant[]; addons: ProductAddon[]; options: ProductOption[]; pizzaOptions: PizzaOption[]; maxFlavors: number };
+  dough: Selection | null; crust: Selection | null; noCrust: boolean; noAdditions: boolean; flavors: string[]; flavorCount: number; addons: { id: string | null; name: string; price: number }[] };
+// rules: só no pedido do site (o PDV é montado pela equipe e não passa por elas).
+export type PricingCatalog = { products: Product[]; variants: ProductVariant[]; addons: ProductAddon[]; options: ProductOption[]; pizzaOptions: PizzaOption[]; maxFlavors: number;
+  rules?: { crust: ChoiceRule; addons: ChoiceRule } };
 
 export function amount(value: unknown) {
   const number = Number(value);
@@ -51,7 +53,8 @@ export function priceCart(input: unknown, catalog: PricingCatalog, orderType: st
       const name = boundedText(object(raw).name, 150, true);
       const global = catalog.pizzaOptions.find(o => o.active && o.kind === kind && o.name === name);
       const group = catalog.options.find(o => o.product_id === product!.id && o.name === groupName);
-      if (!global || (kind !== "borda" && !group?.product_option_items?.some(o => o.active && o.name === name))) throw new PublicError("Opção indisponível para o produto.");
+      // Borda também precisa estar marcada na pizza (antes valia qualquer borda da loja).
+      if (!global || !group?.product_option_items?.some(o => o.active && o.name === name)) throw new PublicError("Opção indisponível para o produto.");
       return { name, price: amount(global.price) };
     }
     const dough = selectOption(item.dough, "Tipos de Massas", "massa");
@@ -66,12 +69,25 @@ export function priceCart(input: unknown, catalog: PricingCatalog, orderType: st
       return { id: addon.id, name: addon.name, price: amount(addon.price) };
     });
     addons.push(...additions.map(a => ({ id: null, ...a })));
+    // Regras da loja: borda/adicionais que o produto oferece precisam de resposta
+    // ("ask": escolher ou dizer que não quer) ou de escolha ("required").
+    const offered = (groupName: string, kind: string) => catalog.options.some(o => o.product_id === product.id && o.name === groupName
+      && o.product_option_items?.some(i => i.active && catalog.pizzaOptions.some(p => p.active && p.kind === kind && p.name === i.name)));
+    const rules = catalog.rules;
+    if (rules && offered("Bordas", "borda") && !crust) {
+      if (rules.crust === "required") throw new PublicError(`Escolha a borda da pizza ${product.name}.`);
+      if (rules.crust === "ask" && item.noCrust !== true) throw new PublicError(`Escolha a borda da pizza ${product.name} (ou “sem borda recheada”).`);
+    }
+    if (rules && offered("Adicionais", "adicional") && !additions.length) {
+      if (rules.addons === "required") throw new PublicError(`Escolha ao menos um adicional para ${product.name}.`);
+      if (rules.addons === "ask" && item.noAdditions !== true) throw new PublicError(`Responda se deseja adicionais em ${product.name}.`);
+    }
     for (const group of catalog.options.filter(o=>o.product_id===product.id)) {
       const count = group.name === "Tipos de Massas" ? Number(Boolean(dough)) : group.name === "Bordas" ? Number(Boolean(crust)) : group.name === "Adicionais" ? additions.length : 0;
       if (count < (group.required ? Math.max(1, group.min_choices) : group.min_choices) || (group.max_choices != null && count > group.max_choices)) throw new PublicError("Confira as opções obrigatórias do produto.");
     }
     return { id: product.id, name: variant ? `${product.name} - ${variant.name}` : product.name, variantId: variant?.id ?? null, variantName: variant?.name ?? null,
       price: base, quantity, total: amount((base + (dough?.price ?? 0) + (crust?.price ?? 0) + addons.reduce((sum,a)=>sum+a.price,0))*quantity),
-      notes: boundedText(item.notes, 500), dough, crust, flavors, flavorCount: Math.max(1, flavors.length), addons };
+      notes: boundedText(item.notes, 500), dough, crust, noCrust: !crust && item.noCrust === true, noAdditions: !additions.length && item.noAdditions === true, flavors, flavorCount: Math.max(1, flavors.length), addons };
   });
 }

@@ -4,11 +4,21 @@ import Link from "next/link";
 import { CheckCircle2, KeyRound, UtensilsCrossed } from "lucide-react";
 import { useEffect, useState } from "react";
 import { checkoutEmail, rememberOrder } from "@/lib/recent-orders";
+import { cartStorageKey, cartSubmittedKey } from "@/lib/pizza-builder";
 
 // Guarda o pedido neste aparelho: ao voltar ao cardápio, o cliente vê o pedido
 // em andamento sem precisar de conta nem do link.
 export function RememberOrder({ slug, code, number }: { slug: string; code: string; number: string }) {
-  useEffect(() => { rememberOrder(slug, { code, number }); }, [slug, code, number]);
+  useEffect(() => {
+    rememberOrder(slug, { code, number });
+    // Pedido confirmado: o carrinho enviado sai do aparelho (com erro ele fica, ver checkout).
+    try {
+      if (window.sessionStorage.getItem(cartSubmittedKey(slug))) {
+        window.sessionStorage.removeItem(cartStorageKey(slug));
+        window.sessionStorage.removeItem(cartSubmittedKey(slug));
+      }
+    } catch {}
+  }, [slug, code, number]);
   return (
     <Link href={`/cardapio/${slug}`} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-white font-bold text-ink shadow-sm ring-1 ring-black/[0.05]">
       <UtensilsCrossed className="h-5 w-5 text-brand" /> Voltar ao cardápio

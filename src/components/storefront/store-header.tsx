@@ -1,10 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
+import { sitePaymentLabels, type SitePayment } from "@/lib/payments";
 import { Bike, ChevronRight, Clock3, CreditCard, Info, MapPin, MessageCircle, ShoppingBag } from "lucide-react";
 import { openingHourDays, storeStatusLabel, type OpeningHours } from "@/lib/opening-hours";
 import { money, whatsappLink } from "@/lib/utils";
 import type { Restaurant } from "@/lib/types";
 
-const paymentLabels: Record<string, string> = { cash: "Dinheiro", pix: "Pix", credit_card: "Cartão de crédito", debit_card: "Cartão de débito", online: "Pagamento online", other: "Outros" };
 
 // Topo do cardápio público: compacto no celular (o cliente vê produtos já na
 // primeira tela) e com as informações que decidem a compra num painel recolhível.
@@ -13,7 +13,8 @@ export function StoreHeader({ restaurant, deliveryFees }: { restaurant: Restaura
   const status = storeStatusLabel(restaurant);
   const address = [restaurant.address && `${restaurant.address}${restaurant.address_number ? `, ${restaurant.address_number}` : ""}`, restaurant.neighborhood, restaurant.city && `${restaurant.city}${restaurant.state ? `/${restaurant.state}` : ""}`].filter(Boolean).join(" · ");
   const hours = (restaurant.opening_hours ?? {}) as OpeningHours;
-  const payments = (restaurant.payment_methods?.length ? restaurant.payment_methods : ["cash", "pix", "credit_card", "debit_card"]).map((m) => paymentLabels[m] ?? m);
+  // payment_methods já chega como opções do site (publicRestaurant).
+  const payments = (restaurant.payment_methods ?? []).map((m) => sitePaymentLabels[m as SitePayment] ?? m);
   const whatsapp = restaurant.whatsapp || restaurant.phone;
 
   return (

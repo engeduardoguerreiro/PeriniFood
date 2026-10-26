@@ -1,4 +1,5 @@
 import "server-only";
+import { pixKeyType, sitePaymentHint, sitePaymentLabels, sitePayments } from "@/lib/payments";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceClient } from "@/lib/supabase/service";
 import { hasModule } from "@/lib/platform-billing";
@@ -30,7 +31,6 @@ const getClient = () => (anthropic ??= new Anthropic({
 }));
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || "https://perinifood.com.br").replace(/\/+$/, "");
 
-const paymentLabels: Record<string, string> = { cash: "dinheiro", pix: "Pix", credit_card: "cartão de crédito", debit_card: "cartão de débito", online: "pagamento online", other: "outros" };
 
 // Contexto fixo da loja (cardápio, horários, entrega). Fica no início do prompt
 // com cache_control: só é cobrado inteiro uma vez a cada poucos minutos.
@@ -62,7 +62,7 @@ async function storeContext(restaurant: Restaurant) {
   const hours = (restaurant.opening_hours ?? {}) as OpeningHours;
   const schedule = openingHourDays.map(([key, label]) => `${label}: ${hours[key]?.active ? `${hours[key].open} às ${hours[key].close}` : "fechado"}`).join("\n");
   const address = [restaurant.address, restaurant.address_number, restaurant.neighborhood, restaurant.city, restaurant.state].filter(Boolean).join(", ");
-  const payments = (restaurant.payment_methods?.length ? restaurant.payment_methods : ["cash", "pix", "credit_card", "debit_card"]).map((m) => paymentLabels[m] ?? m).join(", ");
+  const payments = sitePayments(restaurant.payment_methods, restaurant.pix_key, pixKeyType(restaurant.pix_key_type)).map((m) => `${sitePaymentLabels[m]} (${sitePaymentHint(m, false).toLowerCase()})`).join(", ");
 
   return `# Loja: ${restaurant.name}
 ${restaurant.description ?? ""}
