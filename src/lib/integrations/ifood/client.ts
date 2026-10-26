@@ -15,6 +15,16 @@ export async function listMerchants(token: string): Promise<Array<{ id: string; 
   return ifoodGet("/merchant/v1.0/merchants", token);
 }
 
+// Detalhe de uma loja; null quando o token não tem acesso a ela.
+export async function getMerchant(token: string, merchantId: string): Promise<{ id: string; name?: string } | null> {
+  try {
+    return await ifoodGet(`/merchant/v1.0/merchants/${encodeURIComponent(merchantId)}`, token);
+  } catch (error) {
+    console.warn("[ifood] loja não acessível", merchantId, error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 async function ifoodGet(path: string, token: string) {
   const res = await fetch(`${IFOOD_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },

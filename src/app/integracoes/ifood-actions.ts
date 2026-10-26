@@ -6,7 +6,7 @@ import { requireRestaurant } from "@/lib/auth";
 import { isAdminRole } from "@/lib/integrations/security";
 import { createServiceClient } from "@/lib/supabase/service";
 import { exchangeAuthorizationCode, requestUserCode } from "@/lib/integrations/ifood/auth";
-import { listMerchants } from "@/lib/integrations/ifood/client";
+import { getMerchant, listMerchants } from "@/lib/integrations/ifood/client";
 import { saveToken } from "@/lib/integrations/ifood/tokens";
 import { logIntegrationEvent } from "@/lib/integrations/external-order";
 
@@ -82,6 +82,13 @@ export async function ifoodFinishLink(formData: FormData) {
   } catch (error) {
     console.error("[ifood] vínculo falhou", error instanceof Error ? error.message : error);
     back("O iFood recusou o código. Confira se copiou o código inteiro ou gere um novo vínculo.");
+  }
+  // A listagem pode vir vazia mesmo com a loja autorizada no app; nesse caso
+  // tentamos a loja que já estava vinculada antes.
+  if (!merchants.length && existing.external_store_id) {
+    console.warn("[ifood] listagem de lojas vazia; tentando a loja já conhecida", existing.external_store_id);
+    const known = await getMerchant(token.accessToken, existing.external_store_id);
+    if (known) merchants = [known];
   }
   const merchant = merchants[0];
   if (!merchant) back("A conta autorizada não tem nenhuma loja no iFood.");
