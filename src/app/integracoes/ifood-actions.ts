@@ -26,6 +26,18 @@ function back(error?: string): never {
   redirect(error ? `${PAGE}?error=${encodeURIComponent(error)}` : `${PAGE}?status=saved`);
 }
 
+// IDs de loja citados no token do iFood (claims do JWT); só para descobrir a loja,
+// a permissão de verdade é conferida na consulta seguinte.
+function tokenMerchantIds(accessToken: string): string[] {
+  try {
+    const claims = JSON.parse(Buffer.from(accessToken.split(".")[1] ?? "", "base64url").toString("utf8")) as Record<string, unknown>;
+    console.warn("[ifood] claims do token", Object.keys(claims), JSON.stringify(claims.merchant_scope ?? null).slice(0, 500));
+    return [...new Set(JSON.stringify(claims.merchant_scope ?? "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) ?? [])];
+  } catch {
+    return [];
+  }
+}
+
 async function currentIntegration(restaurantId: string) {
   const { data } = await createServiceClient()
     .from("integrations")
@@ -84,11 +96,14 @@ export async function ifoodFinishLink(formData: FormData) {
     back("O iFood recusou o código. Confira se copiou o código inteiro ou gere um novo vínculo.");
   }
   // A listagem pode vir vazia mesmo com a loja autorizada no app; nesse caso
-  // tentamos a loja que já estava vinculada antes.
-  if (!merchants.length && existing.external_store_id) {
-    console.warn("[ifood] listagem de lojas vazia; tentando a loja já conhecida", existing.external_store_id);
-    const known = await getMerchant(token.accessToken, existing.external_store_id);
-    if (known) merchants = [known];
+  // tentamos as lojas que o próprio token cita e a que já estava vinculada antes.
+  if (!merchants.length) {
+    const candidates = [...new Set([...tokenMerchantIds(token.accessToken), existing.external_store_id].filter((id): id is string => Boolean(id)))];
+    console.warn("[ifood] listagem de lojas vazia; tentando", candidates.length ? candidates : "nenhuma loja conhecida");
+    for (const id of candidates) {
+      const known = await getMerchant(token.accessToken, id);
+      if (known) { merchants = [known]; break; }
+    }
   }
   const merchant = merchants[0];
   if (!merchant) back("A conta autorizada não tem nenhuma loja no iFood.");
