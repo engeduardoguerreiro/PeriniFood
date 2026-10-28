@@ -46,7 +46,7 @@ export default async function WhatsAppIntegrationPage({ searchParams }: { search
               : "Responda seus clientes 24h no WhatsApp e no cardápio online com IA (cardápio, preços, horários, entrega e status do pedido). R$ 49,90/mês."}
           </p>
         </div>
-        {!aiActive && <a href={`https://wa.me/5511930230911?text=${encodeURIComponent(`Quero ativar o Atendente de IA na loja ${restaurant.name}.`)}`} target="_blank" rel="noreferrer" className="btn-primary text-sm">Quero ativar</a>}
+        {!aiActive && <a href={`https://wa.me/5511975418690?text=${encodeURIComponent(`Quero ativar o Atendente de IA na loja ${restaurant.name}.`)}`} target="_blank" rel="noreferrer" className="btn-primary text-sm">Quero ativar</a>}
       </section>
 
       <form action={saveIntegration} className="rounded-2xl border border-line bg-white p-5">

@@ -1,4 +1,4 @@
-const WHATSAPP_URL = "https://wa.me/5511930230911?text=" + encodeURIComponent("Olá! Quero saber mais sobre o PeriniFood.");
+const WHATSAPP_URL = "https://wa.me/5511975418690?text=" + encodeURIComponent("Olá! Quero saber mais sobre o PeriniFood.");
 
 export function WhatsAppFloat() {
   return (

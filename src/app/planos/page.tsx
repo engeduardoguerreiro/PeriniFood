@@ -200,7 +200,7 @@ export default function PlansPage() {
           <p className="mx-auto mt-3 max-w-lg text-white/70">Crie sua conta no plano Básico e faça upgrade quando precisar de integrações.</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href="/register" className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-strong">Começar agora <ArrowRight className="h-4 w-4" /></Link>
-            <a href="https://wa.me/5511930230911" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/20 px-5 text-sm font-semibold text-white transition hover:bg-white/10"><MessageCircle className="h-4 w-4" /> Falar no WhatsApp</a>
+            <a href="https://wa.me/5511975418690" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/20 px-5 text-sm font-semibold text-white transition hover:bg-white/10"><MessageCircle className="h-4 w-4" /> Falar no WhatsApp</a>
           </div>
         </div>
       </section>

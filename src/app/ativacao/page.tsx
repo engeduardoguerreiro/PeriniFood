@@ -7,7 +7,7 @@ import { signOut } from "@/app/actions";
 
 export const metadata = { title: "Ativação da loja · PeriniFood" };
 
-const SUPPORT_WHATSAPP = "5511930230911";
+const SUPPORT_WHATSAPP = "5511975418690";
 
 // Loja recém-cadastrada: o sistema só libera depois que a equipe PeriniFood
 // confirma a assinatura (painel /admin → "Ativar loja").

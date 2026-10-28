@@ -217,7 +217,7 @@ export function LandingPage() {
             <a href="#recursos" className="transition hover:text-white">Recursos</a>
             <a href="#planos" className="transition hover:text-white">Planos</a>
             <Link href="/login" className="transition hover:text-white">Entrar</Link>
-            <a href="https://wa.me/5511930230911" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition hover:text-white"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+            <a href="https://wa.me/5511975418690" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition hover:text-white"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
           </nav>
           <p className="flex w-full items-center gap-1.5 text-xs text-white/40"><ShieldCheck className="h-3.5 w-3.5" /> © {new Date().getFullYear()} PeriniFood. Fotos: Unsplash.</p>
         </div>

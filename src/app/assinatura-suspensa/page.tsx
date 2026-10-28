@@ -12,7 +12,7 @@ export default async function SuspendedPage() {
   const { restaurant } = await getSessionContext();
   const access = restaurant ? await getAccessState(restaurant.id) : null;
   if (access?.status === "pending") redirect("/ativacao");
-  const supportPhone = "5511930230911";
+  const supportPhone = "5511975418690";
 
   return (
     <div className="grid min-h-screen place-items-center bg-[#faf9f6] px-6 py-12">

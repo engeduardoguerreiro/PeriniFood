@@ -171,7 +171,7 @@ export function AppFrame({ restaurant, children }: { restaurant: FrameRestaurant
       document.body.style.overflow = previous;
     };
   }, [mobileOpen]);
-  const supportPhone = "11930230911";
+  const supportPhone = "11975418690";
   const storeOpen = isRestaurantOpen(restaurant);
   const manualStatus = restaurant.manual_open_status;
   const statusLabel = manualStatus === "open" ?
