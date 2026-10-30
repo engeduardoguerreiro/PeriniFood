@@ -5,7 +5,7 @@ import { useEffectEvent, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { createPdvOrder } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
-import { decimalInputValue, money, parseDecimal } from "@/lib/utils";
+import { decimalInputValue, displayPhone, formatPhone, maskPhoneInput, money, parseDecimal, PHONE_PATTERN } from "@/lib/utils";
 import type { Category, Customer, DeliveryFeeRule, PizzaOption, Product, ProductOption, ProductOptionItem, ProductType, ProductVariant, Restaurant } from "@/lib/types";
 import { Icon3D } from "@/components/ui/icon-3d";
 
@@ -243,7 +243,7 @@ export function ManualOrderBuilder({
   const [addressStatus, setAddressStatus] = useState("");
   const [customerId, setCustomerId] = useState(initialData.customerId ?? "");
   const [customerName, setCustomerName] = useState(initialData.customerName ?? "");
-  const [customerPhone, setCustomerPhone] = useState(initialData.customerPhone ?? "");
+  const [customerPhone, setCustomerPhone] = useState(formatPhone(initialData.customerPhone));
   const [customerMatches, setCustomerMatches] = useState<CustomerMatch[]>([]);
   const [customerLookupStatus, setCustomerLookupStatus] = useState("");
   const [showCustomerMatches, setShowCustomerMatches] = useState(false);
@@ -321,7 +321,7 @@ export function ManualOrderBuilder({
   function applyCustomer(customer: CustomerMatch, status = "Cliente encontrado e preenchido automaticamente.") {
     setCustomerId(customer.id);
     setCustomerName(customer.name ?? "");
-    setCustomerPhone(customer.whatsapp || customer.phone || "");
+    setCustomerPhone(formatPhone(customer.whatsapp || customer.phone));
     setCustomerMatches([]);
     setShowCustomerMatches(false);
     setCustomerLookupStatus(status);
@@ -567,10 +567,14 @@ export function ManualOrderBuilder({
               <input
                 className="field-light"
                 name="customer_phone"
-                placeholder="11999999999"
+                type="tel"
+                inputMode="tel"
+                placeholder="(11) 99999-9999"
+                pattern={PHONE_PATTERN}
+                title="Informe DDD + número, ex.: (11) 99999-9999"
                 value={customerPhone}
                 onChange={(event) => {
-                  setCustomerPhone(event.target.value);
+                  setCustomerPhone(maskPhoneInput(customerPhone, event.target.value));
                   setCustomerId("");
                   setCustomerLookupStatus("");
                   setShowCustomerMatches(true);
@@ -591,7 +595,7 @@ export function ManualOrderBuilder({
                       >
                         <span>
                           <strong className="block text-ink">{customer.name}</strong>
-                          <span className="text-xs text-ink-faint">{customer.whatsapp || customer.phone || "Sem telefone"}</span>
+                          <span className="text-xs text-ink-faint">{displayPhone(customer.whatsapp || customer.phone) || "Sem telefone"}</span>
                         </span>
                         <span className="text-xs font-black text-brand">Usar</span>
                       </button>

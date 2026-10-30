@@ -2,7 +2,7 @@ import { MapPin, MessageSquareText, Package, Phone, Wallet } from "lucide-react"
 import { CourierApp } from "@/components/tracking/courier-app";
 import { trackingByToken, trackingState } from "@/lib/delivery-tracking";
 import { createServiceClient } from "@/lib/supabase/service";
-import { money, orderCode } from "@/lib/utils";
+import { displayPhone, money, orderCode } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
 export const metadata = { title: "Entrega · PeriniFood", robots: { index: false, follow: false } };
@@ -52,7 +52,7 @@ export default async function CourierPage({ params }: { params: Promise<{ token:
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</p>
           <p className="text-lg font-bold">{current.customer_name || "Cliente"}</p>
-          {current.customer_phone && <a href={`tel:${current.customer_phone.replace(/\D/g, "")}`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-brand"><Phone className="h-4 w-4" /> {current.customer_phone}</a>}
+          {current.customer_phone && <a href={`tel:${current.customer_phone.replace(/\D/g, "")}`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-brand"><Phone className="h-4 w-4" /> {displayPhone(current.customer_phone)}</a>}
         </div>
         <div className="flex gap-2 border-t border-slate-100 pt-3">
           <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand" />

@@ -98,6 +98,43 @@ export function digits(value: string | null | undefined) {
   return String(value ?? "").replace(/\D/g, "");
 }
 
+// Telefone de cliente é gravado sempre como DDD + número, só dígitos (ex.: 11971915600).
+// O índice único (restaurant_id, phone) compara texto: "11 97191-5600" e "11971915600"
+// virariam dois clientes. Remove o +55 quando vier junto.
+export function normalizePhone(value: string | null | undefined) {
+  const only = digits(value);
+  return (only.length === 12 || only.length === 13) && only.startsWith("55") ? only.slice(2) : only;
+}
+
+export function isValidPhone(value: string | null | undefined) {
+  // DDD não tem zero (11–99): barra 0800 de plataformas como iFood.
+  return /^[1-9]{2}\d{8,9}$/.test(normalizePhone(value));
+}
+
+// Máscara exibida e preenchida enquanto digita: (11) 97191-5600 ou (11) 3456-7890.
+export function formatPhone(value: string | null | undefined) {
+  const only = normalizePhone(value).slice(0, 11);
+  if (only.length <= 2) return only.length ? `(${only}` : "";
+  const ddd = only.slice(0, 2), rest = only.slice(2);
+  const split = rest.length > 8 ? 5 : 4;
+  return rest.length > split ? `(${ddd}) ${rest.slice(0, split)}-${rest.slice(split)}` : `(${ddd}) ${rest}`;
+}
+
+// Exibição de telefone já gravado: formata o que é DDD + número, mantém o resto (0800 do iFood).
+export function displayPhone(value: string | null | undefined) {
+  return isValidPhone(value) ? formatPhone(value) : String(value ?? "");
+}
+
+// onChange de campo mascarado: backspace sobre "-", ")" ou espaço apaga o dígito anterior,
+// senão a máscara recolocaria o separador e o cursor ficaria preso.
+export function maskPhoneInput(previous: string, next: string) {
+  const nextDigits = digits(next);
+  const erasedSeparator = next.length < previous.length && nextDigits === digits(previous);
+  return formatPhone(erasedSeparator ? nextDigits.slice(0, -1) : nextDigits);
+}
+
+export const PHONE_PATTERN = "\\(\\d{2}\\) \\d{4,5}-\\d{4}";
+
 export function whatsappLink(phone: string | null | undefined, message: string) {
   const clean = digits(phone);
   if (!clean) return "#";

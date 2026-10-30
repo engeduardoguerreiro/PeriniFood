@@ -2,7 +2,7 @@
 
 import { mkdir, writeFile } from "fs/promises";
 import { revalidatePath } from "next/cache";
-import { parseDecimal } from "@/lib/utils";
+import { isValidPhone, normalizePhone, parseDecimal } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import path from "path";
 import { saveValidatedOrder } from "@/lib/order-service";
@@ -1132,8 +1132,8 @@ export async function saveCustomer(formData: FormData) {
   const payload: Record<string, string | null> = {
     restaurant_id: restaurant.id,
     name: text(formData, "name"),
-    phone: text(formData, "phone") || null,
-    whatsapp: text(formData, "whatsapp") || digits(text(formData, "phone")) || null,
+    phone: normalizePhone(text(formData, "phone")) || null,
+    whatsapp: normalizePhone(text(formData, "whatsapp") || text(formData, "phone")) || null,
     email: text(formData, "email") || null,
     cpf: digits(text(formData, "cpf")) || null,
     birth_date: text(formData, "birth_date") || null,
@@ -1147,10 +1147,15 @@ export async function saveCustomer(formData: FormData) {
     zip_code: text(formData, "zip_code") || null,
     notes: text(formData, "notes") || null,
   };
+  if (payload.phone && !isValidPhone(payload.phone)) redirectWithFeedback(formData, returnTo, "saved", "Informe o telefone com DDD, ex.: (11) 99999-9999.");
   const result = id ?
      await supabase.from("customers").update(payload).eq("id", id).eq("restaurant_id", restaurant.id)
     : await supabase.from("customers").insert(payload);
-  if (result.error) redirectWithFeedback(formData, returnTo, "saved", result.error.message);
+  if (result.error) {
+    const duplicated = result.error.code === "23505";
+    const field = /email/.test(result.error.message) ? "e-mail" : "telefone";
+    redirectWithFeedback(formData, returnTo, "saved", duplicated ? `Já existe outro cliente com este ${field}.` : result.error.message);
+  }
   revalidatePath("/clientes");
   revalidatePath("/dashboard/customers");
   if (id) revalidatePath(`/clientes/${id}`);

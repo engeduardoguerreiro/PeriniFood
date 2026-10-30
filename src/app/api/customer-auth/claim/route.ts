@@ -2,6 +2,7 @@ import { hashCustomerPassword, safeCustomerProfile } from "@/lib/customer-auth";
 import { authRateLimit, startCustomerSession } from "@/lib/customer-session";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertSameOrigin, boundedText, emailAddress, privateJson, publicFailure, PublicError, readObject } from "@/lib/security";
+import { isValidPhone, normalizePhone } from "@/lib/utils";
 
 // "Crie uma senha" na página do pedido: cria a conta com os dados que o cliente
 // já informou no checkout e põe este pedido no histórico dela. O código do pedido
@@ -25,8 +26,8 @@ export async function POST(request: Request) {
     if (order.customer_id) throw new PublicError("Este pedido já está ligado a uma conta. Entre para ver seus pedidos.", 409);
     await authRateLimit(request, order.restaurant_id, email);
 
-    const phone = String(order.customer_phone ?? "").replace(/\D/g, "");
-    if (!/^\d{10,13}$/.test(phone)) throw new PublicError("O telefone do pedido é inválido. Crie a conta em Minha conta.");
+    const phone = normalizePhone(order.customer_phone);
+    if (!isValidPhone(phone)) throw new PublicError("O telefone do pedido é inválido. Crie a conta em Minha conta.");
     // INSERT only, como no cadastro: conflito nunca sobrescreve conta existente.
     const { data: customer, error } = await service.from("customers").insert({
       restaurant_id: order.restaurant_id, name: boundedText(order.customer_name, 120, true), phone, whatsapp: phone, email,

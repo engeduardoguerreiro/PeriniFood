@@ -2,6 +2,7 @@ import { hashCustomerPassword, safeCustomerProfile } from "@/lib/customer-auth";
 import { authRateLimit, startCustomerSession } from "@/lib/customer-session";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertSameOrigin, boundedText, emailAddress, privateJson, publicFailure, PublicError, readObject, uuid } from "@/lib/security";
+import { isValidPhone, normalizePhone } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -11,9 +12,9 @@ export async function POST(request: Request) {
     const email = emailAddress(body.email);
     const password = boundedText(body.password, 128, true);
     const name = boundedText(body.name, 120, true);
-    const phone = boundedText(body.phone, 25, true).replace(/\D/g, "");
+    const phone = normalizePhone(boundedText(body.phone, 25, true));
     if (password.length < 12) throw new PublicError("Use uma senha com pelo menos 12 caracteres.");
-    if (!/^\d{10,13}$/.test(phone)) throw new PublicError("Informe um telefone válido.");
+    if (!isValidPhone(phone)) throw new PublicError("Informe um telefone válido.");
     await authRateLimit(request, restaurantId, email);
     // INSERT only: conflicts must never overwrite another account or password.
     const { data: customer, error } = await createServiceClient().from("customers").insert({

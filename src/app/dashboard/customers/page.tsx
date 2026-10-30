@@ -7,6 +7,8 @@ import { calculateLoyaltyPoints, withLoyaltyCampaign } from "@/lib/loyalty";
 import type { Customer, Order } from "@/lib/types";
 import { Icon3D } from "@/components/ui/icon-3d";
 import { Users } from "lucide-react";
+import { PhoneInput } from "@/components/phone-input";
+import { normalizePhone } from "@/lib/utils";
 
 type CustomersSearchParams = {
   q?: string;
@@ -19,8 +21,10 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   // Vírgula e parênteses quebram a sintaxe do .or() do PostgREST.
   const query = (sp.q ?? "").replace(/[^\p{L}\p{N} @+.-]/gu, "").trim().slice(0, 100);
+  // Telefones ficam só com dígitos: "97191-5600" precisa achar 11971915600.
+  const queryPhone = normalizePhone(query).length >= 3 ? normalizePhone(query) : query;
   let request = supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).order("created_at", { ascending: false });
-  if (query) request = request.or(`name.ilike.%${query}%,phone.ilike.%${query}%,whatsapp.ilike.%${query}%`);
+  if (query) request = request.or(`name.ilike.%${query}%,phone.ilike.%${queryPhone}%,whatsapp.ilike.%${queryPhone}%`);
   const [{ data, error }, { data: loyalty }, { data: orders }] = await Promise.all([
     request,
     supabase.from("loyalty_programs").select("*").eq("restaurant_id", restaurant.id).maybeSingle(),
@@ -30,7 +34,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const loyaltyWithCampaign = withLoyaltyCampaign(loyalty, restaurant.opening_hours as Record<string, unknown> | null);
   const loyaltyOrders = (orders ?? []) as Pick<Order, "customer_id" | "customer_phone" | "total" | "status" | "payment_status" | "created_at">[];
   const pointsForCustomer = (customer: Customer) => calculateLoyaltyPoints(loyaltyWithCampaign, loyaltyOrders.filter((order) => (
-    order.customer_id === customer.id || (!order.customer_id && Boolean(customer.phone) && order.customer_phone === customer.phone)
+    order.customer_id === customer.id || (!order.customer_id && Boolean(customer.phone) && normalizePhone(order.customer_phone) === customer.phone)
   )));
 
   return (
@@ -72,7 +76,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 </label>
                 <label className="space-y-1 lg:space-y-0">
                   <span className="text-xs font-black uppercase text-ink-faint lg:hidden">Telefone</span>
-                  <input className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="phone" defaultValue={customer.phone ?? ""} />
+                  <PhoneInput className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-red-300" name="phone" defaultValue={customer.phone} />
                 </label>
                 <input type="hidden" name="email" value={customer.email ?? ""} />
                 <div className="flex h-9 items-center rounded-lg bg-brand-soft px-3 text-sm font-black text-brand">

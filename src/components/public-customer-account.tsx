@@ -5,7 +5,7 @@ import { Gift, LockKeyhole, Mail, MapPin, PackageCheck, Search, UserCircle2, Zap
 import { StoreTopBar } from "@/components/storefront/store-top-bar";
 import { Icon3D, type Tone } from "@/components/ui/icon-3d";
 import { useCallback, useEffect, useState } from "react";
-import { money } from "@/lib/utils";
+import { formatPhone, maskPhoneInput, money, PHONE_PATTERN } from "@/lib/utils";
 import type { Restaurant } from "@/lib/types";
 
 type CustomerProfile = {
@@ -146,7 +146,7 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
     setDraft((current) => ({
       ...current,
       name: customer.name ?? "",
-      phone: customer.whatsapp || customer.phone || "",
+      phone: formatPhone(customer.whatsapp || customer.phone),
       email: customer.email ?? "",
       cpf: customer.cpf ?? "",
       birthDate: customer.birthDate ? customer.birthDate.slice(0, 10) : "",
@@ -331,7 +331,7 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                 {mode === "register" && (
                   <>
                     <label className="block"><span className={label}>Nome completo</span><input className={field} autoComplete="name" required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Como devemos te chamar" /></label>
-                    <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} type="tel" inputMode="tel" autoComplete="tel" required value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} placeholder="(11) 99999-9999" /></label>
+                    <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} type="tel" inputMode="tel" autoComplete="tel" required value={draft.phone} pattern={PHONE_PATTERN} title="Informe DDD + número, ex.: (11) 99999-9999" onChange={(event) => setDraft({ ...draft, phone: maskPhoneInput(draft.phone, event.target.value) })} placeholder="(11) 99999-9999" /></label>
                   </>
                 )}
                 <label className="block">
@@ -440,7 +440,7 @@ export function PublicCustomerAccount({ restaurant }: { restaurant: Restaurant }
                 <h2 className="flex items-center gap-3 text-lg font-black"><Icon3D icon={MapPin} tone="orange" size="sm" /> Meus dados e endereço</h2>
                 <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); saveAccount(); }}>
                   <label className="block"><span className={label}>Nome completo</span><input className={field} autoComplete="name" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
-                  <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} type="tel" inputMode="tel" autoComplete="tel" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} /></label>
+                  <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} type="tel" inputMode="tel" autoComplete="tel" value={draft.phone} pattern={PHONE_PATTERN} title="Informe DDD + número, ex.: (11) 99999-9999" onChange={(event) => setDraft({ ...draft, phone: maskPhoneInput(draft.phone, event.target.value) })} /></label>
                   <label className="block"><span className={label}>E-mail</span><input className={field} type="email" readOnly={Boolean(profile)} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} /></label>
                   <label className="block">
                     <span className={label}>CEP</span>

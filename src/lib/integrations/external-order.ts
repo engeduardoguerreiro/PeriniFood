@@ -1,4 +1,5 @@
 import { secretMatches, PublicError, boundedText } from "@/lib/security";
+import { isValidPhone, normalizePhone } from "@/lib/utils";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export type NormalizedExternalOrder = {
@@ -163,17 +164,19 @@ export async function createOrderFromExternalPayload(normalized: NormalizedExter
     const { data: existing } = await supabase.from("orders").select("id").eq("restaurant_id", restaurantId).eq("external_order_id", normalized.externalOrderId).limit(1);
     if (existing?.length) return existing[0].id as string;
   }
+  // 0800 com localizador (iFood e afins) não identifica o cliente: só vira cadastro com DDD válido.
   const phone = normalized.customer.phone ?? null;
-  const { data: existingCustomer } = phone ?
-     await supabase.from("customers").select("id").eq("restaurant_id", restaurantId).eq("phone", phone).maybeSingle()
+  const customerPhone = isValidPhone(phone) ? normalizePhone(phone) : null;
+  const { data: existingCustomer } = customerPhone ?
+     await supabase.from("customers").select("id").eq("restaurant_id", restaurantId).eq("phone", customerPhone).maybeSingle()
     : { data: null };
   let customerId = existingCustomer?.id ?? null;
   if (!customerId) {
     const { data: customer } = await supabase.from("customers").insert({
       restaurant_id: restaurantId,
       name: normalized.customer.name,
-      phone,
-      whatsapp: phone,
+      phone: customerPhone,
+      whatsapp: customerPhone,
       address: externalAddressToText(normalized),
     }).select("id").single();
     customerId = customer?.id ?? null;

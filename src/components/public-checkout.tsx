@@ -8,7 +8,7 @@ import { createPublicOrder } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
 import { StoreTopBar } from "@/components/storefront/store-top-bar";
 import { Icon3D } from "@/components/ui/icon-3d";
-import { money } from "@/lib/utils";
+import { formatPhone, maskPhoneInput, money, PHONE_PATTERN } from "@/lib/utils";
 import { rememberCheckoutEmail } from "@/lib/recent-orders";
 import { sitePaymentHint, sitePaymentLabels, type SitePayment } from "@/lib/payments";
 import { cartStorageKey, cartSubmittedKey, lineDetails, lineTotal, parseStoredCart, sizeLabel, type CartLine } from "@/lib/pizza-builder";
@@ -98,7 +98,7 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
     setCustomerId(customer.id ?? "");
     setCustomerDraft({
       name: customer.name ?? "",
-      phone: customer.whatsapp || customer.phone || "",
+      phone: formatPhone(customer.whatsapp || customer.phone),
       email: customer.email ?? "",
       cpf: customer.cpf ?? "",
       birthDate: customer.birthDate ? customer.birthDate.slice(0, 10) : "",
@@ -275,7 +275,7 @@ export function PublicCheckout({ restaurant, checkoutError }: { restaurant: Rest
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="block"><span className={label}>Nome completo</span><input className={field} name="customer_name" autoComplete="name" placeholder="Como devemos te chamar" value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} required /></label>
-              <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} name="customer_phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: event.target.value })} required /></label>
+              <label className="block"><span className={label}>Celular / WhatsApp</span><input className={field} name="customer_phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" pattern={PHONE_PATTERN} title="Informe DDD + número, ex.: (11) 99999-9999" value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: maskPhoneInput(customerDraft.phone, event.target.value) })} required /></label>
               <label className="block sm:col-span-2">
                 <span className={label}>E-mail</span>
                 <span className="relative block">

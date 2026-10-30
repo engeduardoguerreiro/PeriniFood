@@ -8,7 +8,7 @@ import { requireRestaurant } from "@/lib/auth";
 import { isLocalImagePath, isStorageImageUrl } from "@/lib/image-url";
 import { uuid } from "@/lib/security";
 import { notFound } from "next/navigation";
-import { money, orderCode, statusLabel } from "@/lib/utils";
+import { displayPhone, money, normalizePhone, orderCode, statusLabel } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
 import Link from "next/link";
 import { ClipboardList, Pizza } from "lucide-react";
@@ -130,7 +130,7 @@ function printableReceipt(order: Order, items: OrderItem[], restaurantName: stri
     `${formatStoreDateTime(order.created_at)} - ${statusLabel[order.status]}`,
     "------------------------------------------",
     `Cliente: ${order.customer_name || "Cliente balcao"}`,
-    `Telefone: ${order.customer_phone || "-"}`,
+    `Telefone: ${displayPhone(order.customer_phone) || "-"}`,
     `Pontos de Fidelidade: ${loyaltyPoints}`,
     nextExpiry ? `Próximo vencimento: ${shortDate(nextExpiry)}` : null,
     `Endereço: ${cleanAddress(order.delivery_address)}`,
@@ -187,7 +187,7 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
       ? supabase.from("customers").select("id").eq("restaurant_id", current.restaurant_id).eq("id", current.customer_id).maybeSingle()
       : Promise.resolve({ data: null }),
     !current.customer_id && current.customer_phone
-      ? supabase.from("customers").select("id").eq("restaurant_id", current.restaurant_id).eq("phone", current.customer_phone).maybeSingle()
+      ? supabase.from("customers").select("id").eq("restaurant_id", current.restaurant_id).eq("phone", normalizePhone(current.customer_phone)).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("loyalty_programs").select("*").eq("restaurant_id", current.restaurant_id).maybeSingle(),
   ]);
@@ -248,7 +248,7 @@ export default async function PrintOrderPage({ params, searchParams }: { params:
 
       <div className="space-y-0.5 py-2 text-[13px]">
         <p><strong>Cliente:</strong> {current.customer_name || "Cliente balcão"}</p>
-        <p><strong>Telefone:</strong> {current.customer_phone || "-"}</p>
+        <p><strong>Telefone:</strong> {displayPhone(current.customer_phone) || "-"}</p>
         <p><strong>Fidelidade:</strong> {loyaltyPoints} pts{nextLoyaltyExpiry ? ` · vence ${shortDate(nextLoyaltyExpiry)}` : ""}</p>
         <p><strong>Endereço:</strong> {cleanAddress(current.delivery_address)}</p>
         <p><strong>Tipo:</strong> {typeLabel(current.type)}</p>

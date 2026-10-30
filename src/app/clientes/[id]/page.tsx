@@ -7,7 +7,8 @@ import { ActionFeedback } from "@/components/action-feedback";
 import { SettingsCepLookup } from "@/components/settings-cep-lookup";
 import { requireRestaurant } from "@/lib/auth";
 import { loyaltySummary, withLoyaltyCampaign } from "@/lib/loyalty";
-import { money, orderCode, statusLabel } from "@/lib/utils";
+import { displayPhone, money, orderCode, statusLabel } from "@/lib/utils";
+import { PhoneInput } from "@/components/phone-input";
 import type { Customer, Order, OrderStatus } from "@/lib/types";
 import { formatStoreDateTime } from "@/lib/timezone";
 import { Icon3D } from "@/components/ui/icon-3d";
@@ -97,7 +98,7 @@ async function CustomerDetail({ id, status, error }: { id: string; status: strin
           <div className="min-w-0">
             <Link href="/clientes" className="text-sm font-medium text-brand transition hover:text-[#9f2b24]">← Voltar para clientes</Link>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink flex items-center gap-3"><Icon3D icon={UserRound} tone="teal" size="sm" /><span className="min-w-0">{current.name}</span></h1>
-            <p className="text-sm text-ink-faint">{current.phone || current.whatsapp || "Sem telefone"}</p>
+            <p className="text-sm text-ink-faint">{displayPhone(current.phone || current.whatsapp) || "Sem telefone"}</p>
             <p className="mt-1 text-sm text-ink-faint">{fullAddress || "Endereço não informado."}</p>
           </div>
           <form action={deleteCustomer}>
@@ -124,7 +125,7 @@ async function CustomerDetail({ id, status, error }: { id: string; status: strin
             </Field>
             <input type="hidden" name="email" value={current.email ?? ""} />
             <Field label="Telefone">
-              <input className={inputClass} name="phone" defaultValue={current.phone ?? current.whatsapp ?? ""} />
+              <PhoneInput className={inputClass} name="phone" defaultValue={current.phone ?? current.whatsapp} />
             </Field>
             <Field label="CPF">
               <input className={inputClass} name="cpf" defaultValue={current.cpf ?? ""} />

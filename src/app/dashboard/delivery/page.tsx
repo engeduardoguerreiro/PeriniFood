@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Bike, CheckCheck, Coffee, Filter, Maximize, MoreHorizontal, Search, Settings, ShoppingBag, SlidersHorizontal, Timer, UserRound } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
-import { money, orderCode } from "@/lib/utils";
+import { displayPhone, money, orderCode } from "@/lib/utils";
 import type { Order, OrderStatus } from "@/lib/types";
 import { formatStoreTime } from "@/lib/timezone";
 
@@ -51,7 +51,7 @@ function OrderCard({ order }: { order: Order }) {
       </div>
       <div className="mt-3 text-sm text-ink-faint">
         <p>{order.delivery_address || "Endereço não informado"}</p>
-        <p>{order.customer_phone}</p>
+        <p>{displayPhone(order.customer_phone)}</p>
       </div>
       <div className="mt-4 flex items-center justify-between">
         <span className="text-xs font-bold uppercase text-ink-faint">{formatStoreTime(order.created_at)}</span>

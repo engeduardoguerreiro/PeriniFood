@@ -3,7 +3,7 @@ import { paymentDetailNote } from "@/lib/payments";
 import { requireRestaurant } from "@/lib/auth";
 import { money, statusLabel } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
-import { orderCode, whatsappLink } from "@/lib/utils";
+import { displayPhone, orderCode, whatsappLink } from "@/lib/utils";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
@@ -80,7 +80,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Cliente</strong><p>{current.customer_name}</p><p>{current.customer_phone}</p></div>
+          <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Cliente</strong><p>{current.customer_name}</p><p>{displayPhone(current.customer_phone)}</p></div>
           <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Entrega</strong><p>{current.delivery_address || "Retirada/balcão/mesa"}</p></div>
           <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Pagamento</strong><p>{current.payment_method}  {current.payment_status}</p>{paymentDetailNote(current.payment_detail, current.type === "pickup") && <p className="mt-1 text-sm font-semibold text-brand">{paymentDetailNote(current.payment_detail, current.type === "pickup")}</p>}</div>
           <div className="rounded-xl bg-[#faf9f6] p-4"><strong>Observações</strong><p>{current.notes || "Sem observações"}</p></div>

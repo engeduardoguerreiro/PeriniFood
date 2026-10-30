@@ -3,6 +3,7 @@ import { requireCustomer, rateLimit } from "@/lib/customer-session";
 import { loyaltySummary, withLoyaltyCampaign } from "@/lib/loyalty";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertSameOrigin, boundedText, privateJson, publicFailure, PublicError, readObject, uuid } from "@/lib/security";
+import { isValidPhone, normalizePhone } from "@/lib/utils";
 
 const fields = "id, name, phone, whatsapp, email, cpf, birth_date, address, address_number, neighborhood, complement, reference, city, state, zip_code";
 
@@ -33,8 +34,8 @@ export async function PATCH(request: Request) {
     const restaurantId = uuid(body.restaurantId);
     const { customer_id: customerId } = await requireCustomer(restaurantId, body.customerId);
     await rateLimit("profile-write", customerId, 30);
-    const phone = boundedText(body.phone, 25, true).replace(/\D/g, "");
-    if (!/^\d{10,13}$/.test(phone)) throw new PublicError("Informe um telefone válido.");
+    const phone = normalizePhone(boundedText(body.phone, 25, true));
+    if (!isValidPhone(phone)) throw new PublicError("Informe um telefone válido.");
     // Email changes require a separate proof-of-ownership flow.
     const payload = {
       name: boundedText(body.name, 120, true), phone, whatsapp: phone,

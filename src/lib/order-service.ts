@@ -7,7 +7,7 @@ import { priceCart, amount, type PricingCatalog } from "./order-pricing";
 import { choiceRule } from "./pizza-builder";
 import { orderPayment, pixKeyType, sitePayments, type PaymentDetail, type SitePayment } from "./payments";
 import { boundedText, PublicError, uuid } from "./security";
-import { parseDecimal } from "./utils";
+import { isValidPhone, normalizePhone, parseDecimal } from "./utils";
 import { getAccessState } from "./platform-billing";
 import { isRestaurantOpen } from "./opening-hours";
 import { deliveryRulesFromRestaurant, isMissingRelationError } from "./delivery-fee-rules";
@@ -93,12 +93,14 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
   }
   // Public checkout has no server-validated coupon redemption yet.
   const discount=source==="site" ? 0 : money(form,"discount");
+  const phoneInput=boundedText(form.get("customer_phone"),25,source==="site");
+  if (phoneInput && !isValidPhone(phoneInput)) throw new PublicError("Informe o telefone com DDD, ex.: (11) 99999-9999.");
   if (discount>subtotal) throw new PublicError("Desconto maior que o subtotal.");
   const order = {
     restaurant_id:restaurantId,customer_id:customerId,code:randomBytes(24).toString("hex"),source,type,payment_status:source==="pdv" ? "paid" : "pending",payment_method:payment,
     subtotal,delivery_fee:deliveryFee,discount,total:amount(subtotal+deliveryFee-discount),
     customer_name:boundedText(form.get("customer_name"),120,source==="site") || "Cliente balcão",
-    customer_phone:boundedText(form.get("customer_phone"),25,source==="site") || null,
+    customer_phone:normalizePhone(phoneInput) || null,
     delivery_address:deliveryAddress,notes:boundedText(form.get("customer_notes") ?? form.get("notes"),1000) || null,
     change_for:boundedText(form.get("change_for"),20) ? money(form,"change_for") : null,
   };
@@ -124,12 +126,13 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
 // Só o balcão faz isso — no site a conta é criada pelo consumidor em /api/customer-auth/register.
 async function ensurePdvCustomer(service: ReturnType<typeof createServiceClient>, restaurantId: string, form: FormData) {
   const name=boundedText(form.get("customer_name"),120);
-  const phone=boundedText(form.get("customer_phone"),25);
+  const phone=normalizePhone(boundedText(form.get("customer_phone"),25));
   if (!name || !phone) return null;
+  if (!isValidPhone(phone)) throw new PublicError("Informe o telefone com DDD, ex.: (11) 99999-9999.");
   const field=(key: string, max: number) => boundedText(form.get(key),max) || null;
   const birth=field("customer_birth_date",10);
   const payload: Record<string,string|null> = {
-    restaurant_id:restaurantId,name,phone,whatsapp:phone.replace(/\D/g,"") || phone,
+    restaurant_id:restaurantId,name,phone,whatsapp:phone,
     email:field("customer_email",160)?.toLowerCase() ?? null,cpf:field("customer_cpf",20),birth_date:birth && /^\d{4}-\d{2}-\d{2}$/.test(birth) ? birth : null,
     address:field("street",200),address_number:field("address_number",20),neighborhood:field("neighborhood",120),complement:field("complement",120),
     reference:field("reference",200),city:field("city",120),state:field("state",40),zip_code:field("zip_code",12),notes:field("customer_notes",1000),
