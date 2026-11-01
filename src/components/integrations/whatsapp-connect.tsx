@@ -1,10 +1,10 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { CheckCircle2, Loader2, LogOut, QrCode, RefreshCw, Smartphone } from "lucide-react";
+import { CheckCircle2, CloudOff, Loader2, LogOut, QrCode, RefreshCw, Smartphone } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-type State = "open" | "connecting" | "close" | "missing" | "disabled";
+type State = "open" | "connecting" | "close" | "missing" | "disabled" | "offline";
 
 // Conexão do WhatsApp da própria loja: mostra o QR Code (como no WhatsApp Web)
 // e acompanha o status até conectar.
@@ -20,6 +20,8 @@ export function WhatsAppConnect({ canEdit }: { canEdit: boolean }) {
     if (json?.state) {
       setState(json.state);
       if (json.state === "open") setQr(null);
+    } else if (json?.offline) {
+      setState("offline");
     } else if (json?.message) {
       setState("close");
       setError(json.message);
@@ -28,17 +30,24 @@ export function WhatsAppConnect({ canEdit }: { canEdit: boolean }) {
 
   useEffect(() => {
     const first = window.setTimeout(refresh, 0);
-    // Enquanto o QR está na tela, confere a cada 3 s se o celular já leu.
+    // Enquanto o QR está na tela, confere a cada 3 s se o celular já leu; com o
+    // servidor fora do ar, confere a cada 15 s para avisar assim que ele voltar.
     const timer = window.setInterval(() => { if (qr) refresh(); }, 3000);
-    return () => { window.clearTimeout(first); window.clearInterval(timer); };
-  }, [qr, refresh]);
+    const offlineTimer = state === "offline" ? window.setInterval(refresh, 15000) : undefined;
+    return () => { window.clearTimeout(first); window.clearInterval(timer); window.clearInterval(offlineTimer); };
+  }, [qr, refresh, state]);
 
   async function connect() {
     setBusy(true);
     setError(null);
     try {
       const response = await fetch("/api/whatsapp/session", { method: "POST" });
-      const json = await response.json();
+      const json = await response.json().catch(() => ({}));
+      if (json.offline) {
+        setState("offline");
+        setQr(null);
+        return;
+      }
       if (!response.ok || !json.ok) throw new Error(json.message || "Não foi possível gerar o QR Code.");
       setState(json.state);
       setQr(json.qr ?? null);
@@ -73,15 +82,19 @@ export function WhatsAppConnect({ canEdit }: { canEdit: boolean }) {
       <div>
         {state === "open" ? (
           <p className="flex items-center gap-2 text-lg font-black text-emerald-700"><CheckCircle2 className="h-6 w-6" /> WhatsApp conectado</p>
+        ) : state === "offline" ? (
+          <p className="flex items-center gap-2 text-lg font-black text-amber-700"><CloudOff className="h-6 w-6" /> Servidor de WhatsApp fora do ar</p>
         ) : (
           <p className="flex items-center gap-2 text-lg font-black text-ink"><Smartphone className="h-6 w-6 text-ink-soft" /> {state === null ? "Verificando conexão…" : "WhatsApp desconectado"}</p>
         )}
         <p className="mt-1 text-sm text-ink-soft">
           {state === "open"
             ? "As mensagens automáticas de status saem pelo número da loja."
+            : state === "offline"
+            ? "Não é preciso escanear de novo: o WhatsApp da loja continua pareado e volta sozinho quando o servidor voltar. Esta tela confere a cada 15 segundos."
             : "Conecte o WhatsApp da loja para enviar os avisos de pedido automaticamente."}
         </p>
-        {state !== "open" && (
+        {state !== "open" && state !== "offline" && (
           <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-ink-soft">
             <li>Toque em <strong>Gerar QR Code</strong>.</li>
             <li>No celular da loja, abra o WhatsApp → <strong>Dispositivos conectados</strong> → <strong>Conectar dispositivo</strong>.</li>
@@ -108,6 +121,8 @@ export function WhatsAppConnect({ canEdit }: { canEdit: boolean }) {
           <img src={qr.startsWith("data:") ? qr : `data:image/png;base64,${qr}`} alt="QR Code para conectar o WhatsApp" className="h-full w-full object-contain" />
         ) : state === "open" ? (
           <CheckCircle2 className="h-20 w-20 text-emerald-500" />
+        ) : state === "offline" ? (
+          <CloudOff className="h-20 w-20 text-amber-400" />
         ) : (
           <QrCode className="h-20 w-20 text-line" />
         )}

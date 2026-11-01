@@ -5,6 +5,7 @@ import { listSubscriptions, methodLabel, monthKey, planLabel, statusLabelSub, st
 import { moduleName } from "@/lib/platform-modules";
 import { money } from "@/lib/utils";
 import type { Restaurant } from "@/lib/types";
+import { serverHealth } from "@/lib/whatsapp/evolution";
 
 function StatTile({ icon: Icon, label, value, hint, tone = "brand" }: { icon: typeof Building2; label: string; value: string; hint?: string; tone?: "brand" | "warn" | "danger" }) {
   const badge = tone === "warn" ? "bg-amber-50 text-amber-700" : tone === "danger" ? "bg-rose-50 text-rose-700" : "bg-brand-soft text-brand";
@@ -23,11 +24,12 @@ function StatTile({ icon: Icon, label, value, hint, tone = "brand" }: { icon: ty
 export default async function AdminOverviewPage() {
   const { service } = await requirePlatformAdmin();
 
-  const [{ data: restaurants }, emailById, { subs, ready }, { data: payments }] = await Promise.all([
+  const [{ data: restaurants }, emailById, { subs, ready }, { data: payments }, whatsappHealth] = await Promise.all([
     service.from("restaurants").select("id, name, slug, city, state, owner_id, created_at").order("created_at", { ascending: true }),
     listUserEmails(service),
     listSubscriptions(),
     service.from("platform_payments").select("amount, paid_on").then((r) => (r.error ? { data: [] } : r)),
+    serverHealth(),
   ]);
 
   const rows = (restaurants ?? []) as unknown as Restaurant[];
@@ -61,6 +63,17 @@ export default async function AdminOverviewPage() {
             As tabelas de assinatura ainda não existem no banco. Aplique a migration{" "}
             <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">supabase/migrations/20260728000100_platform_billing.sql</code> para ativar plano,
             módulos, suspensão e faturamento.
+          </p>
+        </div>
+      )}
+
+      {(whatsappHealth === "offline" || whatsappHealth === "auth_error") && (
+        <div role="alert" className="flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <p>
+            {whatsappHealth === "offline"
+              ? "Servidor de WhatsApp fora do ar: os avisos de pedido e o Atendente de IA estão parados. Verifique a máquina do servidor e o túnel da Cloudflare (docker compose ps, systemctl status cloudflared)."
+              : "O servidor de WhatsApp recusou a chave de acesso: confira se EVOLUTION_API_KEY na Vercel é igual à AUTHENTICATION_API_KEY do servidor."}
           </p>
         </div>
       )}

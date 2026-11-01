@@ -1,7 +1,7 @@
 import { requireApiRestaurant } from "@/lib/api-helpers";
 import { isAdminRole } from "@/lib/integrations/security";
 import { privateJson } from "@/lib/security";
-import { connectionState, disconnect, startConnection } from "@/lib/whatsapp/evolution";
+import { connectionState, disconnect, startConnection, WhatsAppServerOffline } from "@/lib/whatsapp/evolution";
 
 // Conexão do WhatsApp da loja (QR Code). Só owner/admin/manager.
 async function guard() {
@@ -13,6 +13,7 @@ async function guard() {
 
 // Erros do cliente Evolution trazem só texto seguro (nunca a chave).
 const failure = (error: unknown) => (error instanceof Error ? error.message : "Falha ao falar com o servidor de WhatsApp.");
+const failureStatus = (error: unknown) => (error instanceof WhatsAppServerOffline ? 503 : 502);
 
 export async function GET() {
   const g = await guard();
@@ -20,7 +21,7 @@ export async function GET() {
   try {
     return privateJson({ ok: true, state: await connectionState(g.restaurantId) });
   } catch (error) {
-    return privateJson({ ok: false, message: failure(error) }, 502);
+    return privateJson({ ok: false, offline: error instanceof WhatsAppServerOffline, message: failure(error) }, failureStatus(error));
   }
 }
 
@@ -30,7 +31,7 @@ export async function POST() {
   try {
     return privateJson({ ok: true, ...(await startConnection(g.restaurantId)) });
   } catch (error) {
-    return privateJson({ ok: false, message: failure(error) }, 502);
+    return privateJson({ ok: false, offline: error instanceof WhatsAppServerOffline, message: failure(error) }, failureStatus(error));
   }
 }
 
@@ -40,7 +41,7 @@ export async function DELETE() {
   try {
     await disconnect(g.restaurantId);
   } catch (error) {
-    return privateJson({ ok: false, message: failure(error) }, 502);
+    return privateJson({ ok: false, offline: error instanceof WhatsAppServerOffline, message: failure(error) }, failureStatus(error));
   }
   return privateJson({ ok: true, state: "missing" });
 }
