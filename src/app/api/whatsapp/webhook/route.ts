@@ -24,7 +24,11 @@ export async function POST(request: Request) {
   if (!restaurantId || !jid || /@(g\.us|broadcast|newsletter)$/.test(jid)) return privateJson({ ok: true });
   const number = (jid.endsWith("@s.whatsapp.net") ? jid : key?.senderPn ?? key?.remoteJidAlt ?? "").split("@")[0].replace(/\D/g, "");
   const text = (data?.message?.conversation ?? data?.message?.extendedTextMessage?.text ?? "").trim();
-  if (!number || !text) return privateJson({ ok: true });
+  if (!number || !text) {
+    // Sem conteúdo do cliente no log: só o tipo do contato e da mensagem.
+    if (!key?.fromMe) console.warn("[whatsapp] mensagem ignorada", { jid: jid.split("@")[1], hasNumber: Boolean(number), keys: Object.keys(key ?? {}), message: Object.keys(data?.message ?? {}) });
+    return privateJson({ ok: true });
+  }
 
   if (key?.fromMe) {
     // Mensagem enviada pelo celular da loja: pausa a IA se foi a equipe que respondeu.
@@ -32,7 +36,10 @@ export async function POST(request: Request) {
     return privateJson({ ok: true });
   }
 
-  try { await rateLimit("wa-ai", `${restaurantId}:${number}`, 8, 60); } catch { return privateJson({ ok: true }); }
+  try { await rateLimit("wa-ai", `${restaurantId}:${number}`, 8, 60); } catch (error) {
+    console.warn("[whatsapp] limite de mensagens", error instanceof Error ? error.message : error);
+    return privateJson({ ok: true });
+  }
   after(async () => {
     try {
       const reply = await aiReply({ restaurantId, channel: "whatsapp", contact: number, text });

@@ -165,13 +165,13 @@ export async function appendConversation(restaurantId: string, channel: Channel,
   }, { onConflict: "restaurant_id,channel,contact" });
 }
 
-// A equipe respondeu pelo celular: a IA para de responder esse contato por 1 h.
+// A equipe respondeu pelo celular: a IA para de responder esse contato por 5 min.
 // Mensagens que o próprio sistema enviou (IA e avisos) não contam.
 export async function noteStoreMessage(restaurantId: string, contact: string, text: string) {
   const conversation = await loadConversation(restaurantId, "whatsapp", contact);
   const ours = (conversation?.messages ?? []).slice(-10).some((t) => t.role === "assistant" && t.text.trim() === text.trim());
   if (ours) return;
-  await appendConversation(restaurantId, "whatsapp", contact, [], new Date(Date.now() + 3600_000).toISOString());
+  await appendConversation(restaurantId, "whatsapp", contact, [], new Date(Date.now() + 5 * 60_000).toISOString());
 }
 
 export async function aiModuleEnabled(restaurantId: string) {
