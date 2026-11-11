@@ -132,6 +132,7 @@ export default async function DashboardPage() {
     .from("order_items")
     .select("product_name, quantity, total_price, orders!inner(created_at, status)")
     .eq("restaurant_id", restaurant.id)
+    .eq("orders.restaurant_id", restaurant.id)
     .gte("orders.created_at", rangeStart)
     .neq("orders.status", "canceled")
     .limit(20000);

@@ -223,7 +223,7 @@ export async function loadReportDataset(
   const [{ data: itemRows }, { data: productRows }, { data: customerRows }] = await Promise.all([
     // Join pelo período em vez de .in(ids): milhares de ids estouravam a URL.
     orderIds.length
-      ? supabase.from("order_items").select("*, orders!inner(created_at)").eq("restaurant_id", restaurant.id).gte("orders.created_at", range.startISO).lt("orders.created_at", range.endISO).limit(50000)
+      ? supabase.from("order_items").select("*, orders!inner(created_at)").eq("restaurant_id", restaurant.id).eq("orders.restaurant_id", restaurant.id).gte("orders.created_at", range.startISO).lt("orders.created_at", range.endISO).limit(50000)
       : Promise.resolve({ data: [] as Row[] }),
     supabase.from("products").select("*, categories(name)").eq("restaurant_id", restaurant.id),
     supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id),

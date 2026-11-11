@@ -28,6 +28,9 @@ const operationColumns: OperationColumn[] = [
 ];
 
 const historyStatuses: OrderStatus[] = ["completed", "canceled"];
+// Lista positiva (e não "not in" histórico): assim o banco usa o índice
+// (restaurant_id, status, created_at) e não percorre o histórico inteiro da loja.
+const activeStatuses: OrderStatus[] = ["pending", "accepted", "preparing", "ready", "out_for_delivery"];
 
 const sourceLabel: Record<string, string> = {
   "99food": "99Food",
@@ -198,7 +201,7 @@ export default async function OrdersPage() {
       .from("orders")
       .select("*")
       .eq("restaurant_id", restaurant.id)
-      .not("status", "in", `(${historyStatuses.join(",")})`)
+      .in("status", activeStatuses)
       .order("created_at", { ascending: false })
       .limit(500),
     supabase
