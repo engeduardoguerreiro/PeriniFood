@@ -5,6 +5,8 @@ import { processIFoodEvent } from "./event-processor";
 
 type Result = { polled: number; processed: number; stores?: number; failedStores?: number };
 
+const STORE_CONCURRENCY = 10;
+
 // Puxa a fila de eventos do iFood, processa cada um (cria/cancela pedido) e
 // confirma o recebimento. Acionado a cada 30 s pelo pg_cron do Supabase
 // (deploy/ifood-poller/supabase-cron.sql). No distribuído, cada loja usa o próprio token, e o
@@ -21,9 +23,15 @@ export async function pollAndProcessIFood(): Promise<Result> {
     .not("external_store_id", "is", null);
   if (error) throw new Error(error.message);
 
-  const results = await Promise.allSettled(
-    (data ?? []).map(async (row) => pollOnce(await getIFoodAccessToken(row.id), [row.external_store_id as string])),
-  );
+  // Lojas em lotes de STORE_CONCURRENCY: com 100+ lojas, todas de uma vez abriam
+  // centenas de chamadas simultâneas ao iFood e ao banco na mesma função.
+  const rows = data ?? [];
+  const results: PromiseSettledResult<Result>[] = [];
+  for (let i = 0; i < rows.length; i += STORE_CONCURRENCY) {
+    results.push(...await Promise.allSettled(
+      rows.slice(i, i + STORE_CONCURRENCY).map(async (row) => pollOnce(await getIFoodAccessToken(row.id), [row.external_store_id as string])),
+    ));
+  }
   const total: Result = { polled: 0, processed: 0, stores: results.length, failedStores: 0 };
   for (const result of results) {
     if (result.status === "fulfilled") {

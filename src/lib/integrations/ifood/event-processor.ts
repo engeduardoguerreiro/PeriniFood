@@ -96,14 +96,17 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
   const mapped = mapIFoodOrder(details);
   const schedule = ifoodSchedule(details);
 
-  const { data: order, error } = await supabase
-    .from("orders")
-    .insert({
+  // Pedido + vínculo + itens numa transação só (RPC). O índice único por
+  // loja/plataforma/id externo impede duplicata quando webhook e polling, ou duas
+  // rodadas de polling, chegam ao mesmo tempo: o segundo recebe created=false.
+  // O vínculo integration_orders é gravado só pelo servidor: é o que autoriza
+  // mandar status/cancelamento de volta ao iFood (o lojista edita external_order_id).
+  const { data: saved, error } = await supabase.rpc("create_external_order_atomic", {
+    order_data: {
       restaurant_id: integration.restaurant_id,
       source: "ifood",
       code: newCode(),
       type: mapped.type,
-      status: "pending",
       payment_status: mapped.paid ? "paid" : "pending",
       payment_method: "online",
       subtotal: mapped.subtotal,
@@ -112,42 +115,30 @@ export async function processIFoodEvent(supabase: ServiceClient, event: IFoodEve
       customer_name: mapped.customerName,
       customer_phone: mapped.customerPhone,
       delivery_address: mapped.deliveryAddress,
-      external_order_id: mapped.externalOrderId,
+      external_order_id: mapped.externalOrderId ?? orderId,
       external_order_code: mapped.displayId,
       external_platform: "ifood",
       notes: schedule ? scheduleLabel(schedule) : null,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-
-  // Vínculo gravado só pelo servidor: é o que autoriza mandar status/cancelamento
-  // de volta ao iFood (o lojista consegue editar external_order_id em orders).
-  await supabase.from("integration_orders").insert({
-    restaurant_id: integration.restaurant_id,
-    integration_id: integration.id,
-    order_id: order.id,
-    external_order_id: mapped.externalOrderId ?? orderId,
-    external_code: mapped.displayId ?? null,
-    external_status: code || "PLACED",
-    raw_payload: details as unknown as Record<string, unknown>,
+    },
+    item_data: mapped.items.map((item) => ({
+      product_id: null,
+      product_name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      total_price: item.totalPrice,
+      notes: item.notes,
+      selected_options: { externalId: item.externalId },
+    })),
+    link_data: {
+      integration_id: integration.id,
+      external_order_id: mapped.externalOrderId ?? orderId,
+      external_code: mapped.displayId ?? null,
+      external_status: code || "PLACED",
+      raw_payload: details,
+    },
   });
-
-  if (mapped.items.length && order) {
-    await supabase.from("order_items").insert(
-      mapped.items.map((item) => ({
-        restaurant_id: integration.restaurant_id,
-        order_id: order.id,
-        product_id: null,
-        product_name: item.name,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total_price: item.totalPrice,
-        notes: item.notes,
-        selected_options: { externalId: item.externalId },
-      })),
-    );
-  }
+  if (error) throw new Error(error.message);
+  if (!(saved as { created?: boolean } | null)?.created) return;
 
   await supabase.from("integration_logs").insert({
     restaurant_id: integration.restaurant_id,
