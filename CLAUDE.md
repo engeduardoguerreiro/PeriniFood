@@ -27,7 +27,7 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 
 - There is no full test suite. `npm test` runs `scripts/test-pizza-builder.mjs` (node:test on `src/lib/pizza-builder.ts`, the public menu's step-by-step builder rules; Node strips the TS types itself). Otherwise verify with a type check or build, `replay-migrations.mjs` for SQL, and the running app.
 - `print-agent:*` (PowerShell) and `desktop:*` (Electron/NSIS) build Windows deliverables and do not run on Linux.
-- Prisma is **not** used at runtime: no PrismaClient in `src/`. `prisma/schema.prisma` is partial and stale. `prisma/seed.mjs` uses the Supabase SDK.
+- There is no ORM and no direct Postgres connection: all data access goes through supabase-js (HTTP to PostgREST), so connection pooling is handled by Supabase. Prisma was removed (2026-11); the seed lives in `scripts/seed.mjs` and uses the Supabase SDK.
 
 ## Database and migrations
 
@@ -85,7 +85,7 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 
 ## Env vars
 
-`.env.example` is incomplete. Besides the Supabase variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) and `DATABASE_URL`, the code reads:
+`.env.example` is incomplete. Besides the Supabase variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), the code reads:
 - `PLATFORM_ADMIN_EMAILS`
 - `PLATFORM_PAYMENT_URL` (optional): subscription payment link shown on `/ativacao`
 - `IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`, `IFOOD_API_BASE_URL`, `IFOOD_POLL_SECRET`; `IFOOD_AUTH_MODE=distributed` switches to per-store linking (userCode → token in `integrations.refresh_token`, `src/lib/integrations/ifood/tokens.ts`) with events by polling every 30 s, triggered by Supabase pg_cron + pg_net (`deploy/ifood-poller/supabase-cron.sql`; systemd timer there as an alternative); default is the centralized app + signed webhook

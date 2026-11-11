@@ -53,8 +53,6 @@ next-env.d.ts
 /data-auth.sql
 /data-public.sql
 
-# prisma generated client (regenerado via `prisma generate`)
-/src/generated
 
 # claude code (mantém launch.json compartilhado, ignora config local)
 .claude/settings.local.json

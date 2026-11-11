@@ -63,7 +63,7 @@ flowchart TD
 | src/integrations | Mappers, exemplos e fachadas que também reexportam código de lib |
 | supabase/schema.sql | Estrutura base, políticas RLS e triggers |
 | supabase/migrations | Evoluções incrementais do banco |
-| prisma | Modelagem parcial, migration antiga e seed |
+| scripts/seed.mjs | Seed via Supabase SDK (Prisma removido em 2026-11) |
 | desktop | Aplicativo Windows e instalador |
 | scripts | Agente de impressão e instalação/distribuição |
 
