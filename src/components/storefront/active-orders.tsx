@@ -21,6 +21,7 @@ export function ActiveOrders({ slug }: { slug: string }) {
   useEffect(() => {
     let stop = false;
     const load = async () => {
+      if (document.visibilityState !== "visible") return;
       const results = await Promise.all(recentOrders(slug).map(async (order) => {
         const response = await fetch(`/api/rastreio/${order.code}`, { cache: "no-store" }).catch(() => null);
         if (response?.status === 404) { forgetOrder(slug, order.code); return null; }
@@ -31,7 +32,8 @@ export function ActiveOrders({ slug }: { slug: string }) {
     };
     load();
     const timer = window.setInterval(load, 30000);
-    return () => { stop = true; window.clearInterval(timer); };
+    document.addEventListener("visibilitychange", load);
+    return () => { stop = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", load); };
   }, [slug]);
 
   if (!active.length) return null;

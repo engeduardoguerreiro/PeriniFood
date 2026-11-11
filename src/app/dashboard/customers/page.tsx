@@ -12,9 +12,12 @@ import { normalizePhone } from "@/lib/utils";
 
 type CustomersSearchParams = {
   q?: string;
+  pagina?: string;
   status?: string;
   error?: string;
 };
+
+const PAGE_SIZE = 50;
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<CustomersSearchParams> }) {
   const { supabase, restaurant } = await requireRestaurant();
@@ -23,14 +26,32 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const query = (sp.q ?? "").replace(/[^\p{L}\p{N} @+.-]/gu, "").trim().slice(0, 100);
   // Telefones ficam só com dígitos: "97191-5600" precisa achar 11971915600.
   const queryPhone = normalizePhone(query).length >= 3 ? normalizePhone(query) : query;
-  let request = supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).order("created_at", { ascending: false });
+  // Paginado: antes vinham todos os clientes e TODOS os pedidos da loja (e o
+  // Supabase ainda cortava em 1000 linhas, errando os pontos sem aviso).
+  const page = Math.max(1, Math.floor(Number(sp.pagina) || 1));
+  let request = supabase.from("customers").select(CUSTOMER_FIELDS, { count: "exact" }).eq("restaurant_id", restaurant.id)
+    .order("created_at", { ascending: false }).order("id").range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (query) request = request.or(`name.ilike.%${query}%,phone.ilike.%${queryPhone}%,whatsapp.ilike.%${queryPhone}%`);
-  const [{ data, error }, { data: loyalty }, { data: orders }] = await Promise.all([
+  const [{ data, error, count }, { data: loyalty }] = await Promise.all([
     request,
     supabase.from("loyalty_programs").select("*").eq("restaurant_id", restaurant.id).maybeSingle(),
-    supabase.from("orders").select("customer_id, customer_phone, total, status, payment_status, created_at").eq("restaurant_id", restaurant.id),
   ]);
   const customers = (data ?? []) as Customer[];
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const pageHref = (target: number) => `/clientes?${new URLSearchParams({ ...(query ? { q: query } : {}), pagina: String(target) })}`;
+  // Só os pedidos dos clientes desta página (por id ou telefone normalizado).
+  let orders: unknown[] | null = [];
+  if (customers.length) {
+    const loyaltyRows = await supabase.rpc("customer_loyalty_orders", {
+      p_restaurant_id: restaurant.id,
+      p_customer_ids: customers.map((customer) => customer.id),
+      p_phones: customers.map((customer) => customer.phone).filter(Boolean),
+    });
+    // Sem a migration 20261111000400: volta ao jeito antigo (todos os pedidos).
+    orders = loyaltyRows.error
+      ? (await supabase.from("orders").select("customer_id, customer_phone, total, status, payment_status, created_at").eq("restaurant_id", restaurant.id)).data
+      : loyaltyRows.data;
+  }
   const loyaltyWithCampaign = withLoyaltyCampaign(loyalty, restaurant.opening_hours as Record<string, unknown> | null);
   const loyaltyOrders = (orders ?? []) as Pick<Order, "customer_id" | "customer_phone" | "total" | "status" | "payment_status" | "created_at">[];
   const pointsForCustomer = (customer: Customer) => calculateLoyaltyPoints(loyaltyWithCampaign, loyaltyOrders.filter((order) => (
@@ -112,6 +133,15 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           {!customers.length && <p className="p-5 text-sm text-ink-faint">Nenhum cliente encontrado.</p>}
         </div>
       </div>
+      {totalPages > 1 && (
+        <nav aria-label="Páginas de clientes" className="mt-4 flex items-center justify-between gap-3 text-sm">
+          <span className="text-ink-faint">{count} clientes · página {page} de {totalPages}</span>
+          <div className="flex gap-2">
+            {page > 1 && <Link className="inline-flex h-9 items-center rounded-lg border border-line bg-white px-3 font-bold text-ink-body hover:border-red-300 hover:bg-brand-soft" href={pageHref(page - 1)}>Anterior</Link>}
+            {page < totalPages && <Link className="inline-flex h-9 items-center rounded-lg border border-line bg-white px-3 font-bold text-ink-body hover:border-red-300 hover:bg-brand-soft" href={pageHref(page + 1)}>Próxima</Link>}
+          </div>
+        </nav>
+      )}
     </section>
   );
 }

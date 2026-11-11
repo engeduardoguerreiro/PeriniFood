@@ -14,8 +14,13 @@ export async function GET(request: Request) {
     const supabase = createServiceClient();
     const { error } = await supabase.from("restaurants").select("id").limit(1);
     if (error) throw error;
-    const cleanup = await supabase.rpc("cleanup_security_data");
-    if (cleanup.error) throw cleanup.error;
+    // purge_old_data (migration 20261111000400) também roda de hora em hora pelo
+    // pg_cron; aqui é a rede de segurança diária. Inclui cleanup_security_data.
+    const purge = await supabase.rpc("purge_old_data");
+    if (purge.error) {
+      const cleanup = await supabase.rpc("cleanup_security_data");
+      if (cleanup.error) throw cleanup.error;
+    }
     return NextResponse.json({ ok: true, pingedAt: new Date().toISOString() });
   } catch {
     const message = "Serviço temporariamente indisponível";

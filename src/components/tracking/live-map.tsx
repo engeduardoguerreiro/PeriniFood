@@ -25,7 +25,7 @@ function minutesAgo(iso: string, now: number) {
   return `há ${Math.round(seconds / 60)} min`;
 }
 
-export function LiveMap({ endpoint, intervalMs = 10000, className = "h-72", onData }: { endpoint: string; intervalMs?: number; className?: string; onData?: (data: LiveTracking | null) => void }) {
+export function LiveMap({ endpoint, intervalMs = 10000, className = "h-72", onData }: { endpoint: string; intervalMs?: number; className?: string; onData?: (data: LiveTracking | null, raw?: Record<string, unknown>) => void }) {
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const layers = useRef<{ courier?: Marker; dest?: Marker; trail?: Polyline }>({});
@@ -62,7 +62,7 @@ export function LiveMap({ endpoint, intervalMs = 10000, className = "h-72", onDa
       try {
         const response = await fetch(endpoint, { cache: "no-store" });
         const json = await response.json();
-        if (!stop) { setNow(Date.now()); setTracking(json.tracking ?? null); onDataRef.current?.(json.tracking ?? null); }
+        if (!stop) { setNow(Date.now()); setTracking(json.tracking ?? null); onDataRef.current?.(json.tracking ?? null, json); }
       } catch { /* mantém o último estado */ }
     };
     load();

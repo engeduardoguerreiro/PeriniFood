@@ -1,4 +1,5 @@
 import { CUSTOMER_FIELDS } from "@/lib/public-data";
+import { fetchAllRows } from "@/lib/fetch-all";
 import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays, ChefHat, CircleDollarSign, Clock3, ClipboardList, Package, Radio, ReceiptText, ShoppingBag, Timer, Trophy, TrendingUp, Users, type LucideIcon, Home } from "lucide-react";
 import { requireRestaurant } from "@/lib/auth";
@@ -113,12 +114,12 @@ export default async function DashboardPage() {
   const rangeStart = zonedLocalTimeToUtc(addDaysToDateParts(todayParts, -13)).toISOString();
   const week = new Set(Array.from({ length: 7 }, (_, i) => keyFromParts(addDaysToDateParts(todayParts, -i))));
 
-  const [{ data: rangeOrdersData }, { count: productCount }, { count: customerCount }] = await Promise.all([
-    supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).gte("created_at", rangeStart).order("created_at", { ascending: false }).limit(5000),
+  const [rangeOrders, { count: productCount }, { count: customerCount }] = await Promise.all([
+    // Em páginas: o Supabase corta cada resposta em 1000 linhas.
+    fetchAllRows<Order>((from, to) => supabase.from("orders").select("*").eq("restaurant_id", restaurant.id).gte("created_at", rangeStart).order("created_at", { ascending: false }).order("id").range(from, to), { max: 20_000 }),
     supabase.from("products").select("*", { count: "exact", head: true }).eq("restaurant_id", restaurant.id).eq("active", true),
     supabase.from("customers").select(CUSTOMER_FIELDS, { count: "exact", head: true }).eq("restaurant_id", restaurant.id),
   ]);
-  const rangeOrders = (rangeOrdersData ?? []) as Order[];
 
   // Pedido do PDV nasce "paid": cancelado não pode entrar no faturamento.
   const paid = (order: Order) => order.status !== "canceled" && (order.status === "completed" || order.payment_status === "paid");
@@ -128,15 +129,15 @@ export default async function DashboardPage() {
 
   // Join em vez de .in(ids): com centenas de pedidos a URL do .in estourava e o
   // "Top produtos" ficava vazio sem aviso.
-  const { data: itemsData } = await supabase
+  const items = await fetchAllRows<Pick<OrderItem, "product_name" | "quantity" | "total_price">>((from, to) => supabase
     .from("order_items")
     .select("product_name, quantity, total_price, orders!inner(created_at, status)")
     .eq("restaurant_id", restaurant.id)
     .eq("orders.restaurant_id", restaurant.id)
     .gte("orders.created_at", rangeStart)
     .neq("orders.status", "canceled")
-    .limit(20000);
-  const items = (itemsData ?? []) as unknown as Pick<OrderItem, "product_name" | "quantity" | "total_price">[];
+    .order("id")
+    .range(from, to), { max: 100_000 });
 
   const revenueToday = todayOrders.filter(paid).reduce((sum, order) => sum + Number(order.total), 0);
   const revenueYesterday = rangeOrders.filter((order) => dayKey(order.created_at) === yesterdayKey && paid(order)).reduce((sum, order) => sum + Number(order.total), 0);

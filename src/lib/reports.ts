@@ -1,4 +1,5 @@
 import { CUSTOMER_FIELDS } from "@/lib/public-data";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { orderCode } from "@/lib/utils";
 import { STORE_TIME_ZONE, addDaysToDateParts, formatStoreDateTime, keyFromParts, partsFromKey, zonedDateParts, zonedLocalTimeToUtc } from "@/lib/timezone";
 import "server-only";
@@ -10,7 +11,6 @@ export type ReportSearchParams = Record<string, string | string[] | undefined>;
 export type ChartPoint = { label: string; value: number; helper?: string };
 export type TableRow = Record<string, string | number>;
 
-type Row = Record<string, unknown>;
 
 const PERIOD_LABELS: Record<string, string> = {
   hoje: "Hoje",
@@ -206,32 +206,30 @@ export async function loadReportDataset(
 ) {
   const range = resolveReportRange(searchParams);
 
-  const { data: orderRows, error: orderError } = await supabase
+  // Em páginas: o Supabase corta cada resposta em 1000 linhas.
+  const orderRows = await fetchAllRows<Order>((from, to) => supabase
     .from("orders")
     .select("*")
     .eq("restaurant_id", restaurant.id)
     .gte("created_at", range.startISO)
     .lt("created_at", range.endISO)
     .order("created_at", { ascending: false })
-    .limit(5000);
+    .order("id")
+    .range(from, to), { max: 20_000 });
 
-  if (orderError) throw new Error(orderError.message);
-
-  const orders = filterOrders((orderRows ?? []) as Order[], searchParams);
+  const orders = filterOrders(orderRows, searchParams);
   const orderIds = orders.map((order) => order.id);
 
-  const [{ data: itemRows }, { data: productRows }, { data: customerRows }] = await Promise.all([
+  const [itemRows, products, customers] = await Promise.all([
     // Join pelo período em vez de .in(ids): milhares de ids estouravam a URL.
     orderIds.length
-      ? supabase.from("order_items").select("*, orders!inner(created_at)").eq("restaurant_id", restaurant.id).eq("orders.restaurant_id", restaurant.id).gte("orders.created_at", range.startISO).lt("orders.created_at", range.endISO).limit(50000)
-      : Promise.resolve({ data: [] as Row[] }),
-    supabase.from("products").select("*, categories(name)").eq("restaurant_id", restaurant.id),
-    supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id),
+      ? fetchAllRows<OrderItem>((from, to) => supabase.from("order_items").select("*, orders!inner(created_at)").eq("restaurant_id", restaurant.id).eq("orders.restaurant_id", restaurant.id).gte("orders.created_at", range.startISO).lt("orders.created_at", range.endISO).order("id").range(from, to), { max: 100_000 })
+      : Promise.resolve([] as OrderItem[]),
+    fetchAllRows<Product>((from, to) => supabase.from("products").select("*, categories(name)").eq("restaurant_id", restaurant.id).order("id").range(from, to)),
+    fetchAllRows<Customer>((from, to) => supabase.from("customers").select(CUSTOMER_FIELDS).eq("restaurant_id", restaurant.id).order("id").range(from, to)),
   ]);
 
-  const items = filterItems((itemRows ?? []) as OrderItem[], orders, searchParams);
-  const products = (productRows ?? []) as Product[];
-  const customers = (customerRows ?? []) as Customer[];
+  const items = filterItems(itemRows, orders, searchParams);
   const usefulOrders = validOrders(orders);
   const usefulOrderIds = new Set(usefulOrders.map((order) => order.id));
   const usefulItems = items.filter((item) => usefulOrderIds.has(item.order_id));

@@ -1,7 +1,7 @@
 "use client";
 
 import { Bike, Check, ChefHat, ClipboardCheck, Home, KeyRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LiveMap } from "./live-map";
 import type { OrderStatus } from "@/lib/types";
 
@@ -25,24 +25,35 @@ type Poll = { status: OrderStatus; courierName: string | null; started: boolean;
 export function CustomerTracking({ code, initialStatus, delivery }: { code: string; initialStatus: OrderStatus; delivery: boolean }) {
   const [poll, setPoll] = useState<Poll>({ status: initialStatus, courierName: null, started: false, delivered: false, deliveryCode: null });
 
-  // Status (e se o motoboy já saiu) a cada 10s; o mapa, quando aberto, busca a posição por conta própria.
-  useEffect(() => {
-    let stop = false;
-    const load = () => fetch(`/api/rastreio/${code}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => {
-        if (stop || !j.status) return;
-        setPoll({ status: j.status, courierName: j.tracking?.courierName ?? null, started: Boolean(j.tracking?.last), delivered: j.tracking?.state === "delivered", deliveryCode: j.tracking?.deliveryCode ?? null });
-      })
-      .catch(() => {});
-    load();
-    const timer = window.setInterval(load, 10000);
-    return () => { stop = true; window.clearInterval(timer); };
-  }, [code]);
+  const apply = useCallback((j: Record<string, unknown> | null | undefined) => {
+    const tracking = j?.tracking as { courierName?: string | null; last?: unknown; state?: string; deliveryCode?: string | null } | null | undefined;
+    if (!j?.status) return;
+    setPoll({ status: j.status as OrderStatus, courierName: tracking?.courierName ?? null, started: Boolean(tracking?.last), delivered: tracking?.state === "delivered", deliveryCode: tracking?.deliveryCode ?? null });
+  }, []);
 
   const { status } = poll;
   const steps = delivery ? deliverySteps : pickupSteps;
   const showMap = delivery && status !== "canceled" && status !== "completed" && !poll.delivered && (status === "out_for_delivery" || poll.started);
+  const finished = status === "completed" || status === "canceled";
+
+  // Status a cada 10 s, só com a aba visível. Para quando o pedido termina e
+  // enquanto o mapa está aberto (o mapa já consulta o mesmo endpoint e repassa
+  // o status em onData): antes eram 2 consultas a cada 10 s, para sempre.
+  useEffect(() => {
+    if (finished || showMap) return;
+    let stop = false;
+    const load = () => {
+      if (document.visibilityState !== "visible") return;
+      fetch(`/api/rastreio/${code}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((j) => { if (!stop) apply(j); })
+        .catch(() => {});
+    };
+    load();
+    const timer = window.setInterval(load, 10000);
+    document.addEventListener("visibilitychange", load);
+    return () => { stop = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", load); };
+  }, [apply, code, finished, showMap]);
 
   if (status === "canceled") return <p className="rounded-2xl bg-red-50 p-4 text-center font-bold text-red-700">Este pedido foi cancelado pela loja.</p>;
 
@@ -79,7 +90,7 @@ export function CustomerTracking({ code, initialStatus, delivery }: { code: stri
       {showMap && (
         <section aria-label="Motoboy no mapa">
           <p className="mb-2 flex items-center gap-2 font-black text-ink"><Bike className="h-5 w-5 text-brand" /> {poll.courierName ? `${poll.courierName} está a caminho` : "Seu pedido está a caminho"}</p>
-          <LiveMap endpoint={`/api/rastreio/${code}`} className="h-80" />
+          <LiveMap endpoint={`/api/rastreio/${code}`} className="h-80" onData={(_, raw) => apply(raw)} />
         </section>
       )}
     </div>

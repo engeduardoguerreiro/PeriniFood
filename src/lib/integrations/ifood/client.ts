@@ -1,13 +1,11 @@
 import { IFOOD_BASE_URL } from "./config";
-import { getClientCredentialsToken } from "./auth";
-import { integrationToken } from "./tokens";
+import { centralizedToken, integrationToken } from "./tokens";
 
 // Token para chamadas à API: o da loja (distribuído) quando há integração;
 // sem ela, client_credentials do app (centralizado).
 export async function getIFoodAccessToken(integrationId?: string): Promise<string> {
   if (integrationId) return integrationToken(integrationId);
-  const token = await getClientCredentialsToken();
-  return token.accessToken;
+  return centralizedToken();
 }
 
 // Lojas que o token acessa (no distribuído: as que o lojista autorizou).
