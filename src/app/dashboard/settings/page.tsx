@@ -251,9 +251,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <option value={4}>Até 4 sabores</option>
               </select>
             </Field>
+            <Field label="Cobrança da pizza com mais de um sabor">
+              <select className={inputClass} name="pizza_price_rule" defaultValue={restaurant.pizza_price_rule === "average" ? "average" : "highest"}>
+                <option value="highest">Pelo sabor de maior valor</option>
+                <option value="average">Pela média dos sabores (soma das frações)</option>
+              </select>
+            </Field>
           </div>
           <p className={`mt-3 ${noteClass}`}>
-            Para pizzas com mais de um sabor, o sistema sempre cobra o maior valor entre os sabores escolhidos.
+            Maior valor: meia mussarela (R$ 50) + meia calabresa (R$ 60) = R$ 60. Média: R$ 25 + R$ 30 = R$ 55. Com 3 ou 4 sabores, cada parte cobra 1/3 ou 1/4 do preço do seu sabor. Vale para o cardápio online e o PDV.
           </p>
           <SaveBar label="Salvar regras" />
             </ConfigSection>

@@ -14,6 +14,7 @@ export function publicRestaurant(row: Restaurant): Restaurant {
     delivery_fee: row.delivery_fee, estimated_delivery_time: row.estimated_delivery_time,
     menu_footer_message: row.menu_footer_message, max_pizza_flavors: row.max_pizza_flavors,
     crust_choice_rule: row.crust_choice_rule ?? "ask", addon_choice_rule: row.addon_choice_rule ?? "ask",
+    pizza_price_rule: row.pizza_price_rule === "average" ? "average" : "highest",
     // Já nas opções do site ("pix" antigo → Pix na entrega; "Pix agora" só com chave válida).
     // A chave em si não vai para o cardápio: o código aparece só no acompanhamento do pedido.
     payment_methods: sitePayments(row.payment_methods, row.pix_key, pixKeyType(row.pix_key_type)),

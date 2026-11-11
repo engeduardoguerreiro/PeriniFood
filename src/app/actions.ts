@@ -850,6 +850,7 @@ export async function updateRestaurant(formData: FormData) {
     pickup_enabled: formData.get("pickup_enabled") === "on",
     table_service_enabled: formData.get("table_service_enabled") === "on",
     max_pizza_flavors: Math.min(4, Math.max(1, num(formData, "max_pizza_flavors", 1))),
+    pizza_price_rule: text(formData, "pizza_price_rule") === "average" ? "average" : "highest",
     payment_methods: formData.getAll("payment_methods").map(String).filter((value) => SITE_PAYMENTS.includes(value as SitePayment)),
     ...pixSettings(formData),
   };
@@ -861,6 +862,9 @@ export async function updateRestaurant(formData: FormData) {
     // Sem a migration do Pix: só avisa se a loja tentou cadastrar a chave; senão salva o resto.
     if (missingColumn?.startsWith("pix_") && restaurantPayload.pix_key) {
       redirectWithFeedback(formData, "/configuracoes", "saved", "Para salvar a chave Pix, aplique supabase/migrations/20261026000400_site_payments.sql no Supabase.");
+    }
+    if (missingColumn === "pizza_price_rule" && restaurantPayload.pizza_price_rule === "average") {
+      redirectWithFeedback(formData, "/configuracoes", "saved", "Para cobrar pizza pela média dos sabores, aplique supabase/migrations/20261111000200_pizza_price_rule.sql no Supabase.");
     }
     if (missingColumn && ["legal_name", "cnpj", "state_registration", "address_number", "neighborhood", "manual_open_status"].includes(missingColumn)) {
       redirectWithFeedback(formData, "/configuracoes", "saved", `O campo ${missingColumn} ainda não existe no banco. Execute a migration de configurações.`);

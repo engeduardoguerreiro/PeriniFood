@@ -5,6 +5,9 @@ export type PublicOrderStatus = "NEW" | "CONFIRMED" | "PREPARING" | "READY" | "O
 
 // Regra da loja para borda/adicionais no pedido do site (migration 20261026000200).
 export type ChoiceRule = "optional" | "ask" | "required";
+// Cobrança da pizza de vários sabores: "highest" = sabor de maior valor;
+// "average" = média (cada fração cobra sua parte do preço do sabor).
+export type PizzaPriceRule = "highest" | "average";
 
 export type Restaurant = {
   id: string;
@@ -37,6 +40,8 @@ export type Restaurant = {
   max_pizza_flavors: number | null;
   crust_choice_rule?: ChoiceRule | null;
   addon_choice_rule?: ChoiceRule | null;
+  // Migration 20261111000200; ausente = "highest".
+  pizza_price_rule?: PizzaPriceRule | null;
   // Chave Pix da loja para o "Pix agora" do site (migration 20261026000400).
   pix_key?: string | null;
   pix_key_type?: string | null;

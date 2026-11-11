@@ -8,7 +8,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useRouter } from "next/navigation";
 import { money } from "@/lib/utils";
 import {
-  builderSteps, cartStorageKey, choiceRule, createBuilderContext, draftFromLine, draftToLine, firstIncompleteStep, groupOptions, lineDetails, lineTotal,
+  builderSteps, cartStorageKey, choiceRule, createBuilderContext, pizzaPriceRule, draftFromLine, draftToLine, firstIncompleteStep, groupOptions, lineDetails, lineTotal,
   newDraft, normalizeLabel, parseStoredCart, sizeLabel,
   type BuilderCatalog, type BuilderContext, type BuilderDraft, type CartLine, type StepId,
 } from "@/lib/pizza-builder";
@@ -61,7 +61,8 @@ export function PublicMenuOrder({
   const builderCatalog = useMemo<BuilderCatalog>(() => ({
     products, variants, options, pizzaOptions, maxFlavors: Number(restaurant.max_pizza_flavors ?? 1),
     rules: { crust: choiceRule(restaurant.crust_choice_rule), addons: choiceRule(restaurant.addon_choice_rule) },
-  }), [options, pizzaOptions, products, restaurant.addon_choice_rule, restaurant.crust_choice_rule, restaurant.max_pizza_flavors, variants]);
+    pizzaPriceRule: pizzaPriceRule(restaurant.pizza_price_rule),
+  }), [options, pizzaOptions, products, restaurant.addon_choice_rule, restaurant.crust_choice_rule, restaurant.max_pizza_flavors, restaurant.pizza_price_rule, variants]);
 
   const isPizzaProduct = useCallback((product: Product | undefined | null) => {
     if (!product?.category_id) return false;

@@ -1,12 +1,13 @@
 import { boundedText, PublicError, uuid } from "./security";
-import type { ChoiceRule, Product, ProductVariant, ProductAddon, ProductOption, PizzaOption } from "./types";
+import type { ChoiceRule, Product, ProductVariant, ProductAddon, ProductOption, PizzaOption, PizzaPriceRule } from "./types";
+import { combineFlavorPrices } from "./pizza-builder";
 
 type Selection = { name: string; price: number };
 export type PricedItem = { id: string; name: string; variantId: string | null; variantName: string | null; price: number; quantity: number; total: number; notes: string;
   dough: Selection | null; crust: Selection | null; noCrust: boolean; noAdditions: boolean; flavors: string[]; flavorCount: number; addons: { id: string | null; name: string; price: number }[] };
 // rules: só no pedido do site (o PDV é montado pela equipe e não passa por elas).
 export type PricingCatalog = { products: Product[]; variants: ProductVariant[]; addons: ProductAddon[]; options: ProductOption[]; pizzaOptions: PizzaOption[]; maxFlavors: number;
-  rules?: { crust: ChoiceRule; addons: ChoiceRule } };
+  rules?: { crust: ChoiceRule; addons: ChoiceRule }; pizzaPriceRule?: PizzaPriceRule };
 
 export function amount(value: unknown) {
   const number = Number(value);
@@ -39,15 +40,17 @@ export function priceCart(input: unknown, catalog: PricingCatalog, orderType: st
     if ((item.variantId && !variant) || (variants.length && !variant)) throw new PublicError("Selecione um tamanho válido para o produto.");
     const flavors = list(item.flavors, Math.min(product.max_flavors ?? catalog.maxFlavors, catalog.maxFlavors)).map(f => boundedText(f, 150, true));
     if (new Set(flavors).size !== flavors.length) throw new PublicError("Sabores repetidos.");
-    let base = amount(variant?.price ?? product.price);
+    // O site e o PDV mandam o próprio produto como 1º sabor; se não vier, ele conta como sabor.
+    const flavorPrices = flavors.includes(product.name) ? [] : [amount(variant?.price ?? product.price)];
     for (const flavor of flavors) {
       const candidate = catalog.products.find(p => p.active && p.name === flavor && p.category_id === product.category_id);
       if (!candidate) throw new PublicError("Sabor indisponível.");
       const sizes = catalog.variants.filter(v => v.active && v.product_id === candidate.id);
       const sameSize = sizes.find(v => v.name === variant?.name);
       if (sizes.length && !sameSize) throw new PublicError("Sabor indisponível neste tamanho.");
-      base = Math.max(base, amount(sameSize?.price ?? candidate.price));
+      flavorPrices.push(amount(sameSize?.price ?? candidate.price));
     }
+    const base = combineFlavorPrices(flavorPrices, catalog.pizzaPriceRule ?? "highest");
     function selectOption(raw: unknown, groupName: string, kind: "massa" | "borda" | "adicional"): Selection | null {
       if (!raw) return null;
       const name = boundedText(object(raw).name, 150, true);

@@ -26,6 +26,7 @@ export default async function PdvPage() {
       deliveryRules={(((deliveryRules ?? []).length ? deliveryRules : deliveryRulesFromRestaurant(restaurant)) ?? []) as DeliveryFeeRule[]}
       maxPizzaFlavors={Math.min(4, Math.max(1, Number(restaurant.max_pizza_flavors ?? 1)))}
       pizzaOptions={(pizzaOptions ?? []) as PizzaOption[]}
+      pizzaPriceRule={restaurant.pizza_price_rule === "average" ? "average" : "highest"}
     />
   );
 }

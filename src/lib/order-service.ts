@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { createServiceClient } from "./supabase/service";
 import { customerSession, rateLimit } from "./customer-session";
 import { priceCart, amount, type PricingCatalog } from "./order-pricing";
-import { choiceRule } from "./pizza-builder";
+import { choiceRule, pizzaPriceRule } from "./pizza-builder";
 import { orderPayment, pixKeyType, sitePayments, type PaymentDetail, type SitePayment } from "./payments";
 import { boundedText, PublicError, uuid } from "./security";
 import { isValidPhone, normalizePhone, parseDecimal } from "./utils";
@@ -56,7 +56,8 @@ export async function saveValidatedOrder(form: FormData, restaurantId: string, s
   ]);
   if ([products,variants,addons,options,pizzaOptions].some(r=>r.error)) throw new PublicError("Catálogo temporariamente indisponível.",503);
   const catalog = { products:products.data, variants:variants.data, addons:addons.data, options:options.data, pizzaOptions:pizzaOptions.data, maxFlavors:store.max_pizza_flavors ?? 4,
-    rules: source==="site" ? { crust:choiceRule(store.crust_choice_rule), addons:choiceRule(store.addon_choice_rule) } : undefined } as PricingCatalog;
+    rules: source==="site" ? { crust:choiceRule(store.crust_choice_rule), addons:choiceRule(store.addon_choice_rule) } : undefined,
+    pizzaPriceRule: pizzaPriceRule(store.pizza_price_rule) } as PricingCatalog;
   const cart = priceCart(input,catalog,type);
   const subtotal = amount(cart.reduce((sum,item)=>sum+item.total,0));
   if (source==="site" && subtotal<amount(store.minimum_order ?? 0)) throw new PublicError("O pedido não atingiu o valor mínimo da loja.");

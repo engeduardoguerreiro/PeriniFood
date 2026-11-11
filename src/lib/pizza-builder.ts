@@ -1,9 +1,22 @@
 // Regras do configurador do cardápio público (montagem em etapas), sem React e
 // sem dependências: roda no navegador e nos testes (scripts/test-pizza-builder.mjs).
 // O preço aqui é só a prévia; o servidor reprecifica tudo em order-pricing.ts,
-// e as regras abaixo espelham as de lá (sabor mais caro no tamanho escolhido,
+// e as regras abaixo espelham as de lá (maior valor ou média dos sabores no tamanho escolhido,
 // mesmo tamanho para todos os sabores, opções do produto do 1º sabor).
-import type { ChoiceRule, PizzaOption, Product, ProductOption, ProductOptionItem, ProductVariant } from "./types";
+import type { ChoiceRule, PizzaOption, PizzaPriceRule, Product, ProductOption, ProductOptionItem, ProductVariant } from "./types";
+
+export function pizzaPriceRule(value: unknown): PizzaPriceRule {
+  return value === "average" ? "average" : "highest";
+}
+
+// Preço da pizza a partir do preço de cada sabor no tamanho escolhido. Única
+// fonte da regra: usada pelo servidor (order-pricing.ts), pelo cardápio e pelo PDV.
+// "average": meia de R$ 50 + meia de R$ 50 = R$ 25 + R$ 25 = R$ 50 (vale para 3 e 4 sabores).
+export function combineFlavorPrices(prices: number[], rule: PizzaPriceRule) {
+  if (!prices.length) return 0;
+  if (rule === "average") return Math.round((prices.reduce((sum, price) => sum + price, 0) / prices.length) * 100) / 100;
+  return Math.max(...prices);
+}
 
 export type SelectedOption = { name: string; price: number };
 
@@ -93,6 +106,8 @@ export type BuilderCatalog = {
   maxFlavors: number;
   // Regras da loja para borda e adicionais (padrão: precisa responder).
   rules?: ChoiceRules;
+  // Cobrança com vários sabores (restaurants.pizza_price_rule); padrão: maior valor.
+  pizzaPriceRule?: PizzaPriceRule;
 };
 
 export type BuilderContext = {
@@ -135,16 +150,16 @@ export function flavorPrice(ctx: BuilderContext, name: string, sizeName: string 
   return variant ? Number(variant.price) : null;
 }
 
-// Pizza com vários sabores custa o do sabor mais caro (mesma regra do servidor).
+// Pizza com vários sabores: maior valor ou média, conforme a loja (mesma regra do servidor).
 export function pizzaBasePrice(ctx: BuilderContext, flavors: string[], sizeName: string | null) {
   if (!flavors.length) return null;
-  let highest = 0;
+  const prices: number[] = [];
   for (const name of flavors) {
     const price = flavorPrice(ctx, name, sizeName);
     if (price == null) return null;
-    highest = Math.max(highest, price);
+    prices.push(price);
   }
-  return highest;
+  return combineFlavorPrices(prices, pizzaPriceRule(ctx.catalog.pizzaPriceRule));
 }
 
 // Tamanhos disponíveis, do mais barato ao mais caro (Broto, Média, Grande…).

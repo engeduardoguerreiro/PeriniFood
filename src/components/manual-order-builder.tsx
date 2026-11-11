@@ -6,7 +6,8 @@ import type { KeyboardEvent } from "react";
 import { createPdvOrder } from "@/app/actions";
 import { MoneyInput } from "@/components/money-input";
 import { decimalInputValue, displayPhone, formatPhone, maskPhoneInput, money, parseDecimal, PHONE_PATTERN } from "@/lib/utils";
-import type { Category, Customer, DeliveryFeeRule, PizzaOption, Product, ProductOption, ProductOptionItem, ProductType, ProductVariant, Restaurant } from "@/lib/types";
+import type { Category, Customer, DeliveryFeeRule, PizzaOption, PizzaPriceRule, Product, ProductOption, ProductOptionItem, ProductType, ProductVariant, Restaurant } from "@/lib/types";
+import { combineFlavorPrices } from "@/lib/pizza-builder";
 import { Icon3D } from "@/components/ui/icon-3d";
 
 type SelectedOption = { name: string; price: number };
@@ -152,10 +153,11 @@ function flavorPrice(flavorName: string, variantName: string | null | undefined,
   return Number(flavorProduct.price ?? fallback);
 }
 
-function highestFlavorPrice(flavors: string[] | undefined, variantName: string | null | undefined, products: Product[], variants: ProductVariant[], fallback: number) {
+// Prévia do PDV; o servidor reprecifica com a mesma regra (combineFlavorPrices).
+function pizzaFlavorsPrice(flavors: string[] | undefined, variantName: string | null | undefined, products: Product[], variants: ProductVariant[], fallback: number, rule: PizzaPriceRule) {
   const selected = flavors?.length ? flavors : [];
   if (!selected.length) return fallback;
-  return Math.max(...selected.map((flavor) => flavorPrice(flavor, variantName, products, variants, fallback)));
+  return combineFlavorPrices(selected.map((flavor) => flavorPrice(flavor, variantName, products, variants, fallback)), rule);
 }
 
 function normalizeLabel(value: string | null | undefined) {
@@ -214,6 +216,7 @@ export function ManualOrderBuilder({
   deliveryRules,
   maxPizzaFlavors,
   pizzaOptions,
+  pizzaPriceRule = "highest",
 }: {
   action?: (formData: FormData) => void | Promise<void>;
   mode?: "create" | "edit";
@@ -228,6 +231,7 @@ export function ManualOrderBuilder({
   deliveryRules: DeliveryFeeRule[];
   maxPizzaFlavors: number;
   pizzaOptions: PizzaOption[];
+  pizzaPriceRule?: PizzaPriceRule;
 }) {
   const [cart, setCart] = useState<CartItem[]>(initialData.cart ?? []);
   const [draft, setDraft] = useState<CartItem | null>(null);
@@ -790,7 +794,7 @@ export function ManualOrderBuilder({
                         update(index, {
                           flavorCount: count,
                           flavors: nextFlavors,
-                        price: highestFlavorPrice(nextFlavors, item.variantName, products, variants, item.price),
+                        price: pizzaFlavorsPrice(nextFlavors, item.variantName, products, variants, item.price, pizzaPriceRule),
                         });
                       }}
                     >
@@ -815,7 +819,7 @@ export function ManualOrderBuilder({
                                 const pricedFlavors = next.length ? next : [product?.name ?? item.name];
                                 update(index, {
                                   flavors: pricedFlavors,
-                        price: highestFlavorPrice(pricedFlavors, item.variantName, products, variants, item.price),
+                        price: pizzaFlavorsPrice(pricedFlavors, item.variantName, products, variants, item.price, pizzaPriceRule),
                                 });
                               }}
                             />
@@ -835,7 +839,7 @@ export function ManualOrderBuilder({
                       if (selected) update(index, {
                         variantId: selected.id,
                         variantName: selected.name,
-                        price: isPizza ? highestFlavorPrice(item.flavors, selected.name, products, variants, Number(selected.price)) : Number(selected.price),
+                        price: isPizza ? pizzaFlavorsPrice(item.flavors, selected.name, products, variants, Number(selected.price), pizzaPriceRule) : Number(selected.price),
                       });
                     }}>
                       {productVariants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name} - {money(variant.price)}</option>)}
@@ -970,7 +974,7 @@ export function ManualOrderBuilder({
                                   ...draft,
                                   flavorCount: count,
                                   flavors: nextFlavors,
-                                  price: highestFlavorPrice(nextFlavors, draft.variantName, products, variants, draft.price),
+                                  price: pizzaFlavorsPrice(nextFlavors, draft.variantName, products, variants, draft.price, pizzaPriceRule),
                                 });
                               }}
                               className={Number(draft.flavorCount ?? 1) === count ? "rounded-md bg-white px-3 py-1.5 text-xs font-medium text-ink shadow-[0_1px_2px_rgba(27,26,23,0.06)]" : "rounded-md px-3 py-1.5 text-xs font-medium text-ink-faint transition hover:text-[#403d38]"}
@@ -1007,7 +1011,7 @@ export function ManualOrderBuilder({
                                     setDraft({
                                       ...draft,
                                       flavors: pricedFlavors,
-                                      price: highestFlavorPrice(pricedFlavors, draft.variantName, products, variants, draft.price),
+                                      price: pizzaFlavorsPrice(pricedFlavors, draft.variantName, products, variants, draft.price, pizzaPriceRule),
                                     });
                                   }}
                                   disabled={atLimit}
@@ -1043,7 +1047,7 @@ export function ManualOrderBuilder({
                                   ...draft,
                                   variantId: variant.id,
                                   variantName: variant.name,
-                                  price: isPizza ? highestFlavorPrice(draft.flavors, variant.name, products, variants, Number(variant.price)) : Number(variant.price),
+                                  price: isPizza ? pizzaFlavorsPrice(draft.flavors, variant.name, products, variants, Number(variant.price), pizzaPriceRule) : Number(variant.price),
                                 })}
                               />
                             </label>

@@ -72,7 +72,7 @@ Link do cardápio para fazer pedidos: ${appUrl()}/cardapio/${restaurant.slug}
 Entrega: ${restaurant.delivery_enabled === false ? "não faz entrega" : `sim, a partir de ${money(restaurant.delivery_fee ?? 0)} (o valor exato é calculado pelo endereço no fechamento do pedido), tempo estimado ${restaurant.estimated_delivery_time ?? "40-50 min"}`}
 Retirada no local: ${restaurant.pickup_enabled ? "sim" : "não"}
 Pedido mínimo: ${money(restaurant.minimum_order ?? 0)}
-Pizza com até ${restaurant.max_pizza_flavors ?? 1} sabores (cobra o sabor de maior valor).
+Pizza com até ${restaurant.max_pizza_flavors ?? 1} sabores (${restaurant.pizza_price_rule === "average" ? "cobra a média: cada parte paga a sua fração do preço do sabor" : "cobra o sabor de maior valor"}).
 Formas de pagamento: ${payments}
 
 # Horário de funcionamento

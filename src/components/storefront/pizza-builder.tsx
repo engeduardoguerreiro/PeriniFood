@@ -6,7 +6,7 @@ import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type CSS
 import { money } from "@/lib/utils";
 import {
   additionOptions, additionsRule, basePrice, rulesOf, builderSizes, builderSteps, changeSize, crustOptions, crustRequired, doughOptions,
-  draftToLine, flavorPrice, flavorProduct, lineUnitPrice, maxFlavorsFor, normalizeLabel, primaryProduct,
+  draftToLine, flavorPrice, flavorProduct, lineUnitPrice, maxFlavorsFor, normalizeLabel, pizzaPriceRule, primaryProduct,
   setFlavorCount, sizeLabel, stepProblem, toggleFlavor,
   type BuilderContext, type BuilderDraft, type CartLine, type StepId,
 } from "@/lib/pizza-builder";
@@ -316,7 +316,7 @@ function FlavorStep({ ctx, draft, setDraft, headingRef }: StepProps) {
     <section>
       <h2 ref={headingRef} tabIndex={-1} className="text-xl font-black text-ink outline-none">{max > 1 ? "Escolha os sabores" : "Escolha o sabor"}</h2>
       <p className="mt-1 text-sm text-slate-500">
-        {max > 1 ? `Até ${max} sabores na mesma pizza. Com mais de um, vale o preço do sabor mais caro.` : "Toque no sabor da sua pizza."}
+        {max > 1 ? `Até ${max} sabores na mesma pizza. ${pizzaPriceRule(ctx.catalog.pizzaPriceRule) === "average" ? "Com mais de um, cada parte cobra a sua fração do preço do sabor." : "Com mais de um, vale o preço do sabor mais caro."}` : "Toque no sabor da sua pizza."}
       </p>
 
       {max > 1 && (

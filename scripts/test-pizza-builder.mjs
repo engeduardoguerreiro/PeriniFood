@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   builderSizes, builderSteps, crustOptions, changeSize, createBuilderContext, draftFromLine, draftToLine, firstIncompleteStep,
   lineDetails, lineTotal, newDraft, parseStoredCart, pizzaBasePrice, setFlavorCount, stepProblem, toggleFlavor,
+  combineFlavorPrices, pizzaPriceRule,
 } from "../src/lib/pizza-builder.ts";
 
 const at = "2026-01-01T00:00:00Z";
@@ -240,4 +241,26 @@ test("item antigo sem resposta de borda volta pendente (regra padrão)", () => {
   const draft = draftFromLine(ctx, old);
   assert.equal(draft.crustChoice, null);
   assert.equal(draftToLine(ctx, draft), null);
+});
+
+test("cobrança por média: cada fração paga sua parte (2, 3 e 4 sabores)", () => {
+  assert.equal(combineFlavorPrices([50, 50], "average"), 50, "meia 25 + meia 25");
+  assert.equal(combineFlavorPrices([50, 60], "average"), 55);
+  assert.equal(combineFlavorPrices([50, 60], "highest"), 60);
+  assert.equal(combineFlavorPrices([45, 60, 60], "average"), 55, "15 + 20 + 20");
+  assert.equal(combineFlavorPrices([50, 50, 60], "average"), 53.33, "arredonda nos centavos");
+  assert.equal(combineFlavorPrices([40, 48, 60, 72], "average"), 55, "10 + 12 + 15 + 18");
+  assert.equal(combineFlavorPrices([62], "average"), 62, "1 sabor = preço cheio");
+  assert.equal(pizzaPriceRule("average"), "average");
+  assert.equal(pizzaPriceRule(null), "highest", "sem configuração mantém maior valor");
+  assert.equal(pizzaPriceRule("qualquer"), "highest");
+});
+
+test("montador usa a regra da loja no preço da pizza", () => {
+  const avg = createBuilderContext({ ...catalog, pizzaPriceRule: "average" }, products[0], true);
+  assert.equal(pizzaBasePrice(avg, ["Calabresa", "Sete Queijos"], "GRANDE"), 51, "(40 + 62) / 2");
+  assert.equal(pizzaBasePrice(avg, ["Calabresa", "Sete Queijos", "Frango"], "GRANDE"), 48, "(40 + 62 + 42) / 3");
+  assert.equal(pizzaBasePrice(avg, ["Calabresa", "Frango"], "BROTO"), null, "sabor sem o tamanho continua bloqueado");
+  const max = createBuilderContext(catalog, products[0], true);
+  assert.equal(pizzaBasePrice(max, ["Calabresa", "Sete Queijos", "Frango"], "GRANDE"), 62, "padrão: maior valor");
 });
