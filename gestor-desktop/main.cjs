@@ -268,6 +268,10 @@ if (!app.requestSingleInstanceLock()) {
     if (!settings.autostartConfigured && app.isPackaged) {
       setAutostart(true);
       writeSettings({ autostartConfigured: true });
+    } else if (process.platform === "linux" && app.isPackaged && getAutostart()) {
+      // Reescreve o atalho com o executável atual: trocar o AppImage por .deb/.rpm
+      // (ou mover o AppImage) deixaria o "iniciar com o computador" apontando para o antigo.
+      setAutostart(true);
     }
     // Evita que o sistema suspenda o app enquanto espera pedidos.
     powerSaveBlocker.start("prevent-app-suspension");
