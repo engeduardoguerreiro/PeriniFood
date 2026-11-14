@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Bell, Bike, Download, Globe, MessageCircle, MonitorDown, Printer } from "lucide-react";
+import { Bell, Bike, Download, Globe, MessageCircle, MonitorDown, Printer, TriangleAlert } from "lucide-react";
+import { CopyCommand } from "@/components/copy-command";
 import { requireRestaurant } from "@/lib/auth";
 import { Icon3D } from "@/components/ui/icon-3d";
-import { GESTOR_APP_VERSION, gestorDownloads } from "@/lib/gestor-app";
+import { GESTOR_APP_VERSION, appImageFedoraCommand, gestorDownloads } from "@/lib/gestor-app";
 
 export const metadata = { title: "Gestor de Pedidos para computador · PeriniFood" };
 
@@ -40,23 +41,44 @@ export default async function GestorAppPage() {
           </ul>
         </section>
 
-        <section className={card}>
-          <h2 className="font-semibold text-ink">Baixar o aplicativo <span className="text-xs font-normal text-ink-faint">versão {GESTOR_APP_VERSION}</span></h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            {gestorDownloads.map((item) => (
-              <a key={item.key} href={item.url} className="flex flex-col gap-2 rounded-xl border border-line p-4 transition hover:border-brand hover:bg-brand-soft">
-                <span className="text-sm font-semibold text-ink">{item.system}</span>
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-brand"><Download size={15} /> {item.label}</span>
-                <span className="text-xs text-ink-faint">{item.size}</span>
-              </a>
-            ))}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-ink">Instalar <span className="text-xs font-normal text-ink-faint">versão {GESTOR_APP_VERSION}</span></h2>
+            <p className="text-sm text-ink-soft">Escolha o sistema do computador da loja e siga os passos. No Linux, o jeito mais fácil é copiar o comando e colar no Terminal.</p>
           </div>
-          <div className="mt-5 space-y-2 text-sm text-ink-soft">
-            <p><strong className="text-ink">Windows:</strong> abra o arquivo baixado e siga o instalador. Se aparecer &quot;O Windows protegeu o computador&quot;, clique em <em>Mais informações</em> e depois em <em>Executar assim mesmo</em>.</p>
-            <p><strong className="text-ink">Ubuntu / Mint / Debian:</strong> dê dois cliques no .deb, ou no terminal: <code className="rounded bg-[#f1efea] px-1.5 py-0.5 text-xs">sudo apt install ./perinifood-gestor_{GESTOR_APP_VERSION}_amd64.deb</code></p>
-            <p><strong className="text-ink">Outros Linux:</strong> no AppImage, clique com o botão direito &gt; Propriedades &gt; Permitir executar, e abra com dois cliques.</p>
-            <p>Na primeira vez, entre com o mesmo e-mail e senha do painel. O app abre sozinho quando o computador liga e fica no ícone ao lado do relógio quando você fecha a janela.</p>
-          </div>
+          {gestorDownloads.map((item) => (
+            <article key={item.key} id={item.key} className={card}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-ink">{item.system}</h3>
+                  <p className="text-xs text-ink-faint">{item.hint}</p>
+                </div>
+                <a href={item.url} className="inline-flex items-center gap-2 rounded-xl border border-line px-3.5 py-2 text-sm font-medium text-ink transition hover:border-brand hover:text-brand">
+                  <Download size={15} /> {item.label} <span className="text-xs text-ink-faint">{item.size}</span>
+                </a>
+              </div>
+              {item.warning && (
+                <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /> {item.warning}
+                </p>
+              )}
+              <ol className="mt-3 space-y-1.5 text-sm text-ink-body">
+                {item.steps.map((text, index) => (
+                  <li key={text} className="flex gap-2.5">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#f1efea] text-[0.7rem] font-bold text-ink-soft">{index + 1}</span>
+                    <span>{text}</span>
+                  </li>
+                ))}
+              </ol>
+              {item.command && (
+                <div className="mt-3 space-y-2">
+                  <CopyCommand command={item.command} label={item.commandHint} />
+                  {item.key === "appimage" && <CopyCommand command={appImageFedoraCommand} label="Fedora e derivados" />}
+                </div>
+              )}
+            </article>
+          ))}
+          <p className="text-sm text-ink-soft">Na primeira vez, entre com o mesmo e-mail e senha do painel. O app abre sozinho quando o computador liga e, ao fechar a janela, fica no ícone ao lado do relógio recebendo pedidos.</p>
         </section>
 
         <section className={card}>

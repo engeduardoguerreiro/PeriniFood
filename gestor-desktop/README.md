@@ -67,13 +67,17 @@ novos só quando mudar o próprio app (main.cjs, preload, ícones, Electron).
 
 1. Suba `version` no `package.json` daqui e gere os três instaladores.
 2. Crie o release com nomes fixos por versão:
-   `PeriniFood-Gestor-Setup-<v>.exe`, `perinifood-gestor_<v>_amd64.deb`, `PeriniFood-Gestor-<v>.AppImage`.
+   `PeriniFood-Gestor-Setup-<v>.exe`, `perinifood-gestor_<v>_amd64.deb`, `perinifood-gestor-<v>.x86_64.rpm`, `PeriniFood-Gestor-<v>.AppImage`.
 3. Troque `GESTOR_APP_VERSION` em `src/lib/gestor-app.ts` (e os tamanhos) e faça o deploy.
 
 ## Instalar
 
 - **Linux AppImage**: `chmod +x PeriniFood-Gestor-*.AppImage` e abra com dois cliques.
-  Em distros sem FUSE 2, instale `fuse2`/`libfuse2`.
+  Precisa do FUSE 2 (`libfuse.so.2`), que o Fedora e o Ubuntu 22.04+ não trazem:
+  `sudo dnf install fuse-libs` / `sudo apt install libfuse2t64` (ou `libfuse2`).
+- **Linux .rpm** (Fedora): `sudo dnf install ./perinifood-gestor-*.x86_64.rpm`.
+  Gere com `npx electron-builder --linux rpm` no mesmo contêiner (o fpm do host
+  precisa de `libxcrypt-compat`).
 - **Linux .deb** (Ubuntu, Mint, Debian): `sudo apt install ./PeriniFood-Gestor-*.deb`.
 - **Windows**: execute `PeriniFood-Gestor-*-win-x64.exe`.
 

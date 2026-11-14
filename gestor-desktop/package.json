@@ -13,7 +13,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "PERINIFOOD_APP_URL=http://localhost:3000 electron .",
-    "dist:linux": "electron-builder --linux AppImage deb",
+    "dist:linux": "electron-builder --linux AppImage deb rpm",
     "dist:win": "electron-builder --win nsis",
     "dist": "electron-builder --linux AppImage deb --win nsis"
   },
@@ -36,7 +36,11 @@
       "package.json"
     ],
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
       "icon": "assets/icon.png",
       "category": "Office",
       "synopsis": "Gestor de Pedidos do PeriniFood",
@@ -49,7 +53,12 @@
       }
     },
     "deb": {
-      "depends": ["libnotify4", "libxtst6", "libnss3", "libasound2 | libasound2t64"]
+      "depends": [
+        "libnotify4",
+        "libxtst6",
+        "libnss3",
+        "libasound2 | libasound2t64"
+      ]
     },
     "win": {
       "target": "nsis",
