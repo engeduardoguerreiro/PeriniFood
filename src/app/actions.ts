@@ -340,9 +340,15 @@ export async function signIn(formData: FormData) {
     const message = error.message.toLowerCase().includes("invalid login credentials") ?
        "E-mail ou senha inválidos. Confira os dados e tente novamente."
       : error.message;
-    redirect(`/login?error=${encodeURIComponent(message)}`);
+    redirect(`/login?error=${encodeURIComponent(message)}${safeNext(formData) ? `&next=${encodeURIComponent(safeNext(formData)!)}` : ""}`);
   }
-  redirect("/dashboard");
+  redirect(safeNext(formData) ?? "/dashboard");
+}
+
+// Destino depois do login (ex.: /gestor no app desktop). Só caminhos internos.
+function safeNext(formData: FormData) {
+  const next = text(formData, "next");
+  return /^\/(?![\/\\])[\w\-/]*$/.test(next) ? next : null;
 }
 
 export async function signOut() {

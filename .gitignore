@@ -22,6 +22,7 @@ node_modules/
 /build
 /dist
 /dist-desktop
+/dist-gestor
 /desktop/runtime
 
 # misc

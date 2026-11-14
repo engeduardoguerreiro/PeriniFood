@@ -47,6 +47,7 @@ export const config = {
     "/cardapio/(categorias|tipos|opcoes-pizza|adicionais)",
     "/cardapio/(produtos|fichas)/:path*",
     "/pedidos/:path*",
+    "/gestor/:path*",
     "/clientes/:path*",
     "/configuracoes/:path*",
     "/cupons/:path*",

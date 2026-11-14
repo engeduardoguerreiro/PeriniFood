@@ -1,0 +1,69 @@
+{
+  "name": "perinifood-gestor",
+  "productName": "PeriniFood Gestor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gestor de Pedidos do PeriniFood para Linux e Windows",
+  "homepage": "https://perinifood.com.br",
+  "author": {
+    "name": "PeriniFood",
+    "email": "contato@perinifood.com.br"
+  },
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "PERINIFOOD_APP_URL=http://localhost:3000 electron .",
+    "dist:linux": "electron-builder --linux AppImage deb",
+    "dist:win": "electron-builder --win nsis",
+    "dist": "electron-builder --linux AppImage deb --win nsis"
+  },
+  "devDependencies": {
+    "electron": "42.4.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.perinifood.gestor",
+    "productName": "PeriniFood Gestor",
+    "executableName": "perinifood-gestor",
+    "artifactName": "PeriniFood-Gestor-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "../dist-gestor"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "assets/**",
+      "package.json"
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets/icon.png",
+      "category": "Office",
+      "synopsis": "Gestor de Pedidos do PeriniFood",
+      "desktop": {
+        "entry": {
+          "Name": "PeriniFood Gestor",
+          "Comment": "Receba e gerencie os pedidos do PeriniFood",
+          "StartupWMClass": "PeriniFood Gestor"
+        }
+      }
+    },
+    "deb": {
+      "depends": ["libnotify4", "libxtst6", "libnss3", "libasound2 | libasound2t64"]
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PeriniFood Gestor",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    }
+  }
+}

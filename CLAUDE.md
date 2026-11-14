@@ -81,6 +81,7 @@ node scripts/verify-security-migration.mjs [siteUrl] [slug] [--final]  # post-de
 **Printing and desktop.**
 - `OrderPrintClient` renders the ticket to a monochrome image and POSTs it to a local Windows print agent at `http://127.0.0.1:4127` (`scripts/perinifood-print-bridge.js`; details in `docs/PRINT_AGENT.md`). Browser printing (`docs/IMPRESSAO_NAVEGADOR.md`) is the fallback.
 - `desktop/` is an Electron shell that loads the remote site and supervises the agent.
+- `gestor-desktop/` is the "PeriniFood Gestor" app (Electron, Linux AppImage/deb + Windows NSIS, output `dist-gestor/`). It opens `/gestor`, the full-screen iFood-style order manager (`src/components/gestor/gestor-pedidos.tsx`, polls `/api/gestor/pedidos` every 6 s, detail at `/api/gestor/pedidos/[id]`, status changes via `src/app/gestor/actions.ts`, which wrap `updateOrderStatus`, so iFood sync and WhatsApp notices still apply). The preload exposes `window.perinifoodDesktop` (`attention`, `notify`) for tray badge, window flashing and native notifications; closing the window hides it to the tray. Windows builds need wine: run them in the `electronuserland/builder:wine` container (see `gestor-desktop/README.md`).
 - Print routes such as `/pedidos/[id]/print` and `/ficha/[id]/print` intentionally render outside the dashboard layout.
 
 ## Env vars

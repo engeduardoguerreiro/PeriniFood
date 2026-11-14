@@ -12,7 +12,7 @@ function loginErrorMessage(error: string) {
   return decoded;
 }
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error: string; message?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error: string; message?: string; next?: string }> }) {
   const sp = await searchParams;
   const errorMessage = loginErrorMessage(sp.error);
 
@@ -38,6 +38,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       }
     >
       <form action={signIn}>
+        {sp.next && <input type="hidden" name="next" value={sp.next} />}
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-b from-brand-bright to-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_24px_-8px_rgba(242,100,25,0.8)]">
           <ShieldCheck className="h-6 w-6" />
         </span>
