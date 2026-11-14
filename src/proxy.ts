@@ -48,6 +48,7 @@ export const config = {
     "/cardapio/(produtos|fichas)/:path*",
     "/pedidos/:path*",
     "/gestor/:path*",
+    "/aplicativo",
     "/clientes/:path*",
     "/configuracoes/:path*",
     "/cupons/:path*",

@@ -50,6 +50,18 @@ export async function GET() {
     : { data: [] };
   const schedules = new Map((links ?? []).map((link) => [link.order_id as string, ifoodSchedule(link)]));
 
+  // Motoboy de cada entrega em andamento (link de rastreio): nome e situação.
+  const deliveryIds = rows.filter((row) => row.type === "delivery" && ["ready", "out_for_delivery"].includes(row.status)).map((row) => row.id);
+  const { data: trackings } = deliveryIds.length
+    ? await createServiceClient().from("delivery_tracking")
+        .select("order_id, courier_name, started_at, delivered_at, expires_at")
+        .eq("restaurant_id", restaurant.id).in("order_id", deliveryIds)
+    : { data: [] };
+  const couriers = new Map((trackings ?? []).map((row) => [row.order_id as string, {
+    name: (row.courier_name as string | null) ?? null,
+    state: row.delivered_at ? "delivered" : new Date(String(row.expires_at)).getTime() < Date.now() ? "expired" : row.started_at ? "on_route" : "waiting",
+  }]));
+
   const store = storeStatusLabel(restaurant);
   const mode = !restaurant.is_open ? "offline" : (restaurant.manual_open_status ?? "auto");
 
@@ -74,6 +86,7 @@ export async function GET() {
         updatedAt: row.updated_at,
         printed: row.auto_printed_at === undefined ? true : Boolean(row.auto_printed_at),
         schedule: schedule ? { start: schedule.start.toISOString(), end: schedule.end.toISOString() } : null,
+        courier: couriers.get(row.id) ?? null,
       };
     }),
   });

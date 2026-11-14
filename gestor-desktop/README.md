@@ -58,6 +58,18 @@ No próprio Windows, basta `npm run gestor:dist:win`.
 O instalador do Windows não é assinado. Na primeira execução, o SmartScreen pode
 pedir "Mais informações > Executar assim mesmo".
 
+## Publicar para download
+
+Os instaladores ficam no release `gestor-v<versão>` do GitHub, e a página
+`/aplicativo` do painel aponta para eles (`src/lib/gestor-app.ts`). Como o app só
+abre o site, as melhorias do gestor chegam sem reinstalar: publique instaladores
+novos só quando mudar o próprio app (main.cjs, preload, ícones, Electron).
+
+1. Suba `version` no `package.json` daqui e gere os três instaladores.
+2. Crie o release com nomes fixos por versão:
+   `PeriniFood-Gestor-Setup-<v>.exe`, `perinifood-gestor_<v>_amd64.deb`, `PeriniFood-Gestor-<v>.AppImage`.
+3. Troque `GESTOR_APP_VERSION` em `src/lib/gestor-app.ts` (e os tamanhos) e faça o deploy.
+
 ## Instalar
 
 - **Linux AppImage**: `chmod +x PeriniFood-Gestor-*.AppImage` e abra com dois cliques.

@@ -18,6 +18,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  MonitorDown,
   Plus,
   TicketPercent,
   QrCode,
@@ -40,6 +41,7 @@ const navGroups = [
     ["Início", "/dashboard", Home],
     ["Pedidos", "/pedidos", ClipboardList],
     ["Novo pedido", "/pedidos/novo", ShoppingBag],
+    ["Gestor de Pedidos", "/aplicativo", MonitorDown],
   ]],
   ["Catálogo", [
     ["Cardápio", "/cardapio", ChefHat],
@@ -72,6 +74,7 @@ const navTone: Record<string, string> = {
   "/dashboard": toneGradient.orange,
   "/pedidos": toneGradient.blue,
   "/pedidos/novo": toneGradient.green,
+  "/aplicativo": toneGradient.red,
   "/cardapio": toneGradient.red,
   "/cardapio/fichas": toneGradient.amber,
   "/cupons": toneGradient.pink,

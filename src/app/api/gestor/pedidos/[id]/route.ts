@@ -3,7 +3,8 @@ import { privateJson, uuid } from "@/lib/security";
 import { paymentDetailNote } from "@/lib/payments";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ifoodSchedule } from "@/lib/integrations/ifood/schedule";
-import { displayPhone, money } from "@/lib/utils";
+import { displayPhone, isTrackingToken, money } from "@/lib/utils";
+import { trackingByOrder, trackingState } from "@/lib/delivery-tracking";
 import type { Order, OrderItem } from "@/lib/types";
 
 // Detalhe de um pedido para o Gestor de Pedidos: cliente, entrega, pagamento e
@@ -49,6 +50,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     ? await createServiceClient().from("integration_orders").select("raw_payload").eq("order_id", id).eq("restaurant_id", restaurant.id).limit(1).maybeSingle()
     : { data: null };
   const schedule = ifoodSchedule(link?.raw_payload);
+  const tracking = current.type === "delivery" ? await trackingByOrder(current.id, restaurant.id).catch(() => null) : null;
 
   return privateJson({
     ok: true,
@@ -69,6 +71,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       changeFor: current.change_for == null ? null : Number(current.change_for),
       externalId: current.external_order_id,
       schedule: schedule ? { start: schedule.start.toISOString(), end: schedule.end.toISOString() } : null,
+      // Código público de acompanhamento (/pedido/[codigo]) e link do motoboy.
+      trackingCode: isTrackingToken(current.code) ? current.code : null,
+      courier: tracking ? { token: tracking.token, name: tracking.courier_name, state: trackingState(tracking), deliveryCode: tracking.delivery_code } : null,
       items: ((items ?? []) as OrderItem[]).map((item) => ({
         id: item.id,
         name: item.product_name,
